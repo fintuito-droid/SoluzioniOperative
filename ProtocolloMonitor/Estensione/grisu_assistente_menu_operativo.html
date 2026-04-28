@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Grisù Assistente</title>
+  <style>
+    :root {
+      --peek-top: 10px;
+      --peek-left-hidden: -65px;
+      --peek-left-visible: -5px;
+      --overlay: rgba(15, 23, 42, 0.18);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 200vh;
+      font-family: Arial, Helvetica, sans-serif;
+      background:
+        radial-gradient(circle at 20% 20%, #f8fcff 0%, #eef8ff 24%, #dfeef8 45%, #f7fbff 100%);
+      color: #0f172a;
+    }
+
+    .page-demo {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 90px 24px 120px;
+    }
+
+    .page-demo h1 {
+      margin: 0 0 16px;
+      font-size: 2rem;
+    }
+
+    .page-demo p {
+      margin: 0 0 14px;
+      line-height: 1.6;
+      color: #334155;
+      max-width: 760px;
+    }
+
+    .hint-box {
+      margin-top: 30px;
+      padding: 18px 20px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.72);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      box-shadow: 0 8px 20px rgba(15,23,42,.05);
+    }
+
+    code {
+      background: #eef6ff;
+      padding: 2px 6px;
+      border-radius: 6px;
+    }
+
+    #grisu {
+      position: fixed;
+      top: var(--peek-top);
+      left: var(--peek-left-hidden);
+      z-index: 9999;
+      transition:
+        left 0.8s cubic-bezier(0.4, 0, 0.2, 1),
+        transform 0.8s cubic-bezier(0.4, 0, 0.2, 1),
+        opacity 0.3s ease;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    #grisu.peek {
+      left: var(--peek-left-visible);
+    }
+
+    #grisu.fly {
+      left: 37.5vw;
+      top: var(--peek-top);
+      transform: translateX(-50%) scale(1.15);
+    }
+
+    #grisu img {
+      display: block;
+      width: 150px;
+      max-width: min(70vw, 150px);
+      height: auto;
+      filter: drop-shadow(0 10px 22px rgba(15, 23, 42, 0.22));
+      transition: transform 0.2s ease;
+      pointer-events: none;
+    }
+
+    #grisu:hover img {
+      transform: scale(1.02);
+    }
+
+    #grisu.fly img {
+      width: 200px;
+      max-width: min(72vw, 200px);
+    }
+
+    #trail {
+      position: absolute;
+      left: -40px;
+      top: 60%;
+      width: 120px;
+      height: 40px;
+      pointer-events: none;
+      display: none;
+      overflow: visible;
+    }
+
+    .smoke {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      background: rgba(220, 220, 220, 0.6);
+      border-radius: 50%;
+      animation: smokeMove 1s linear forwards;
+    }
+
+    @keyframes smokeMove {
+      0% {
+        transform: translateX(0) scale(0.6);
+        opacity: 0.6;
+      }
+      100% {
+        transform: translateX(-80px) scale(1.4);
+        opacity: 0;
+      }
+    }
+
+    #overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9998;
+      display: none;
+      background: var(--overlay);
+      backdrop-filter: blur(2px);
+      pointer-events: none;
+    }
+
+    #overlay.show {
+      display: block;
+    }
+
+    #popup {
+      position: fixed;
+      top: var(--peek-top);
+      left: 50vw;
+      width: auto;
+      min-width: 420px;
+      max-width: min(45vw, 620px);
+      background: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 18px 45px rgba(15, 23, 42, 0.20);
+      overflow: hidden;
+      transform: translateY(10px) scale(0.98);
+      opacity: 0;
+      transition: transform 0.28s ease, opacity 0.28s ease;
+      pointer-events: auto;
+    }
+
+    #overlay.show #popup {
+      transform: translateY(0) scale(1);
+      opacity: 1;
+    }
+
+    .popup-header {
+      padding: 12px 16px 9px;
+      text-align: left;
+      font-size: 1rem;
+      font-weight: 700;
+      color: #0f172a;
+      border-bottom: 1px solid #dbe4ee;
+      background: #ffffff;
+    }
+
+    .popup-body {
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: nowrap;
+    }
+
+    .check-inline {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.8rem;
+      color: #334155;
+      white-space: nowrap;
+      user-select: none;
+    }
+
+    .check-inline input[type="checkbox"] {
+      width: 14px;
+      height: 14px;
+      margin: 0;
+      accent-color: #166cd7;
+      cursor: pointer;
+    }
+
+    .date-wrap {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    .date-wrap.show {
+      display: inline-flex;
+    }
+
+    .date-input {
+      height: 30px;
+      padding: 4px 8px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      color: #0f172a;
+      background: #fff;
+    }
+
+    .btn {
+      width: auto;
+      display: inline-block;
+      margin: 0;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid #0f5fc5;
+      background: linear-gradient(180deg, #2d84eb 0%, #166cd7 100%);
+      color: #fff;
+      font-size: 0.84rem;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.22);
+      transition: transform 0.15s ease, filter 0.15s ease;
+      white-space: nowrap;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      filter: brightness(1.03);
+    }
+
+    .popup-footer {
+      padding: 8px 16px 10px;
+      border-top: 1px solid #dbe4ee;
+      display: flex;
+      justify-content: flex-end;
+      background: #fbfdff;
+    }
+
+    .close-btn {
+      min-width: 82px;
+      padding: 7px 12px;
+      border-radius: 8px;
+      border: 1px solid #bfc8d4;
+      background: linear-gradient(180deg, #ffffff 0%, #f0f3f7 100%);
+      color: #111827;
+      font-size: 0.84rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .close-btn:hover {
+      filter: brightness(0.98);
+    }
+
+    @media (max-width: 900px) {
+      #grisu img {
+        width: 140px;
+      }
+
+      #grisu.fly img {
+        width: 180px;
+      }
+
+      #popup {
+        min-width: 360px;
+        max-width: min(48vw, 520px);
+      }
+    }
+
+    @media (max-width: 640px) {
+      :root {
+        --peek-left-hidden: -52px;
+        --peek-left-visible: -6px;
+      }
+
+      #grisu img {
+        width: 115px;
+      }
+
+      #grisu.fly img {
+        width: 145px;
+      }
+
+      #popup {
+        left: 46vw;
+        min-width: 0;
+        width: min(52vw, 320px);
+      }
+
+      .popup-body {
+        gap: 8px;
+        padding: 10px 10px;
+        overflow-x: auto;
+      }
+
+      .btn {
+        padding: 7px 9px;
+        font-size: 0.75rem;
+      }
+
+      .popup-header {
+        font-size: 0.92rem;
+        padding: 10px 10px 8px;
+      }
+
+      .popup-footer {
+        padding: 8px 10px 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-demo">
+    <h1>Demo assistente Grisù</h1>
+    <p>
+      Il draghetto resta in alto a sinistra, ogni 30 secondi sporge per richiamare
+      l'attenzione e, al clic, vola verso il top centro. Il menu parte da metà schermo.
+    </p>
+    <p>
+      Per la prova puoi lasciare <code>30000</code>. In produzione puoi sostituirlo con
+      <code>600000</code> per passare a 10 minuti.
+    </p>
+
+    <div class="hint-box">
+      File usati in questa pagina:
+      <br />
+      <code>grisu_piccolo.png</code> = immagine piccola trasparente
+      <br />
+      <code>grisu_fly.png</code> = immagine grande centrale
+    </div>
+  </div>
+
+  <div id="grisu" aria-label="Assistente Grisù" title="Apri assistente">
+    <div id="trail"></div>
+    <img id="grisuImg" src="grisu_piccolo.png" alt="Grisù assistente" />
+  </div>
+
+  <div id="overlay" aria-hidden="true">
+    <div id="popup" role="dialog" aria-modal="true" aria-labelledby="popupTitle">
+      <div class="popup-header" id="popupTitle">Come posso aiutarti?</div>
+
+      <div class="popup-body">
+        <label class="check-inline">
+          <input type="checkbox" id="chkLavorare" />
+          <span>Da Lavorare</span>
+        </label>
+
+        <label class="check-inline">
+          <input type="checkbox" id="chkScadenza" />
+          <span>scadenza</span>
+        </label>
+
+        <div class="date-wrap" id="dateWrap">
+          <input
+            type="date"
+            id="dataScadenza"
+            class="date-input"
+            aria-label="Scegli una data"
+            title="Scegli una data"
+          />
+        </div>
+
+        <button class="btn" onclick="acquisisciDati()">Aquisisci</button>
+      </div>
+
+      <div class="popup-footer">
+        <button class="close-btn" onclick="closePopup()">Chiudi</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const grisu = document.getElementById('grisu');
+    const grisuImg = document.getElementById('grisuImg');
+    const overlay = document.getElementById('overlay');
+    const trail = document.getElementById('trail');
+
+    const chkScadenza = document.getElementById('chkScadenza');
+    const chkLavorare = document.getElementById('chkLavorare');
+    const dateWrap = document.getElementById('dateWrap');
+    const dataScadenza = document.getElementById('dataScadenza');
+
+    let isOpen = false;
+    let isAnimating = false;
+    let peekTimeout = null;
+    let autoHideTimeout = null;
+    let smokeInterval = null;
+
+    function setPeekImage() {
+      grisuImg.src = 'grisu_piccolo.png';
+      grisuImg.alt = 'Grisù piccolo';
+    }
+
+    function setFlyImage() {
+      grisuImg.src = 'grisu_fly.png';
+      grisuImg.alt = 'Grisù al top centro';
+    }
+
+    function peek() {
+      if (isOpen || isAnimating) return;
+
+      setPeekImage();
+      grisu.classList.add('peek');
+
+      clearTimeout(autoHideTimeout);
+      autoHideTimeout = setTimeout(() => {
+        if (!isOpen && !isAnimating) {
+          grisu.classList.remove('peek');
+        }
+      }, 5000);
+    }
+
+    function scheduleFirstPeek() {
+      clearTimeout(peekTimeout);
+      peekTimeout = setTimeout(peek, 3000);
+    }
+
+    function startSmoke() {
+      trail.style.display = 'block';
+
+      clearInterval(smokeInterval);
+      smokeInterval = setInterval(() => {
+        const puff = document.createElement('div');
+        puff.className = 'smoke';
+        puff.style.top = Math.random() * 20 + 'px';
+        trail.appendChild(puff);
+        setTimeout(() => puff.remove(), 1000);
+      }, 120);
+    }
+
+    function stopSmoke() {
+      clearInterval(smokeInterval);
+      smokeInterval = null;
+      trail.style.display = 'none';
+      trail.innerHTML = '';
+    }
+
+    function aggiornaDataWrap() {
+      if (chkScadenza.checked) {
+        dateWrap.classList.add('show');
+      } else {
+        dateWrap.classList.remove('show');
+        dataScadenza.value = '';
+      }
+    }
+
+    function openPopup() {
+      isOpen = true;
+      overlay.classList.add('show');
+      overlay.setAttribute('aria-hidden', 'false');
+    }
+
+    function closePopup() {
+      overlay.classList.remove('show');
+      overlay.setAttribute('aria-hidden', 'true');
+      isOpen = false;
+      isAnimating = false;
+      stopSmoke();
+      grisu.classList.remove('fly');
+      setPeekImage();
+
+      setTimeout(() => {
+        grisu.classList.remove('peek');
+      }, 50);
+    }
+
+    function acquisisciDati() {
+      const payload = {
+        daLavorare: chkLavorare.checked,
+        scadenza: chkScadenza.checked,
+        data: chkScadenza.checked ? dataScadenza.value || null : null
+      };
+
+      alert(
+        'Da Lavorare: ' + (payload.daLavorare ? 'Sì' : 'No') +
+        '\nScadenza: ' + (payload.scadenza ? 'Sì' : 'No') +
+        '\nData: ' + (payload.data || 'non impostata')
+      );
+    }
+
+    chkScadenza.addEventListener('change', aggiornaDataWrap);
+
+    grisu.addEventListener('click', () => {
+      if (isOpen || isAnimating) return;
+
+      isAnimating = true;
+      grisu.classList.remove('peek');
+      clearTimeout(autoHideTimeout);
+
+      startSmoke();
+      setFlyImage();
+      grisu.classList.add('fly');
+
+      setTimeout(() => {
+        stopSmoke();
+        openPopup();
+      }, 700);
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && isOpen) {
+        closePopup();
+      }
+    });
+
+    scheduleFirstPeek();
+
+    // 30 secondi per test. Per 10 minuti usa 600000
+    setInterval(peek, 30000);
+  </script>
+</body>
+</html>

@@ -1,0 +1,2168 @@
+
+================================================================================
+18/04/2026 19:35:39
+Richiesta ricevuta
+
+================================================================================
+18/04/2026 19:35:39
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=54515A535553565E&registroName=REGISTRO%20UFFICIALE&idAssegnazione=134776080&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=134776080&presaInCarico=false&edit=false&currentPage=6&totPages=68&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true
+
+================================================================================
+18/04/2026 19:35:39
+Lunghezza HTML: 59293
+
+================================================================================
+18/04/2026 19:35:39
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+18/04/2026 19:35:39
+Oggetto: POSTA CERTIFICATA: Protocollo nr: 3735 - del 02/04/2026 - COM-RG - Comando Prov. VVF RAGUSA Convenzione Consip Lotto 13 CIG 6469515CA8 - Convenzione per l'affidamento dei servizi di pulizia- periodo 01/08/2024 - 30/07/2027
+
+================================================================================
+18/04/2026 19:35:39
+Modalita: Entrata
+
+================================================================================
+18/04/2026 19:35:39
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+18/04/2026 19:35:40
+=== ERRORE NEL SERVER ===
+
+================================================================================
+18/04/2026 19:35:40
+('HY000', '[HY000] [Microsoft][Driver ODBC Microsoft Access] Impossibile usare "(sconosciuto)". File già in uso. (-1024) (SQLDriverConnect); [HY000] [Microsoft][Driver ODBC Microsoft Access] Impossibile usare "(sconosciuto)". File già in uso. (-1024)')
+
+================================================================================
+18/04/2026 19:35:40
+Traceback (most recent call last):
+  File "C:\SoluzioniOperative\ProtocolloMonitor\Python\server_protocollo.py", line 61, in ricevi_html
+    id_protocollo = salva_protocollo_access(dati)
+  File "C:\SoluzioniOperative\ProtocolloMonitor\Python\salva_access.py", line 179, in salva_protocollo_access
+    conn = connessione_access()
+  File "C:\SoluzioniOperative\ProtocolloMonitor\Python\salva_access.py", line 13, in connessione_access
+    return pyodbc.connect(conn_str)
+pyodbc.Error: ('HY000', '[HY000] [Microsoft][Driver ODBC Microsoft Access] Impossibile usare "(sconosciuto)". File già in uso. (-1024) (SQLDriverConnect); [HY000] [Microsoft][Driver ODBC Microsoft Access] Impossibile usare "(sconosciuto)". File già in uso. (-1024)')
+
+
+================================================================================
+18/04/2026 19:39:57
+Richiesta ricevuta
+
+================================================================================
+18/04/2026 19:39:57
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=54515A5D555E5350&registroName=REGISTRO%20UFFICIALE&idAssegnazione=134844773&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=134844773&presaInCarico=false&edit=false&currentPage=6&totPages=68&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true
+
+================================================================================
+18/04/2026 19:39:57
+Lunghezza HTML: 50322
+
+================================================================================
+18/04/2026 19:39:57
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+18/04/2026 19:39:57
+Oggetto: RICHIESTA REVISIONE E COLLAUDO BOMBOLE SUBACQUEE IN DOTAZIONE AL NSSA DI PALERMO
+
+================================================================================
+18/04/2026 19:39:57
+Modalita: Entrata
+
+================================================================================
+18/04/2026 19:39:57
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+18/04/2026 19:39:58
+=== ERRORE NEL SERVER ===
+
+================================================================================
+18/04/2026 19:39:58
+('HY000', '[HY000] [Microsoft][Driver ODBC Microsoft Access] Il campo "T_Protocolli.DataSpedizione" non può contenere una stringa di lunghezza zero. (-3702) (SQLParamData)')
+
+================================================================================
+18/04/2026 19:39:58
+Traceback (most recent call last):
+  File "C:\SoluzioniOperative\ProtocolloMonitor\Python\server_protocollo.py", line 61, in ricevi_html
+    id_protocollo = salva_protocollo_access(dati)
+  File "C:\SoluzioniOperative\ProtocolloMonitor\Python\salva_access.py", line 183, in salva_protocollo_access
+    id_protocollo = inserisci_padre(cursor, dati)
+  File "C:\SoluzioniOperative\ProtocolloMonitor\Python\salva_access.py", line 63, in inserisci_padre
+    cursor.execute(
+pyodbc.Error: ('HY000', '[HY000] [Microsoft][Driver ODBC Microsoft Access] Il campo "T_Protocolli.DataSpedizione" non può contenere una stringa di lunghezza zero. (-3702) (SQLParamData)')
+
+
+================================================================================
+18/04/2026 19:41:29
+Richiesta ricevuta
+
+================================================================================
+18/04/2026 19:41:29
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=54515A5D52545E59&registroName=REGISTRO%20UFFICIALE&idAssegnazione=134871747&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=134871747&presaInCarico=false&edit=false&currentPage=6&totPages=68&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true
+
+================================================================================
+18/04/2026 19:41:29
+Lunghezza HTML: 56507
+
+================================================================================
+18/04/2026 19:41:29
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+18/04/2026 19:41:29
+Oggetto: Richiesta di sopralluogo e preventivo per interventi di disinfestazione, deblattizzazione e derattizzazione - Reparto Volo VVF di Catania e Centro Polifunzionale di Catania.
+
+================================================================================
+18/04/2026 19:41:29
+Modalita: Uscita
+
+================================================================================
+18/04/2026 19:41:29
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+18/04/2026 19:41:30
+=== ERRORE NEL SERVER ===
+
+================================================================================
+18/04/2026 19:41:30
+('HY000', '[HY000] [Microsoft][Driver ODBC Microsoft Access] Il campo "T_ProtocolloDestinatari.DataSpedizione" non può contenere una stringa di lunghezza zero. (-3702) (SQLExecDirectW)')
+
+================================================================================
+18/04/2026 19:41:30
+Traceback (most recent call last):
+  File "C:\SoluzioniOperative\ProtocolloMonitor\Python\server_protocollo.py", line 61, in ricevi_html
+    id_protocollo = salva_protocollo_access(dati)
+  File "C:\SoluzioniOperative\ProtocolloMonitor\Python\salva_access.py", line 187, in salva_protocollo_access
+    inserisci_destinatari(cursor, id_protocollo, dati.get("destinatari", []))
+  File "C:\SoluzioniOperative\ProtocolloMonitor\Python\salva_access.py", line 112, in inserisci_destinatari
+    cursor.execute(
+pyodbc.Error: ('HY000', '[HY000] [Microsoft][Driver ODBC Microsoft Access] Il campo "T_ProtocolloDestinatari.DataSpedizione" non può contenere una stringa di lunghezza zero. (-3702) (SQLExecDirectW)')
+
+
+================================================================================
+18/04/2026 19:42:44
+Richiesta ricevuta
+
+================================================================================
+18/04/2026 19:42:44
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=54515A5D5C5E565C&registroName=REGISTRO%20UFFICIALE&idAssegnazione=134885618&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=134885618&presaInCarico=false&edit=false&currentPage=6&totPages=68&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true
+
+================================================================================
+18/04/2026 19:42:44
+Lunghezza HTML: 64078
+
+================================================================================
+18/04/2026 19:42:44
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+18/04/2026 19:42:44
+Oggetto: Protocollo nr: 14477 - del 07/04/2026 - DCFORM - Direzione Centrale per la Formazione Istituzione gruppo di lavoro per l'organizzazione di una sessione addestrativa pratica in ambito di incidentistica stradale denominata "Italian Rescue Training" presso la Scuola di Formazione Operativa di Montelibretti.
+
+================================================================================
+18/04/2026 19:42:44
+Modalita: Entrata
+
+================================================================================
+18/04/2026 19:42:44
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+18/04/2026 19:42:45
+=== ERRORE NEL SERVER ===
+
+================================================================================
+18/04/2026 19:42:45
+('HY000', '[HY000] [Microsoft][Driver ODBC Microsoft Access] Il campo "T_Protocolli.DataSpedizione" non può contenere una stringa di lunghezza zero. (-3702) (SQLParamData)')
+
+================================================================================
+18/04/2026 19:42:45
+Traceback (most recent call last):
+  File "C:\SoluzioniOperative\ProtocolloMonitor\Python\server_protocollo.py", line 61, in ricevi_html
+    id_protocollo = salva_protocollo_access(dati)
+  File "C:\SoluzioniOperative\ProtocolloMonitor\Python\salva_access.py", line 183, in salva_protocollo_access
+    id_protocollo = inserisci_padre(cursor, dati)
+  File "C:\SoluzioniOperative\ProtocolloMonitor\Python\salva_access.py", line 63, in inserisci_padre
+    cursor.execute(
+pyodbc.Error: ('HY000', '[HY000] [Microsoft][Driver ODBC Microsoft Access] Il campo "T_Protocolli.DataSpedizione" non può contenere una stringa di lunghezza zero. (-3702) (SQLParamData)')
+
+
+================================================================================
+18/04/2026 19:43:18
+Richiesta ricevuta
+
+================================================================================
+18/04/2026 19:43:18
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=54515A5D52555359&registroName=REGISTRO%20UFFICIALE&idAssegnazione=134871943&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=134871943&presaInCarico=false&edit=false&currentPage=6&totPages=68&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true
+
+================================================================================
+18/04/2026 19:43:18
+Lunghezza HTML: 56504
+
+================================================================================
+18/04/2026 19:43:18
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+18/04/2026 19:43:18
+Oggetto: Richiesta di sopralluogo e preventivo per interventi di disinfestazione, deblattizzazione e derattizzazione - Reparto Volo VVF di Catania e Centro Polifunzionale di Catania.
+
+================================================================================
+18/04/2026 19:43:18
+Modalita: Uscita
+
+================================================================================
+18/04/2026 19:43:18
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+18/04/2026 19:43:19
+=== ERRORE NEL SERVER ===
+
+================================================================================
+18/04/2026 19:43:19
+('HY000', '[HY000] [Microsoft][Driver ODBC Microsoft Access] Il campo "T_ProtocolloDestinatari.DataSpedizione" non può contenere una stringa di lunghezza zero. (-3702) (SQLExecDirectW)')
+
+================================================================================
+18/04/2026 19:43:19
+Traceback (most recent call last):
+  File "C:\SoluzioniOperative\ProtocolloMonitor\Python\server_protocollo.py", line 61, in ricevi_html
+    id_protocollo = salva_protocollo_access(dati)
+  File "C:\SoluzioniOperative\ProtocolloMonitor\Python\salva_access.py", line 187, in salva_protocollo_access
+    inserisci_destinatari(cursor, id_protocollo, dati.get("destinatari", []))
+  File "C:\SoluzioniOperative\ProtocolloMonitor\Python\salva_access.py", line 112, in inserisci_destinatari
+    cursor.execute(
+pyodbc.Error: ('HY000', '[HY000] [Microsoft][Driver ODBC Microsoft Access] Il campo "T_ProtocolloDestinatari.DataSpedizione" non può contenere una stringa di lunghezza zero. (-3702) (SQLExecDirectW)')
+
+
+================================================================================
+18/04/2026 19:47:27
+Richiesta ricevuta
+
+================================================================================
+18/04/2026 19:47:27
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=5456525151505050&registroName=REGISTRO%20UFFICIALE&idAssegnazione=135468254&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=135468254&presaInCarico=false&edit=false&currentPage=1&totPages=68&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true
+
+================================================================================
+18/04/2026 19:47:27
+Lunghezza HTML: 53856
+
+================================================================================
+18/04/2026 19:47:27
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+18/04/2026 19:47:27
+Oggetto: Protocollo nr: 5739 - del 18/04/2026 - COM-CL - Comando Prov. VVF CALTANISSETTA Richiamo personale ai sensi del DPR 64/2012 art.79 per potenziamento dispositivo di soccorso in relazione all'evento franoso verificatosi nel Comune di Niscemi (CL)
+
+================================================================================
+18/04/2026 19:47:27
+Modalita: Entrata
+
+================================================================================
+18/04/2026 19:47:27
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+18/04/2026 19:47:28
+=== ERRORE NEL SERVER ===
+
+================================================================================
+18/04/2026 19:47:28
+('42000', "[42000] [Microsoft][Driver ODBC Microsoft Access] Errore di sintassi nell'istruzione INSERT INTO. (-3502) (SQLExecDirectW)")
+
+================================================================================
+18/04/2026 19:47:28
+Traceback (most recent call last):
+  File "C:\SoluzioniOperative\ProtocolloMonitor\Python\server_protocollo.py", line 61, in ricevi_html
+    id_protocollo = salva_protocollo_access(dati)
+  File "C:\SoluzioniOperative\ProtocolloMonitor\Python\salva_access.py", line 197, in salva_protocollo_access
+    inserisci_assegnazioni(cursor, id_protocollo, dati.get("assegnazioni", []))
+  File "C:\SoluzioniOperative\ProtocolloMonitor\Python\salva_access.py", line 174, in inserisci_assegnazioni
+    cursor.execute(
+pyodbc.ProgrammingError: ('42000', "[42000] [Microsoft][Driver ODBC Microsoft Access] Errore di sintassi nell'istruzione INSERT INTO. (-3502) (SQLExecDirectW)")
+
+
+================================================================================
+18/04/2026 19:52:06
+Richiesta ricevuta
+
+================================================================================
+18/04/2026 19:52:06
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=545652515053565B&registroName=REGISTRO%20UFFICIALE&idAssegnazione=135468866&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=135468866&presaInCarico=false&edit=false&currentPage=1&totPages=68&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true
+
+================================================================================
+18/04/2026 19:52:06
+Lunghezza HTML: 52535
+
+================================================================================
+18/04/2026 19:52:06
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+18/04/2026 19:52:06
+Oggetto: POSTA CERTIFICATA: Protocollo nr: 5742 - del 18/04/2026 - COM-CL - Comando Prov. VVF CALTANISSETTA REPORT EVENTO FRANOSO COMUNE DI NISCEMI 18.04.2026
+
+================================================================================
+18/04/2026 19:52:06
+Modalita: Entrata
+
+================================================================================
+18/04/2026 19:52:06
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+18/04/2026 19:52:07
+Salvato in Access. IDProtocollo = 6
+
+================================================================================
+18/04/2026 19:52:51
+Richiesta ricevuta
+
+================================================================================
+18/04/2026 19:52:51
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=545652515053565B&registroName=REGISTRO%20UFFICIALE&idAssegnazione=135468866&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=135468866&presaInCarico=false&edit=false&currentPage=1&totPages=68&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true
+
+================================================================================
+18/04/2026 19:52:51
+Lunghezza HTML: 52551
+
+================================================================================
+18/04/2026 19:52:51
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+18/04/2026 19:52:51
+Oggetto: POSTA CERTIFICATA: Protocollo nr: 5742 - del 18/04/2026 - COM-CL - Comando Prov. VVF CALTANISSETTA REPORT EVENTO FRANOSO COMUNE DI NISCEMI 18.04.2026
+
+================================================================================
+18/04/2026 19:52:51
+Modalita: Entrata
+
+================================================================================
+18/04/2026 19:52:51
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+18/04/2026 19:52:51
+Salvato in Access. IDProtocollo = 6
+
+================================================================================
+18/04/2026 19:55:35
+Richiesta ricevuta
+
+================================================================================
+18/04/2026 19:55:35
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=5456525151515550&registroName=REGISTRO%20UFFICIALE&idAssegnazione=135468303&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=135468303&presaInCarico=false&edit=false&currentPage=1&totPages=68&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true
+
+================================================================================
+18/04/2026 19:55:35
+Lunghezza HTML: 99941
+
+================================================================================
+18/04/2026 19:55:35
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+18/04/2026 19:55:35
+Oggetto: BOLLETTINO DI CRITICITA' NAZIONALE
+
+================================================================================
+18/04/2026 19:55:35
+Modalita: Uscita
+
+================================================================================
+18/04/2026 19:55:35
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+18/04/2026 19:55:35
+Salvato in Access. IDProtocollo = 7
+
+================================================================================
+18/04/2026 19:58:34
+Richiesta ricevuta
+
+================================================================================
+18/04/2026 19:58:34
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=545652505C53525E&registroName=REGISTRO%20UFFICIALE&idAssegnazione=135447729&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=135447729&presaInCarico=false&edit=false&currentPage=1&totPages=68&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true
+
+================================================================================
+18/04/2026 19:58:34
+Lunghezza HTML: 57656
+
+================================================================================
+18/04/2026 19:58:34
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+18/04/2026 19:58:34
+Oggetto: Richiesta verifica e possibile riconfigurazione linea VoIP per trasmissione dati - sistema radiometrico XR33
+
+================================================================================
+18/04/2026 19:58:34
+Modalita: Uscita
+
+================================================================================
+18/04/2026 19:58:34
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+18/04/2026 19:58:35
+Salvato in Access. IDProtocollo = 8
+
+================================================================================
+18/04/2026 19:59:13
+Richiesta ricevuta
+
+================================================================================
+18/04/2026 19:59:13
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=5456535C52575F5C&registroName=REGISTRO%20UFFICIALE&idAssegnazione=135211889&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=135211889&presaInCarico=false&edit=false&currentPage=1&totPages=68&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true
+
+================================================================================
+18/04/2026 19:59:13
+Lunghezza HTML: 135934
+
+================================================================================
+18/04/2026 19:59:13
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+18/04/2026 19:59:13
+Oggetto: Convenzione Consip Lotto 13 CIG B26E737C48 - Convenzione per l'affidamento dei servizi di pulizia ed igiene ambientale nonché degli altri servizi aggiuntivi da eseguirsi in tutti gli immobili adibiti ad uso caserma per le Pubbliche Amministrazioni, ai sensi dell'articolo 26, Legge 23 Dicembre 1999 n. 488 e s.m.i. e dell'articolo 58, Legge 23 Dicembre 2000 n. 388 - periodo 01/08/2024 - 30/07/2027. Approvazione rendiconto di marzo 2026.
+
+================================================================================
+18/04/2026 19:59:13
+Modalita: Uscita
+
+================================================================================
+18/04/2026 19:59:13
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+18/04/2026 19:59:13
+Salvato in Access. IDProtocollo = 9
+
+================================================================================
+18/04/2026 20:08:34
+Richiesta ricevuta
+
+================================================================================
+18/04/2026 20:08:34
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=5456535357515159&registroName=REGISTRO%20INTERNO&idAssegnazione=135152712&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=135152712&presaInCarico=false&edit=false&currentPage=1&totPages=68&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true
+
+================================================================================
+18/04/2026 20:08:34
+Lunghezza HTML: 52807
+
+================================================================================
+18/04/2026 20:08:34
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+18/04/2026 20:08:34
+Oggetto: Convocazione Gruppo di Lavoro per l'aggiornamento dei Piani Discendenti.
+
+================================================================================
+18/04/2026 20:08:34
+Modalita: Registrazione
+
+================================================================================
+18/04/2026 20:08:34
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+18/04/2026 20:08:34
+Salvato in Access. IDProtocollo = 10
+
+================================================================================
+18/04/2026 20:09:24
+Richiesta ricevuta
+
+================================================================================
+18/04/2026 20:09:24
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=5456535357515159&registroName=REGISTRO%20INTERNO&idAssegnazione=135152712&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=135152712&presaInCarico=false&edit=false&currentPage=1&totPages=68&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true
+
+================================================================================
+18/04/2026 20:09:24
+Lunghezza HTML: 52807
+
+================================================================================
+18/04/2026 20:09:24
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+18/04/2026 20:09:24
+Oggetto: Convocazione Gruppo di Lavoro per l'aggiornamento dei Piani Discendenti.
+
+================================================================================
+18/04/2026 20:09:24
+Modalita: Registrazione
+
+================================================================================
+18/04/2026 20:09:24
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+18/04/2026 20:09:24
+Salvato in Access. IDProtocollo = 10
+
+================================================================================
+18/04/2026 20:09:41
+Richiesta ricevuta
+
+================================================================================
+18/04/2026 20:09:41
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=545653515353505F&registroName=REGISTRO%20UFFICIALE&idAssegnazione=135089328&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=135089328&presaInCarico=false&edit=false&currentPage=1&totPages=68&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true
+
+================================================================================
+18/04/2026 20:09:41
+Lunghezza HTML: 83197
+
+================================================================================
+18/04/2026 20:09:41
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+18/04/2026 20:09:41
+Oggetto: Convenzione Consip Lotto 13 CIG B26E737C48 - Convenzione per l'affidamento dei servizi di pulizia ed igiene ambientale nonché degli altri servizi aggiuntivi da eseguirsi in tutti gli immobili adibiti ad uso caserma per le Pubbliche Amministrazioni, ai sensi dell'articolo 26, Legge 23 Dicembre 1999 n. 488 e s.m.i. e dell'articolo 58, Legge 23 Dicembre 2000 n. 388 - periodo 01/08/2024 - 30/07/2027 Consuntivo di spesa per il servizio di pulizia extra canone - doppio passaggio - sede centrale del Comando di Enna - periodo 19-21 gennaio 2026. Approvazione e ratifica.
+
+================================================================================
+18/04/2026 20:09:41
+Modalita: Uscita
+
+================================================================================
+18/04/2026 20:09:41
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+18/04/2026 20:09:42
+Salvato in Access. IDProtocollo = 11
+
+================================================================================
+18/04/2026 20:51:08
+Richiesta ricevuta
+
+================================================================================
+18/04/2026 20:51:08
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=55555B5352505658&registroName=REGISTRO%20UFFICIALE&idAssegnazione=112438785&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=112438785&presaInCarico=false&edit=false&currentPage=45&totPages=68&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true
+
+================================================================================
+18/04/2026 20:51:08
+Lunghezza HTML: 74449
+
+================================================================================
+18/04/2026 20:51:08
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+18/04/2026 20:51:08
+Oggetto: Emergenza ALSICCT11112024 Autorizzazione invio mezzo per rientro del personale smontante.
+
+================================================================================
+18/04/2026 20:51:08
+Modalita: Uscita
+
+================================================================================
+18/04/2026 20:51:08
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+18/04/2026 20:51:08
+Salvato in Access. IDProtocollo = 12
+
+================================================================================
+18/04/2026 20:59:10
+Richiesta ricevuta
+
+================================================================================
+18/04/2026 20:59:10
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&secureId=54505B525050545E&registroName=REGISTRO%20UFFICIALE&popup=true
+
+================================================================================
+18/04/2026 20:59:10
+Lunghezza HTML: 119308
+
+================================================================================
+18/04/2026 20:59:10
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+18/04/2026 20:59:10
+Oggetto: Verifica funzionalità stazioni di rilevamento della radioattività XR-33 e MIRA.
+
+================================================================================
+18/04/2026 20:59:10
+Modalita: Uscita
+
+================================================================================
+18/04/2026 20:59:10
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+18/04/2026 20:59:11
+Salvato in Access. IDProtocollo = 13
+
+================================================================================
+18/04/2026 20:59:20
+Richiesta ricevuta
+
+================================================================================
+18/04/2026 20:59:20
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&secureId=54505B53575E5058&registroName=REGISTRO%20UFFICIALE&popup=true
+
+================================================================================
+18/04/2026 20:59:20
+Lunghezza HTML: 60797
+
+================================================================================
+18/04/2026 20:59:20
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+18/04/2026 20:59:20
+Oggetto: POSTA CERTIFICATA: Protocollo nr: 474 - del 15/01/2026 - COM-AG - Comando Prov. VVF AGRIGENTO Verifica funzionalità stazioni di rilevamento della radioattività XR-33 e MIRA
+
+================================================================================
+18/04/2026 20:59:20
+Modalita: Entrata
+
+================================================================================
+18/04/2026 20:59:20
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+18/04/2026 20:59:21
+Salvato in Access. IDProtocollo = 14
+
+================================================================================
+18/04/2026 20:59:29
+Richiesta ricevuta
+
+================================================================================
+18/04/2026 20:59:29
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&secureId=54505A5C57575E5F&registroName=REGISTRO%20UFFICIALE&popup=true
+
+================================================================================
+18/04/2026 20:59:29
+Lunghezza HTML: 60796
+
+================================================================================
+18/04/2026 20:59:29
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+18/04/2026 20:59:29
+Oggetto: POSTA CERTIFICATA: Protocollo nr: 621 - del 21/01/2026 - COM-RG - Comando Prov. VVF RAGUSA Verifica funzionalità stazioni di rilevamento della radioattività XR-33 e MIRA.
+
+================================================================================
+18/04/2026 20:59:29
+Modalita: Entrata
+
+================================================================================
+18/04/2026 20:59:29
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+18/04/2026 20:59:29
+Salvato in Access. IDProtocollo = 15
+
+================================================================================
+18/04/2026 20:59:41
+Richiesta ricevuta
+
+================================================================================
+18/04/2026 20:59:41
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&secureId=54505A5C57575E5F&registroName=REGISTRO%20UFFICIALE&popup=true
+
+================================================================================
+18/04/2026 20:59:41
+Lunghezza HTML: 60796
+
+================================================================================
+18/04/2026 20:59:41
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+18/04/2026 20:59:41
+Oggetto: POSTA CERTIFICATA: Protocollo nr: 621 - del 21/01/2026 - COM-RG - Comando Prov. VVF RAGUSA Verifica funzionalità stazioni di rilevamento della radioattività XR-33 e MIRA.
+
+================================================================================
+18/04/2026 20:59:41
+Modalita: Entrata
+
+================================================================================
+18/04/2026 20:59:41
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+18/04/2026 20:59:41
+Salvato in Access. IDProtocollo = 15
+
+================================================================================
+18/04/2026 21:00:00
+Richiesta ricevuta
+
+================================================================================
+18/04/2026 21:00:00
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&secureId=545153565152525F&registroName=REGISTRO%20UFFICIALE&popup=true
+
+================================================================================
+18/04/2026 21:00:00
+Lunghezza HTML: 59164
+
+================================================================================
+18/04/2026 21:00:00
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+18/04/2026 21:00:00
+Oggetto: POSTA CERTIFICATA: Protocollo nr: 1074 - del 23/01/2026 - COM-SR - Comando Prov. VVF SIRACUSA Report di verifica funzionalità stazioni di rilevamento della radioattività XR-33 e MIRA, Comando di Siracusa.
+
+================================================================================
+18/04/2026 21:00:00
+Modalita: Entrata
+
+================================================================================
+18/04/2026 21:00:00
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+18/04/2026 21:00:00
+Salvato in Access. IDProtocollo = 16
+
+================================================================================
+18/04/2026 21:00:07
+Richiesta ricevuta
+
+================================================================================
+18/04/2026 21:00:07
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&secureId=5451535D51525751&registroName=REGISTRO%20UFFICIALE&popup=true
+
+================================================================================
+18/04/2026 21:00:07
+Lunghezza HTML: 59952
+
+================================================================================
+18/04/2026 21:00:08
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+18/04/2026 21:00:08
+Oggetto: POSTA CERTIFICATA: Protocollo nr: 2037 - del 28/01/2026 - COM-ME - Comando Prov. VVF MESSINA Verifica funzionalità stazioni di rilevamento della radioattività XR-33 e MIRA.
+
+================================================================================
+18/04/2026 21:00:08
+Modalita: Entrata
+
+================================================================================
+18/04/2026 21:00:08
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+18/04/2026 21:00:08
+Salvato in Access. IDProtocollo = 17
+
+================================================================================
+18/04/2026 21:00:14
+Richiesta ricevuta
+
+================================================================================
+18/04/2026 21:00:14
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&secureId=545152565C535750&registroName=REGISTRO%20UFFICIALE&popup=true
+
+================================================================================
+18/04/2026 21:00:14
+Lunghezza HTML: 60241
+
+================================================================================
+18/04/2026 21:00:14
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+18/04/2026 21:00:14
+Oggetto: Protocollo nr: 1079 - del 30/01/2026 - COM-EN - Comando Prov. VVF ENNA Verifica funzionalità stazioni di rilevamento della radioattività XR-33 e MIRA
+
+================================================================================
+18/04/2026 21:00:14
+Modalita: Entrata
+
+================================================================================
+18/04/2026 21:00:14
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+18/04/2026 21:00:15
+Salvato in Access. IDProtocollo = 18
+
+================================================================================
+18/04/2026 21:00:56
+Richiesta ricevuta
+
+================================================================================
+18/04/2026 21:00:56
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&secureId=545652545257525E&registroName=REGISTRO%20UFFICIALE&popup=true
+
+================================================================================
+18/04/2026 21:00:56
+Lunghezza HTML: 61479
+
+================================================================================
+18/04/2026 21:00:56
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+18/04/2026 21:00:56
+Oggetto: Protocollo nr: 3877 - del 15/04/2026 - COM-EN - Comando Prov. VVF ENNA Disconnessione temporanea XR33 Catenanuova (EN), comunicazione
+
+================================================================================
+18/04/2026 21:00:56
+Modalita: Entrata
+
+================================================================================
+18/04/2026 21:00:56
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+18/04/2026 21:00:57
+Salvato in Access. IDProtocollo = 19
+
+================================================================================
+18/04/2026 21:01:05
+Richiesta ricevuta
+
+================================================================================
+18/04/2026 21:01:05
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&secureId=545652555D505F51&registroName=REGISTRO%20UFFICIALE&popup=true
+
+================================================================================
+18/04/2026 21:01:05
+Lunghezza HTML: 57841
+
+================================================================================
+18/04/2026 21:01:05
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+18/04/2026 21:01:05
+Oggetto: POSTA CERTIFICATA: Protocollo nr: 3903 - del 15/04/2026 - COM-EN - Comando Prov. VVF ENNA Avvenuto spostamento della stazione di rilevamento XR33 di Catenanuova (EN), comunicazione
+
+================================================================================
+18/04/2026 21:01:05
+Modalita: Entrata
+
+================================================================================
+18/04/2026 21:01:05
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+18/04/2026 21:01:06
+Salvato in Access. IDProtocollo = 20
+
+================================================================================
+18/04/2026 21:01:12
+Richiesta ricevuta
+
+================================================================================
+18/04/2026 21:01:12
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&secureId=545652505C53525E&registroName=REGISTRO%20UFFICIALE&popup=true
+
+================================================================================
+18/04/2026 21:01:12
+Lunghezza HTML: 56222
+
+================================================================================
+18/04/2026 21:01:12
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+18/04/2026 21:01:12
+Oggetto: Richiesta verifica e possibile riconfigurazione linea VoIP per trasmissione dati - sistema radiometrico XR33
+
+================================================================================
+18/04/2026 21:01:12
+Modalita: Uscita
+
+================================================================================
+18/04/2026 21:01:12
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+18/04/2026 21:01:13
+Salvato in Access. IDProtocollo = 8
+
+================================================================================
+18/04/2026 21:02:19
+Richiesta ricevuta
+
+================================================================================
+18/04/2026 21:02:19
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&secureId=5451535753535751&registroName=REGISTRO%20UFFICIALE&popup=true
+
+================================================================================
+18/04/2026 21:02:19
+Lunghezza HTML: 56659
+
+================================================================================
+18/04/2026 21:02:19
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+18/04/2026 21:02:19
+Oggetto: POSTA CERTIFICATA: Protocollo nr: 929 - del 23/01/2026 - COM-AG - Comando Prov. VVF AGRIGENTO Verifica funzionalità stazioni di rilevamento della radioattività XR-33 e MIRA
+
+================================================================================
+18/04/2026 21:02:19
+Modalita: Entrata
+
+================================================================================
+18/04/2026 21:02:19
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+18/04/2026 21:02:20
+Salvato in Access. IDProtocollo = 21
+
+================================================================================
+18/04/2026 21:44:42
+Richiesta ricevuta
+
+================================================================================
+18/04/2026 21:44:42
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=54565251505E575B&registroName=REGISTRO%20UFFICIALE&idAssegnazione=135469126&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=135469126&presaInCarico=false&edit=false&currentPage=1&totPages=68&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true
+
+================================================================================
+18/04/2026 21:44:42
+Lunghezza HTML: 60538
+
+================================================================================
+18/04/2026 21:44:42
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+18/04/2026 21:44:42
+Oggetto: POSTA CERTIFICATA: Protocollo nr: 12562 - del 18/04/2026 - COM-CT - Comando Prov. VVF CATANIA Non operatività Nucleo Nautico Catania
+
+================================================================================
+18/04/2026 21:44:42
+Modalita: Entrata
+
+================================================================================
+18/04/2026 21:44:42
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+18/04/2026 21:44:44
+Salvato in Access. IDProtocollo = 22
+
+================================================================================
+18/04/2026 21:45:13
+Richiesta ricevuta
+
+================================================================================
+18/04/2026 21:45:13
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=545652515051515A&registroName=Registro%20FdS&idAssegnazione=135468997&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=135468997&presaInCarico=false&edit=false&currentPage=1&totPages=68&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true
+
+================================================================================
+18/04/2026 21:45:13
+Lunghezza HTML: 49610
+
+================================================================================
+18/04/2026 21:45:13
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+18/04/2026 21:45:13
+Oggetto: SERVIZIO TURNO D DEL 22/04/2026 NOTTURNO.
+
+================================================================================
+18/04/2026 21:45:13
+Modalita: Registrazione
+
+================================================================================
+18/04/2026 21:45:13
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+18/04/2026 21:45:13
+Salvato in Access. IDProtocollo = 23
+
+================================================================================
+18/04/2026 21:45:57
+Richiesta ricevuta
+
+================================================================================
+18/04/2026 21:45:57
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=545652515450515B&registroName=REGISTRO%20UFFICIALE&idAssegnazione=135459173&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=135459173&presaInCarico=false&edit=false&currentPage=2&totPages=68&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true
+
+================================================================================
+18/04/2026 21:45:57
+Lunghezza HTML: 66562
+
+================================================================================
+18/04/2026 21:45:57
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+18/04/2026 21:45:57
+Oggetto: Attività formative per unità cinofile del volontariato di protezione civile della Regione Siciliana con impiego di elicottero - comunicazione date di disponibili
+
+================================================================================
+18/04/2026 21:45:57
+Modalita: Uscita
+
+================================================================================
+18/04/2026 21:45:57
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+18/04/2026 21:45:57
+Salvato in Access. IDProtocollo = 24
+
+================================================================================
+18/04/2026 21:50:28
+Richiesta ricevuta
+
+================================================================================
+18/04/2026 21:50:28
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&secureId=555B545C56535F5D&registroName=REGISTRO%20UFFICIALE&popup=true
+
+================================================================================
+18/04/2026 21:50:28
+Lunghezza HTML: 66348
+
+================================================================================
+18/04/2026 21:50:28
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+18/04/2026 21:50:28
+Oggetto: POSTA CERTIFICATA: Protocollo nr: 8048 - del 23/04/2025 - COM-ME - Comando Prov. VVF MESSINA Installazione della stazione di rilevamento di ricaduta della radioattività XR 33 presso il Comune di Lipari. Richiesta accreditamento fondi.
+
+================================================================================
+18/04/2026 21:50:28
+Modalita: Entrata
+
+================================================================================
+18/04/2026 21:50:28
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+18/04/2026 21:50:29
+Salvato in Access. IDProtocollo = 25
+
+================================================================================
+18/04/2026 21:51:11
+Richiesta ricevuta
+
+================================================================================
+18/04/2026 21:51:11
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&secureId=545250545C53565D&registroName=REGISTRO%20UFFICIALE&popup=true
+
+================================================================================
+18/04/2026 21:51:11
+Lunghezza HTML: 70896
+
+================================================================================
+18/04/2026 21:51:11
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+18/04/2026 21:51:11
+Oggetto: Richiesta accreditamento fondi per manutenzione ai sistemi di antenna radio delle stazioni di rilevamento della caduta radioattiva XR33 - capitolo 1982/4.
+
+================================================================================
+18/04/2026 21:51:11
+Modalita: Uscita
+
+================================================================================
+18/04/2026 21:51:11
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+18/04/2026 21:51:11
+Salvato in Access. IDProtocollo = 26
+
+================================================================================
+18/04/2026 21:55:17
+Richiesta ricevuta
+
+================================================================================
+18/04/2026 21:55:17
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&secureId=555552525255535E&registroName=REGISTRO%20UFFICIALE&popup=true
+
+================================================================================
+18/04/2026 21:55:17
+Lunghezza HTML: 62041
+
+================================================================================
+18/04/2026 21:55:17
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+18/04/2026 21:55:17
+Oggetto: Protocollo nr: 37218 - del 16/09/2024 - DCEMER - Direzione Centrale per l'Emergenza ed il Soccorso Tecnico Rete di rilevamento della radioattivitÃ nazionale. Stato delle stazioni XR33 e MIRA
+
+================================================================================
+18/04/2026 21:55:17
+Modalita: Entrata
+
+================================================================================
+18/04/2026 21:55:17
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+18/04/2026 21:55:17
+Salvato in Access. IDProtocollo = 27
+
+================================================================================
+18/04/2026 21:56:52
+Richiesta ricevuta
+
+================================================================================
+18/04/2026 21:56:52
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&secureId=555A535656575751&registroName=REGISTRO%20UFFICIALE&popup=true
+
+================================================================================
+18/04/2026 21:56:52
+Lunghezza HTML: 55005
+
+================================================================================
+18/04/2026 21:56:52
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+18/04/2026 21:56:52
+Oggetto: POSTA CERTIFICATA: Protocollo nr: 21466 - del 22/11/2024 - COM-ME - Comando Prov. VVF MESSINA Richiesta filtri telefonici per la stazione radiometrica ME XR06 di Mandanici.
+
+================================================================================
+18/04/2026 21:56:52
+Modalita: Entrata
+
+================================================================================
+18/04/2026 21:56:52
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+18/04/2026 21:56:52
+Salvato in Access. IDProtocollo = 28
+
+================================================================================
+18/04/2026 22:04:12
+Richiesta ricevuta
+
+================================================================================
+18/04/2026 22:04:12
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&secureId=555552525255535E&registroName=REGISTRO%20UFFICIALE&popup=true
+
+================================================================================
+18/04/2026 22:04:12
+Lunghezza HTML: 62041
+
+================================================================================
+18/04/2026 22:04:12
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+18/04/2026 22:04:12
+Oggetto: Protocollo nr: 37218 - del 16/09/2024 - DCEMER - Direzione Centrale per l'Emergenza ed il Soccorso Tecnico Rete di rilevamento della radioattivitÃ nazionale. Stato delle stazioni XR33 e MIRA
+
+================================================================================
+18/04/2026 22:04:12
+Modalita: Entrata
+
+================================================================================
+18/04/2026 22:04:12
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+18/04/2026 22:04:13
+Salvato in Access. IDProtocollo = 27
+
+================================================================================
+18/04/2026 22:04:20
+Richiesta ricevuta
+
+================================================================================
+18/04/2026 22:04:20
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&secureId=555A535656575751&registroName=REGISTRO%20UFFICIALE&popup=true
+
+================================================================================
+18/04/2026 22:04:20
+Lunghezza HTML: 55005
+
+================================================================================
+18/04/2026 22:04:20
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+18/04/2026 22:04:20
+Oggetto: POSTA CERTIFICATA: Protocollo nr: 21466 - del 22/11/2024 - COM-ME - Comando Prov. VVF MESSINA Richiesta filtri telefonici per la stazione radiometrica ME XR06 di Mandanici.
+
+================================================================================
+18/04/2026 22:04:20
+Modalita: Entrata
+
+================================================================================
+18/04/2026 22:04:20
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+18/04/2026 22:04:20
+Salvato in Access. IDProtocollo = 28
+
+================================================================================
+18/04/2026 22:04:51
+Richiesta ricevuta
+
+================================================================================
+18/04/2026 22:04:51
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&secureId=5550505C51555E58&registroName=REGISTRO%20UFFICIALE&popup=true
+
+================================================================================
+18/04/2026 22:04:51
+Lunghezza HTML: 59989
+
+================================================================================
+18/04/2026 22:04:51
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+18/04/2026 22:04:51
+Oggetto: Protocollo nr: 14013 - del 28/06/2023 - COM-TP - Comando Prov. VVF TRAPANI Efficienza stazioni di rilevamento radioattivitÃ XR33 del Comando di Trapani.
+
+================================================================================
+18/04/2026 22:04:51
+Modalita: Entrata
+
+================================================================================
+18/04/2026 22:04:51
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+18/04/2026 22:04:51
+Salvato in Access. IDProtocollo = 29
+
+================================================================================
+18/04/2026 22:06:46
+Richiesta ricevuta
+
+================================================================================
+18/04/2026 22:06:46
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&secureId=5551525D5656505C&registroName=REGISTRO%20UFFICIALE&popup=true
+
+================================================================================
+18/04/2026 22:06:46
+Lunghezza HTML: 66676
+
+================================================================================
+18/04/2026 22:06:46
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+18/04/2026 22:06:46
+Oggetto: Richiesta antenne VHF, o accredito di fondi straordinari, per la manutenzione e il ripristino di n°32 stazioni di rilevamento della radioattività (XR-33)
+
+================================================================================
+18/04/2026 22:06:46
+Modalita: Uscita
+
+================================================================================
+18/04/2026 22:06:46
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+18/04/2026 22:06:46
+Salvato in Access. IDProtocollo = 30
+
+================================================================================
+18/04/2026 22:07:29
+Richiesta ricevuta
+
+================================================================================
+18/04/2026 22:07:29
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&secureId=5551505556535059&registroName=REGISTRO%20UFFICIALE&popup=true
+
+================================================================================
+18/04/2026 22:07:29
+Lunghezza HTML: 58252
+
+================================================================================
+18/04/2026 22:07:29
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+18/04/2026 22:07:29
+Oggetto: Richiesta antenne VHF, o accreditodi fondi straordinari, per la manutenzione e il ripristino di n° 32 stazioni di rilevamento della radioattività (XR-33).
+
+================================================================================
+18/04/2026 22:07:29
+Modalita: Uscita
+
+================================================================================
+18/04/2026 22:07:29
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+18/04/2026 22:07:29
+Salvato in Access. IDProtocollo = 31
+
+================================================================================
+18/04/2026 22:09:10
+Richiesta ricevuta
+
+================================================================================
+18/04/2026 22:09:10
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&secureId=5551505556535059&registroName=REGISTRO%20UFFICIALE&popup=true
+
+================================================================================
+18/04/2026 22:09:10
+Lunghezza HTML: 58252
+
+================================================================================
+18/04/2026 22:09:10
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+18/04/2026 22:09:10
+Oggetto: Richiesta antenne VHF, o accreditodi fondi straordinari, per la manutenzione e il ripristino di n° 32 stazioni di rilevamento della radioattività (XR-33).
+
+================================================================================
+18/04/2026 22:09:10
+Modalita: Uscita
+
+================================================================================
+18/04/2026 22:09:10
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+18/04/2026 22:09:10
+Salvato in Access. IDProtocollo = 31
+
+================================================================================
+18/04/2026 22:10:57
+Richiesta ricevuta
+
+================================================================================
+18/04/2026 22:10:57
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&secureId=5551505556535059&registroName=REGISTRO%20UFFICIALE&popup=true
+
+================================================================================
+18/04/2026 22:10:57
+Lunghezza HTML: 58252
+
+================================================================================
+18/04/2026 22:10:57
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+18/04/2026 22:10:57
+Oggetto: Richiesta antenne VHF, o accreditodi fondi straordinari, per la manutenzione e il ripristino di n° 32 stazioni di rilevamento della radioattività (XR-33).
+
+================================================================================
+18/04/2026 22:10:57
+Modalita: Uscita
+
+================================================================================
+18/04/2026 22:10:57
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+18/04/2026 22:10:57
+Salvato in Access. IDProtocollo = 31
+
+================================================================================
+18/04/2026 22:16:08
+Richiesta ricevuta
+
+================================================================================
+18/04/2026 22:16:08
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&secureId=525A515C5656525A&registroName=REGISTRO%20UFFICIALE&popup=true
+
+================================================================================
+18/04/2026 22:16:08
+Lunghezza HTML: 57713
+
+================================================================================
+18/04/2026 22:16:08
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+18/04/2026 22:16:08
+Oggetto: Protocollo nr: 3453 - del 09/05/2022 - COM-EN - Comando Prov. VVF ENNA Richiesta accreditamento per sistemazione/ripristino stazioni di rilevamento radioattivitÃ XR 33
+
+================================================================================
+18/04/2026 22:16:08
+Modalita: Entrata
+
+================================================================================
+18/04/2026 22:16:08
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+18/04/2026 22:16:08
+Salvato in Access. IDProtocollo = 32
+
+================================================================================
+18/04/2026 22:16:53
+Richiesta ricevuta
+
+================================================================================
+18/04/2026 22:16:53
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&secureId=5255545C555E525F&registroName=REGISTRO%20UFFICIALE&popup=true
+
+================================================================================
+18/04/2026 22:16:53
+Lunghezza HTML: 64606
+
+================================================================================
+18/04/2026 22:16:53
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+18/04/2026 22:16:53
+Oggetto: Protocollo nr: 6714 - del 23/03/2022 - COM-TP - Comando Prov. VVF TRAPANI Richiesta intervento del Nucleo TLC Regionale, per controllo ed efficienza segnale radio delle stazioni di rilevamento XR33 del Comando Vigilfuoco di Trapani.
+
+================================================================================
+18/04/2026 22:16:53
+Modalita: Entrata
+
+================================================================================
+18/04/2026 22:16:53
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+18/04/2026 22:16:53
+Salvato in Access. IDProtocollo = 33
+
+================================================================================
+18/04/2026 22:17:04
+Richiesta ricevuta
+
+================================================================================
+18/04/2026 22:17:04
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&secureId=5255565750525150&registroName=REGISTRO%20UFFICIALE&popup=true
+
+================================================================================
+18/04/2026 22:17:04
+Lunghezza HTML: 60503
+
+================================================================================
+18/04/2026 22:17:04
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+18/04/2026 22:17:04
+Oggetto: Protocollo nr: 4899 - del 02/03/2022 - COM-TP - Comando Prov. VVF TRAPANI Richiesta materiale per manutenzione rete di rilevamento XR33
+
+================================================================================
+18/04/2026 22:17:04
+Modalita: Entrata
+
+================================================================================
+18/04/2026 22:17:04
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+18/04/2026 22:17:04
+Salvato in Access. IDProtocollo = 34
+
+================================================================================
+18/04/2026 22:19:13
+Richiesta ricevuta
+
+================================================================================
+18/04/2026 22:19:13
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&secureId=525552525D50525F&registroName=REGISTRO%20UFFICIALE&popup=true
+
+================================================================================
+18/04/2026 22:19:13
+Lunghezza HTML: 69632
+
+================================================================================
+18/04/2026 22:19:13
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+18/04/2026 22:19:13
+Oggetto: Protocollo nr: 2431 - del 28/01/2022 - COM-AG - Comando Prov. VVF AGRIGENTO 1) Gestione economica Es. Finanziario 2022. Cap. 7326/01. Richiesta assegnazione risorse finanziarie per il settore NBCR. Comunicazione delle esigenze. 2) Trasmissione del Contratto di comodato d'uso della nuova stazione di radioattivitÃ XR33 (AGXR09) di Siculiana.
+
+================================================================================
+18/04/2026 22:19:13
+Modalita: Entrata
+
+================================================================================
+18/04/2026 22:19:13
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+18/04/2026 22:19:13
+Salvato in Access. IDProtocollo = 35
+
+================================================================================
+18/04/2026 22:20:53
+Richiesta ricevuta
+
+================================================================================
+18/04/2026 22:20:53
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&secureId=525552525D50525F&registroName=REGISTRO%20UFFICIALE&popup=true
+
+================================================================================
+18/04/2026 22:20:53
+Lunghezza HTML: 69632
+
+================================================================================
+18/04/2026 22:20:53
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+18/04/2026 22:20:53
+Oggetto: Protocollo nr: 2431 - del 28/01/2022 - COM-AG - Comando Prov. VVF AGRIGENTO 1) Gestione economica Es. Finanziario 2022. Cap. 7326/01. Richiesta assegnazione risorse finanziarie per il settore NBCR. Comunicazione delle esigenze. 2) Trasmissione del Contratto di comodato d'uso della nuova stazione di radioattivitÃ XR33 (AGXR09) di Siculiana.
+
+================================================================================
+18/04/2026 22:20:53
+Modalita: Entrata
+
+================================================================================
+18/04/2026 22:20:53
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+18/04/2026 22:20:53
+Salvato in Access. IDProtocollo = 35
+
+================================================================================
+19/04/2026 00:18:57
+Richiesta ricevuta
+
+================================================================================
+19/04/2026 00:18:57
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=
+
+================================================================================
+19/04/2026 00:18:57
+Lunghezza HTML: 1072
+
+================================================================================
+19/04/2026 00:18:57
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+19/04/2026 00:18:57
+Oggetto: 
+
+================================================================================
+19/04/2026 00:18:57
+Modalita: 
+
+================================================================================
+19/04/2026 00:18:57
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+19/04/2026 00:18:57
+Salvato in Access. IDProtocollo = 36
+
+================================================================================
+19/04/2026 00:39:16
+Richiesta ricevuta
+
+================================================================================
+19/04/2026 00:39:16
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=545652515051515A&registroName=Registro%20FdS&idAssegnazione=135468997&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=135468997&presaInCarico=false&edit=false&currentPage=1&totPages=68&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true
+
+================================================================================
+19/04/2026 00:39:16
+Lunghezza HTML: 57248
+
+================================================================================
+19/04/2026 00:39:16
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+19/04/2026 00:39:16
+Oggetto: SERVIZIO TURNO D DEL 22/04/2026 NOTTURNO.
+
+================================================================================
+19/04/2026 00:39:16
+Modalita: Registrazione
+
+================================================================================
+19/04/2026 00:39:16
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+19/04/2026 00:39:17
+Salvato in Access. IDProtocollo = 23
+
+================================================================================
+19/04/2026 00:40:22
+Richiesta ricevuta
+
+================================================================================
+19/04/2026 00:40:22
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=545652515053565B&registroName=REGISTRO%20UFFICIALE&idAssegnazione=135468866&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=135468866&presaInCarico=false&edit=false&currentPage=1&totPages=68&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true
+
+================================================================================
+19/04/2026 00:40:22
+Lunghezza HTML: 60614
+
+================================================================================
+19/04/2026 00:40:22
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+19/04/2026 00:40:22
+Oggetto: POSTA CERTIFICATA: Protocollo nr: 5742 - del 18/04/2026 - COM-CL - Comando Prov. VVF CALTANISSETTA REPORT EVENTO FRANOSO COMUNE DI NISCEMI 18.04.2026
+
+================================================================================
+19/04/2026 00:40:22
+Modalita: Entrata
+
+================================================================================
+19/04/2026 00:40:22
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+19/04/2026 00:40:22
+Salvato in Access. IDProtocollo = 6
+
+================================================================================
+19/04/2026 00:40:57
+Richiesta ricevuta
+
+================================================================================
+19/04/2026 00:40:57
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=545652515053565B&registroName=REGISTRO%20UFFICIALE&idAssegnazione=135468866&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=135468866&presaInCarico=false&edit=false&currentPage=1&totPages=68&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true
+
+================================================================================
+19/04/2026 00:40:57
+Lunghezza HTML: 60619
+
+================================================================================
+19/04/2026 00:40:57
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+19/04/2026 00:40:57
+Oggetto: POSTA CERTIFICATA: Protocollo nr: 5742 - del 18/04/2026 - COM-CL - Comando Prov. VVF CALTANISSETTA REPORT EVENTO FRANOSO COMUNE DI NISCEMI 18.04.2026
+
+================================================================================
+19/04/2026 00:40:57
+Modalita: Entrata
+
+================================================================================
+19/04/2026 00:40:57
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+19/04/2026 00:40:58
+Salvato in Access. IDProtocollo = 6
+
+================================================================================
+19/04/2026 00:42:01
+Richiesta ricevuta
+
+================================================================================
+19/04/2026 00:42:01
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=54565251565E5259&registroName=REGISTRO%20UFFICIALE&idAssegnazione=135464019&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=135464019&presaInCarico=false&edit=false&currentPage=1&totPages=68&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true
+
+================================================================================
+19/04/2026 00:42:01
+Lunghezza HTML: 70256
+
+================================================================================
+19/04/2026 00:42:01
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+19/04/2026 00:42:01
+Oggetto: Protocollo nr: 12547 - del 18/04/2026 - COM-CT - Comando Prov. VVF CATANIA Chiusura Nucleo Nautico
+
+================================================================================
+19/04/2026 00:42:01
+Modalita: Entrata
+
+================================================================================
+19/04/2026 00:42:01
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+19/04/2026 00:42:01
+Salvato in Access. IDProtocollo = 37
+
+================================================================================
+19/04/2026 00:43:07
+Richiesta ricevuta
+
+================================================================================
+19/04/2026 00:43:07
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=5456535C515E525D&registroName=Registro%20TLC&idAssegnazione=135201493&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=135201493&presaInCarico=false&edit=false&currentPage=5&totPages=68&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true
+
+================================================================================
+19/04/2026 00:43:07
+Lunghezza HTML: 54908
+
+================================================================================
+19/04/2026 00:43:07
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+19/04/2026 00:43:08
+Oggetto: INTERVENTO DI INSTALLAZIONE IMPIANTI ALIMENTAZIONE EOLICA NELLA STRUTTURA DI MONTE DELLA SCALA (CT) - RICHIESTA SUPPORTO MEZZO AEREO E PERSONALE TLC PROVINCIALE
+
+================================================================================
+19/04/2026 00:43:08
+Modalita: Registrazione
+
+================================================================================
+19/04/2026 00:43:08
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+19/04/2026 00:43:08
+Salvato in Access. IDProtocollo = 38
+
+================================================================================
+19/04/2026 00:51:05
+Richiesta ricevuta
+
+================================================================================
+19/04/2026 00:51:05
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=545653505456565E&registroName=REGISTRO%20UFFICIALE&idAssegnazione=135030557&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=135030557&presaInCarico=false&edit=false&currentPage=5&totPages=68&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true
+
+================================================================================
+19/04/2026 00:51:05
+Lunghezza HTML: 62944
+
+================================================================================
+19/04/2026 00:51:05
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+19/04/2026 00:51:05
+Oggetto: Invio strumenti per certificazioni
+
+================================================================================
+19/04/2026 00:51:05
+Modalita: Entrata
+
+================================================================================
+19/04/2026 00:51:05
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+19/04/2026 00:51:06
+Salvato in Access. IDProtocollo = 39
+
+================================================================================
+19/04/2026 01:16:26
+Richiesta ricevuta
+
+================================================================================
+19/04/2026 01:16:26
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=54515656565E535D&registroName=REGISTRO%20UFFICIALE&idAssegnazione=133092515&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=133092515&presaInCarico=false&edit=false&currentPage=10&totPages=68&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true
+
+================================================================================
+19/04/2026 01:16:26
+Lunghezza HTML: 69543
+
+================================================================================
+19/04/2026 01:16:26
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+19/04/2026 01:16:26
+Oggetto: POSTA CERTIFICATA: Protocollo nr: 5438 - del 02/03/2026 - COM-TP - Comando Prov. VVF TRAPANI Convenzione Consip Lotto 13 CIG B26E737C48 - Convenzione per l'affidamento dei servizi di pulizia- periodo 01/08/2024 - 30/07/2027. Esito Ispezione di controllo del servizio di pulizia effettuata il 26/02/2026
+
+================================================================================
+19/04/2026 01:16:26
+Modalita: Entrata
+
+================================================================================
+19/04/2026 01:16:26
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+19/04/2026 01:16:27
+Salvato in Access. IDProtocollo = 40
+
+================================================================================
+19/04/2026 01:17:59
+Richiesta ricevuta
+
+================================================================================
+19/04/2026 01:17:59
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=54565355565F515A&registroName=REGISTRO%20UFFICIALE&idAssegnazione=134983494&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=134983494&presaInCarico=false&edit=false&currentPage=1&totPages=40&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true
+
+================================================================================
+19/04/2026 01:17:59
+Lunghezza HTML: 76440
+
+================================================================================
+19/04/2026 01:17:59
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+19/04/2026 01:17:59
+Oggetto: POSTA CERTIFICATA: Protocollo nr: 13451 - del 08/04/2026 - COM-PA - Comando Prov. VVF PALERMO Servizio di pulizie ed igiene ambientale presso i Comandi VV.F. Sicilia. Capitolo di spesa 1901 p.g. 17- Convenzione Consip lotto 13 - Periodo 01/08/2024-30/07/2027. Attività di pulizia extracanone (cfr. Sezione tecnica b.1, PDA prot. 19472 del 31/05/2024)
+
+================================================================================
+19/04/2026 01:17:59
+Modalita: Entrata
+
+================================================================================
+19/04/2026 01:17:59
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+19/04/2026 01:17:59
+Salvato in Access. IDProtocollo = 41
+
+================================================================================
+19/04/2026 01:24:12
+Richiesta ricevuta
+
+================================================================================
+19/04/2026 01:24:12
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=54515A5D5D55525B&registroName=REGISTRO%20UFFICIALE&idAssegnazione=134886199&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=134886199&presaInCarico=false&edit=false&currentPage=1&totPages=40&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true
+
+================================================================================
+19/04/2026 01:24:12
+Lunghezza HTML: 65521
+
+================================================================================
+19/04/2026 01:24:12
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+19/04/2026 01:24:12
+Oggetto: POSTA CERTIFICATA: SAL di Marzo 2026_13062_Vigili del Fuoco della Sicilia
+
+================================================================================
+19/04/2026 01:24:12
+Modalita: Entrata
+
+================================================================================
+19/04/2026 01:24:12
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+19/04/2026 01:24:12
+Salvato in Access. IDProtocollo = 42
+
+================================================================================
+19/04/2026 01:28:14
+Richiesta ricevuta
+
+================================================================================
+19/04/2026 01:28:14
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=555B57555C5F5E5B&registroName=REGISTRO%20DDS&idAssegnazione=118076799&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=118076799&presaInCarico=false&edit=false&currentPage=20&totPages=40&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true
+
+================================================================================
+19/04/2026 01:28:14
+Lunghezza HTML: 80313
+
+================================================================================
+19/04/2026 01:28:14
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+19/04/2026 01:28:14
+Oggetto: Circolare n. EM10/2015 applicativa del progetto di riordino del C.N.V.V.F. al settore SAF. Aggiornamento sull'organizzazione del settore SAF Regionale.
+
+================================================================================
+19/04/2026 01:28:14
+Modalita: Registrazione
+
+================================================================================
+19/04/2026 01:28:14
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+19/04/2026 01:28:14
+Salvato in Access. IDProtocollo = 43
+
+================================================================================
+20/04/2026 01:38:39
+Richiesta ricevuta
+
+================================================================================
+20/04/2026 01:38:39
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=545652515356505C&registroName=Registro%20FdS&idAssegnazione=135469523&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=135469523&presaInCarico=false&edit=false&currentPage=1&totPages=68&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true
+
+================================================================================
+20/04/2026 01:38:39
+Lunghezza HTML: 57382
+
+================================================================================
+20/04/2026 01:38:39
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+20/04/2026 01:38:39
+Oggetto: Servzio Diurno Turno B del 19/04/2026 aggiornamento
+
+================================================================================
+20/04/2026 01:38:39
+Modalita: Registrazione
+
+================================================================================
+20/04/2026 01:38:39
+DaLavorare: False
+
+================================================================================
+20/04/2026 01:38:39
+DataScadenza: None
+
+================================================================================
+20/04/2026 01:38:39
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+20/04/2026 01:38:40
+Salvato in Access. IDProtocollo = 44
+
+================================================================================
+20/04/2026 01:39:37
+Richiesta ricevuta
+
+================================================================================
+20/04/2026 01:39:37
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=54565251505E575B&registroName=REGISTRO%20UFFICIALE&idAssegnazione=135469126&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=135469126&presaInCarico=false&edit=false&currentPage=1&totPages=68&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true
+
+================================================================================
+20/04/2026 01:39:37
+Lunghezza HTML: 68622
+
+================================================================================
+20/04/2026 01:39:37
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+20/04/2026 01:39:37
+Oggetto: POSTA CERTIFICATA: Protocollo nr: 12562 - del 18/04/2026 - COM-CT - Comando Prov. VVF CATANIA Non operatività Nucleo Nautico Catania
+
+================================================================================
+20/04/2026 01:39:37
+Modalita: Entrata
+
+================================================================================
+20/04/2026 01:39:37
+DaLavorare: False
+
+================================================================================
+20/04/2026 01:39:37
+DataScadenza: None
+
+================================================================================
+20/04/2026 01:39:37
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+20/04/2026 01:39:37
+Salvato in Access. IDProtocollo = 22
+
+================================================================================
+20/04/2026 01:40:18
+Richiesta ricevuta
+
+================================================================================
+20/04/2026 01:40:18
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=545652515350515A&registroName=REGISTRO%20UFFICIALE&idAssegnazione=135471448&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=135471448&presaInCarico=false&edit=false&currentPage=1&totPages=68&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true
+
+================================================================================
+20/04/2026 01:40:18
+Lunghezza HTML: 69846
+
+================================================================================
+20/04/2026 01:40:18
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+20/04/2026 01:40:18
+Oggetto: Protocollo nr: 12576 - del 19/04/2026 - COM-CT - Comando Prov. VVF CATANIA Non operatività Nucleo Nautico
+
+================================================================================
+20/04/2026 01:40:18
+Modalita: Entrata
+
+================================================================================
+20/04/2026 01:40:18
+DaLavorare: False
+
+================================================================================
+20/04/2026 01:40:18
+DataScadenza: None
+
+================================================================================
+20/04/2026 01:40:18
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+20/04/2026 01:40:18
+Salvato in Access. IDProtocollo = 45
+
+================================================================================
+20/04/2026 01:49:11
+Richiesta ricevuta
+
+================================================================================
+20/04/2026 01:49:11
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=54565251505E575B&registroName=REGISTRO%20UFFICIALE&idAssegnazione=135469126&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=135469126&presaInCarico=false&edit=false&currentPage=1&totPages=68&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true
+
+================================================================================
+20/04/2026 01:49:11
+Lunghezza HTML: 68622
+
+================================================================================
+20/04/2026 01:49:11
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+20/04/2026 01:49:11
+Oggetto: POSTA CERTIFICATA: Protocollo nr: 12562 - del 18/04/2026 - COM-CT - Comando Prov. VVF CATANIA Non operatività Nucleo Nautico Catania
+
+================================================================================
+20/04/2026 01:49:11
+Modalita: Entrata
+
+================================================================================
+20/04/2026 01:49:11
+DaLavorare: True
+
+================================================================================
+20/04/2026 01:49:11
+DataScadenza: 2026-05-10
+
+================================================================================
+20/04/2026 01:49:11
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+20/04/2026 01:49:11
+Salvato in Access. IDProtocollo = 22
+
+================================================================================
+20/04/2026 01:49:44
+Richiesta ricevuta
+
+================================================================================
+20/04/2026 01:49:44
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=54565251505F5559&registroName=REGISTRO%20UFFICIALE&idAssegnazione=135469293&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=135469293&presaInCarico=false&edit=false&currentPage=1&totPages=68&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true
+
+================================================================================
+20/04/2026 01:49:44
+Lunghezza HTML: 68578
+
+================================================================================
+20/04/2026 01:49:44
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+20/04/2026 01:49:44
+Oggetto: POSTA CERTIFICATA: Protocollo nr: 15109 - del 18/04/2026 - COM-PA - Comando Prov. VVF PALERMO Fuori servizio SAP e SAR per mancanza minimi operativi specialisti nautici.
+
+================================================================================
+20/04/2026 01:49:44
+Modalita: Entrata
+
+================================================================================
+20/04/2026 01:49:44
+DaLavorare: True
+
+================================================================================
+20/04/2026 01:49:44
+DataScadenza: 2026-05-08
+
+================================================================================
+20/04/2026 01:49:44
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+20/04/2026 01:49:45
+Salvato in Access. IDProtocollo = 46
+
+================================================================================
+20/04/2026 01:50:31
+Richiesta ricevuta
+
+================================================================================
+20/04/2026 01:50:31
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=555B5A535754535F&registroName=REGISTRO%20UFFICIALE&idAssegnazione=120307331&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=120307331&presaInCarico=false&edit=false&currentPage=34&totPages=68&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true
+
+================================================================================
+20/04/2026 01:50:31
+Lunghezza HTML: 70499
+
+================================================================================
+20/04/2026 01:50:31
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+20/04/2026 01:50:31
+Oggetto: POSTA CERTIFICATA: Protocollo nr: 18648 - del 12/05/2025 - DCFORM - Direzione Centrale per la Formazione XVIII e XIX corso per ispettori antincendi del Corpo nazionale dei vigili del fuoco - Trasmissione decreto di nomina dei comitati di vigilanza per le verifiche periodiche
+
+================================================================================
+20/04/2026 01:50:31
+Modalita: Entrata
+
+================================================================================
+20/04/2026 01:50:31
+DaLavorare: True
+
+================================================================================
+20/04/2026 01:50:31
+DataScadenza: 2026-06-28
+
+================================================================================
+20/04/2026 01:50:31
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+20/04/2026 01:50:31
+Salvato in Access. IDProtocollo = 47
+
+================================================================================
+20/04/2026 01:56:35
+Richiesta ricevuta
+
+================================================================================
+20/04/2026 01:56:35
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=555450505C5E5F58&registroName=REGISTRO%20UFFICIALE&idAssegnazione=105522530&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=105522530&presaInCarico=false&edit=false&currentPage=68&totPages=68&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true
+
+================================================================================
+20/04/2026 01:56:35
+Lunghezza HTML: 69635
+
+================================================================================
+20/04/2026 01:56:35
+HTML salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+20/04/2026 01:56:35
+Oggetto: Protocollo nr: 25338 - del 27/06/2024 - DCEMER - Direzione Centrale per l'Emergenza ed il Soccorso Tecnico Aggiornamento per ispettori attrezzature PETZL - Sessione 9 settembre 2024.
+
+================================================================================
+20/04/2026 01:56:35
+Modalita: Entrata
+
+================================================================================
+20/04/2026 01:56:35
+DaLavorare: True
+
+================================================================================
+20/04/2026 01:56:35
+DataScadenza: 2026-08-16
+
+================================================================================
+20/04/2026 01:56:35
+JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+20/04/2026 01:56:35
+Salvato in Access. IDProtocollo = 48

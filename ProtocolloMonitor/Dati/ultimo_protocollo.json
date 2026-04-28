@@ -1,0 +1,67 @@
+{
+  "registro_descrizione": "REGISTRO UFFICIALE.I.0022772.27-06-2024.h.13:59 REGISTRO UFFICIALE",
+  "registro_sigla": "E",
+  "numero_protocollo": "22772",
+  "data_protocollo": "27/06/2024 13:59",
+  "titolo_pagina": "dipvvf.DIR-SIC.REGISTRO UFFICIALE.I.0022772.27-06-2024.h.13:59",
+  "data_spedizione": "",
+  "oggetto": "Protocollo nr: 25338 - del 27/06/2024 - DCEMER - Direzione Centrale per l'Emergenza ed il Soccorso Tecnico Aggiornamento per ispettori attrezzature PETZL - Sessione 9 settembre 2024.",
+  "modalita": "Entrata",
+  "data_documento": "27/06/2024",
+  "operatore": "ALESSIA MILITELLO",
+  "livello_riservatezza": "NON CLASSIFICATO",
+  "destinatari": [
+    {
+      "destinatario": "DCEMER Direzione Centrale per l'Emergenza e il Soccorso Tecnico",
+      "mezzo": "E-mail ad altra Amministrazione",
+      "email": "dc.emergenza@cert.vigilfuoco.it",
+      "data_spedizione": "",
+      "numero_raccomandata": "",
+      "data_consegna": "",
+      "dati_aggiuntivi": "",
+      "stato_spedizione": ""
+    }
+  ],
+  "firmatari": [
+    {
+      "nome": "MINISTERO DELL'...",
+      "data_firma": "27/06/2024",
+      "valida_dal": "07/04/2021",
+      "sino_al": "07/04/2025"
+    }
+  ],
+  "assegnazioni": [
+    {
+      "assegnatario": "UFFICIO EMERGENZA",
+      "do": "No",
+      "assegnante_ufficio": "MILITELLO ALESSIA (DIR-SIC)",
+      "azione": "Competenza: Da eseguire",
+      "data_inizio": "27/06/2024 13:59:32",
+      "note": ""
+    },
+    {
+      "assegnatario": "VALLEFUOCO GAETANO",
+      "do": "No",
+      "assegnante_ufficio": "MILITELLO ALESSIA (DIR-SIC)",
+      "azione": "Conoscenza: Da eseguire",
+      "data_inizio": "27/06/2024 13:59:32",
+      "note": ""
+    },
+    {
+      "assegnatario": "VALLEFUOCO GAETANO",
+      "do": "No",
+      "assegnante_ufficio": "MILITELLO ALESSIA (DIR-SIC)",
+      "azione": "Conoscenza: Conclusa",
+      "data_inizio": "27/06/2024 13:59:32",
+      "note": ""
+    }
+  ],
+  "documento_originale_token": "D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A3106529D4694E1DDA8ED089852F11ECE244D8733767554DA986E7ED7219A357FC5B57F2A7B496982919BA2B16AE86A2A5BEAE3E0800633E54A09EA72332B07DD4",
+  "documento_protocollato_token": "D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A358CE9C82969F6BDB29FEE40AC73ED085FAF2E07F0D1E8CFEB49EA0940CD45931BE4826A3B4712C3B6B64FBCE4E549086D4B75CC545B6A88432B02B81E09B5DCD",
+  "documento_originale_onclick": "downloadDoc('D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A3106529D4694E1DDA8ED089852F11ECE244D8733767554DA986E7ED7219A357FC5B57F2A7B496982919BA2B16AE86A2A5BEAE3E0800633E54A09EA72332B07DD4')",
+  "documento_protocollato_onclick": "downloadDoc('D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A358CE9C82969F6BDB29FEE40AC73ED085FAF2E07F0D1E8CFEB49EA0940CD45931BE4826A3B4712C3B6B64FBCE4E549086D4B75CC545B6A88432B02B81E09B5DCD')",
+  "iframe_documento_src": "docviewer?id=D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A358CE9C82969F6BDB29FEE40AC73ED085FAF2E07F0D1E8CFEB49EA0940CD45931BE4826A3B4712C3B6B64FBCE4E549086D4B75CC545B6A88432B02B81E09B5DCD&sqi=343E15E7C4DF8DDB5BD12D4FFDBAF311&flag=false&isDatiSensibili=false",
+  "url_sorgente": "https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=555450505C5E5F58&registroName=REGISTRO%20UFFICIALE&idAssegnazione=105522530&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=105522530&presaInCarico=false&edit=false&currentPage=68&totPages=68&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true",
+  "daLavorare": true,
+  "dataScadenza": "2026-08-16"
+}

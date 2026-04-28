@@ -1,0 +1,1852 @@
+<html><head>
+<style>
+
+/* The Modal (background) */
+.modal {
+  display: none; /* Hidden by default */
+  position: fixed; /* Stay in place */
+  z-index: 1; /* Sit on top */
+  left: 0;
+  top: 0;
+  width: 100%; /* Full width */
+  height: 100%; /* Full height */
+  overflow: auto; /* Enable scroll if needed */
+  background-color: rgb(0,0,0); /* Fallback color */
+  background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+  -webkit-animation-name: fadeIn; /* Fade in the background */
+  -webkit-animation-duration: 0.4s;
+  animation-name: fadeIn;
+  animation-duration: 0.4s
+}
+
+/* Modal Content */
+.modal-content {
+  position: fixed;
+  bottom: 0;
+  background-color: #E1E5EE;
+  width: 100%;
+  -webkit-animation-name: slideIn;
+  -webkit-animation-duration: 0.4s;
+  animation-name: slideIn;
+  animation-duration: 0.4s
+}
+
+/* The Close Button */
+.close {
+  color: white;
+  float: right;
+  font-size: 28px;
+  font-weight: bold;
+}
+
+.close:hover,
+.close:focus {
+  color: #000;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.modal-header {
+  padding: 2px 16px;
+  background-color: #bfbfbf;
+  color: white;
+}
+
+.modal-body {padding: 2px 16px;}
+
+.modal-footer {
+  padding: 2px 16px;
+  background-color: #E1E5EE;
+  color: white;
+}
+
+/* Add Animation */
+@-webkit-keyframes slideIn {
+  from {bottom: -300px; opacity: 0} 
+  to {bottom: 0; opacity: 1}
+}
+
+@keyframes slideIn {
+  from {bottom: -300px; opacity: 0}
+  to {bottom: 0; opacity: 1}
+}
+
+@-webkit-keyframes fadeIn {
+  from {opacity: 0} 
+  to {opacity: 1}
+}
+
+@keyframes fadeIn {
+  from {opacity: 0} 
+  to {opacity: 1}
+}
+
+#block_container
+{
+    text-align:center;
+}
+#bloc1, #bloc2
+{
+    display:inline;
+}
+
+.CellWithTooltip{
+  position:relative;
+}
+
+.CellTooltip{
+  display:none;
+  position:absolute; 
+  z-index:100;
+  border:1px;
+  background-color:white;
+  border-style:solid;
+  border-width:1px;
+  border-color:grey;
+  padding:3px;
+  color:grey; 
+  top:20px; 
+  left:20px;
+}
+
+.CellWithTooltip:hover span.CellTooltip{
+  display:block;
+}
+
+#tt {
+    position: absolute;
+    padding: 10px;
+    background-color: #333;
+    color: #fff;
+    border-radius: 4px;
+    font-size: 12px;
+    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
+    max-width: 300px;
+    z-index: 101;
+  }
+  #tttop, #ttcont, #ttbot {
+    display: none; /* Questi div possono essere utilizzati per ulteriori dettagli o effetti */
+  }
+
+</style>
+
+
+	<title>VIGILIa - Scheda Documento</title>
+
+	<link rel="stylesheet" href="fsv/css/bootstrap.min.css">
+	<link rel="stylesheet" href="fsv/css/common.css">
+	<link rel="stylesheet" href="fsv/css/tooltip.css">
+	<link rel="stylesheet" href="fsv/css/extension.css">
+	<style>
+		.table-borderless {
+			border: none !important;
+		}
+		.table-borderless th,
+		.table-borderless td {
+			border: none !important;
+		}
+	</style>
+
+	<script type="text/javascript" src="js/jquery-3.6.0.min.js"></script>
+	<script type="text/javascript" src="fsv/js/bootstrap.min.js"></script>
+
+	<script type="text/javascript" src="js/common.js?version=6.14.0 sp19"></script>
+	<script type="text/javascript" src="js/modalbox/foliumBox.js?version=6.14.0 sp19"></script>
+	<script type="text/javascript" src="js/protocollazione/formdoc.js?version=6.14.0 sp19"></script>
+	<script type="text/javascript" src="js/protocollazione/allegati.js?version=6.14.0 sp19"></script>
+	<script type="text/javascript" src="js/calendar.js?version=6.14.0 sp19"></script>
+
+<script type="text/javascript">
+
+
+ function getParam( keyword, query_string ) {
+    keyword = keyword.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+    var regex = new RegExp( keyword + '=([^&#]*)');
+    var results = regex.exec( query_string );
+    return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+};
+
+jQuery.noConflict();
+jQuery.ajaxSetup ({ cache: false });
+
+jQuery(document).ready(function(){
+  var closeParam = getParam('close', window.location.search);
+  var origine = getParam('origine', window.location.search);
+  console.log(origine);
+  if(closeParam == 'true'){
+  closeAndRefresh(origine);
+  }
+  
+  var closedaRiassegnaParam = "";
+  if(closedaRiassegnaParam == 'true'){
+	  var errAssegnazioneJs = "";
+	  if (errAssegnazioneJs) {
+		  alert(errAssegnazioneJs);
+	  }
+	  closeAndRefresh(origine);
+  }
+  
+}); 
+ 
+</script>
+
+<script type="text/javascript">
+        
+	var page = "extension/documenti/dipvvf";
+	jQuery.noConflict();
+  jQuery.ajaxSetup ({ cache: false });
+	jQuery(window).on("load", function () {
+
+	    function showAttributes() {
+	        var codiNomeEstesoAndIdTipo = jQuery( "#tipiDocumento option:selected" ).val();
+	        if (codiNomeEstesoAndIdTipo == null) {
+	            return;
+	        }
+
+	        var indexPipe = codiNomeEstesoAndIdTipo.indexOf("|");
+	        var docType;
+	        
+	        if (indexPipe != -1) {
+                var codiNomeEsteso = codiNomeEstesoAndIdTipo.substring(0, indexPipe);
+                var idTipoDoc = codiNomeEstesoAndIdTipo.substring(indexPipe + 1, codiNomeEstesoAndIdTipo.length);
+                formVisualizzaDocumento.idTipoDocumentoSelezionato.value = idTipoDoc;
+                docType = codiNomeEsteso;
+			} else {
+			    docType = jQuery( "#tipiDocumento option:selected" ).val();
+			}
+			var docNonVal = docType.substring(1, 5); 
+			document.formVisualizzaDocumento.extension.value = docType;
+			if (docType == "TIPO_DOC_FITT" || docType == "" || docType == "Nessuno" || docNonVal == "tipo" ){
+				jQuery( "#attributes_panel" ).slideUp("slow");
+			} else {
+				var page = "/extension/documenti/dipvvf/" + docType + ".vm";
+			}
+			loadExtension();
+		}
+		jQuery( "#tipiDocumento" ).change( showAttributes );
+		showAttributes();
+	
+		function loadExtension(){
+		
+			if( jQuery( "#tipiDocumento").children('option').length < 1 ){
+				return;
+			} 
+		    
+		    var codiNomeEstesoAndIdTipo = jQuery( "#tipiDocumento option:selected" ).val();
+		    var indexPipe = codiNomeEstesoAndIdTipo.indexOf("|");
+		    if (indexPipe != -1) {
+	        var codiNomeEsteso = codiNomeEstesoAndIdTipo.substring(0, indexPipe);
+	        var idTipoDoc = codiNomeEstesoAndIdTipo.substring(indexPipe + 1, codiNomeEstesoAndIdTipo.length);
+			var docType = codiNomeEsteso;
+			} else {
+			var docType = jQuery( "#tipiDocumento option:selected" ).val();
+			}
+			// alert(docType);
+			if(docType == "TIPO_DOC_FITT" || docType == ""  ){
+				jQuery("#caricaJQ").attr('disabled', 'disabled');
+				jQuery("#attributes_panel").slideUp("slow");
+				jQuery("#extensionName").prop('disabled', false);
+				jQuery("#extensionName").val('Documento Generico');
+				
+				jQuery("#extensionName").prop('disabled', true);
+			}else{
+				jQuery("#caricaJQ").removeAttr("disabled");
+				jQuery("#attributes_panel").hide();
+				jQuery("#attributes_panel").load("attributiUtente.do?cmd=caricaAttributiEstesi&extension="+ docType + "&provenienza=schedaDocumento&secureId=555450505C5E5F58");
+				jQuery("#attributes_panel").slideDown("slow");
+				jQuery("#extensionName").prop('disabled', false);
+				jQuery("#extensionName").val(jQuery( "#tipiDocumento option:selected" ).text());
+				jQuery("#extensionName").prop('disabled', true);
+			}
+		}
+
+	 });
+
+
+	
+</script>
+
+
+<script type="text/javascript">
+
+var flagNasPagina = false;
+
+jQuery(document).ready(function () {
+    if(document.getElementById('tablePag') && document.getElementById('tableNav')) {
+	var tablePag = window.opener.document.getElementById('tablePag');
+	
+	var tableNav = window.opener.document.getElementById('tableNav');
+	if(tablePag !== null){
+		tablePag.style.visibility = "hidden";
+	}
+	if(tableNav !== null){
+		tableNav.style.visibility = "hidden";
+	}
+}
+	jQuery( "#visualizzaAssegnazioni" ).click(function() {
+		jQuery( "#divAssegnazioni" ).slideDown( 500 );
+		jQuery( "#visualizzaAssegnazioni" ).hide( );
+		jQuery( "#nascondiAssegnazioni" ).show( );
+	});
+	
+	jQuery( "#nascondiAssegnazioni" ).click(function() {
+		jQuery( "#divAssegnazioni" ).slideUp( 500 );
+		jQuery( "#visualizzaAssegnazioni" ).show( );
+		jQuery( "#nascondiAssegnazioni" ).hide( );
+	});
+	
+	jQuery( "#visualizzaAllegati" ).click(function() {
+		jQuery( "#divAllegati" ).slideDown( 500 );
+		jQuery( "#visualizzaAllegati" ).hide( );
+		jQuery( "#nascondiAllegati" ).show( );
+	});
+	
+	jQuery( "#nascondiAllegati" ).click(function() {
+		jQuery( "#divAllegati" ).slideUp( 500 );
+		jQuery( "#visualizzaAllegati" ).show( );
+		jQuery( "#nascondiAllegati" ).hide( );
+	});
+	
+	jQuery( "#visualizzaFirmatari" ).click(function() {
+		jQuery( "#divFirmatari" ).slideDown( 500 );
+		jQuery( "#visualizzaFirmatari" ).hide( );
+		jQuery( "#nascondiFirmatari" ).show( );
+	});
+	
+	jQuery( "#nascondiFirmatari" ).click(function() {
+		jQuery( "#divFirmatari" ).slideUp( 500 );
+		jQuery( "#visualizzaFirmatari" ).show( );
+		jQuery( "#nascondiFirmatari" ).hide( );
+	});
+	
+	jQuery( "#visualizzaMittDest" ).click(function() {
+		jQuery( "#divMittDest" ).slideDown( 500 );
+		jQuery( "#visualizzaMittDest" ).hide( );
+		jQuery( "#nascondiMittDest" ).show( );
+	});
+	
+	jQuery( "#nascondiMittDest" ).click(function() {
+		jQuery( "#divMittDest" ).slideUp( 500 );
+		jQuery( "#visualizzaMittDest" ).show( );
+		jQuery( "#nascondiMittDest" ).hide( );
+	});
+	
+	jQuery( "#visualizzaRiferimenti" ).click(function() {
+		jQuery( "#divRiferimenti" ).slideDown( 500 );
+		jQuery( "#visualizzaRiferimenti" ).hide( );
+		jQuery( "#nascondiRiferimenti" ).show( );
+	});
+	
+	jQuery( "#nascondiRiferimenti" ).click(function() {
+		jQuery( "#divRiferimenti" ).slideUp( 500 );
+		jQuery( "#visualizzaRiferimenti" ).show( );
+		jQuery( "#nascondiRiferimenti" ).hide( );
+	});
+       
+     jQuery( "#visualizzaDocEsteso" ).click(function() {
+		jQuery( "#divDocEsteso" ).slideDown( 500 );
+		jQuery( "#visualizzaDocEsteso" ).hide( );
+		jQuery( "#nascondiDocEsteso" ).show( );
+	});
+
+    jQuery( "#nascondiDocEsteso" ).click(function() {
+		jQuery( "#divDocEsteso" ).slideUp( 500 );
+		jQuery( "#visualizzaDocEsteso" ).show( );
+		jQuery( "#nascondiDocEsteso" ).hide( );
+	});
+ 
+	
+jQuery( "#visualizzaRicevute" ).click(function() {
+		jQuery( "#divRicevute" ).slideDown( 500 );
+		jQuery( "#visualizzaRicevute" ).hide( );
+		jQuery( "#nascondiRicevute" ).show( );
+	});
+	
+	jQuery( "#nascondiRicevute" ).click(function() {
+		jQuery( "#divRicevute" ).slideUp( 500 );
+		jQuery( "#visualizzaRicevute" ).show( );
+		jQuery( "#nascondiRicevute" ).hide( );
+	});
+	
+	jQuery("#aslide").click(function(){
+		jQuery("#extension-panel").slideToggle("slow");
+		if(jQuery('#down').attr("src") == 'fsv/imgs/down.gif' )
+			jQuery('#down').attr("src","fsv/imgs/up.gif");
+		else
+			jQuery('#down').attr("src","fsv/imgs/down.gif");
+	});
+
+	
+});
+
+function downloadCumulativo() {
+	
+	var checkedValue = null; 
+	var arrayCheckedValue = [];
+    var inputElements = document.getElementsByClassName('fileC');
+    for(var i=0; inputElements[i]; ++i){
+      if(inputElements[i].checked){
+           checkedValue = inputElements[i].value;
+           arrayCheckedValue.push(checkedValue);
+      }
+        
+     }
+     
+     if(arrayCheckedValue.length == 0) {
+	   alert('Selezionare almeno un documento')
+	   return;
+	}
+     
+     openWindow('docviewer?filepaths=' + arrayCheckedValue+ '&downloadCumulativo=true&type=ALL' ,'allegato',600,400);
+	}
+
+function checkIdTipoSelezionato(idSelezionato) {
+
+alert(idSelezionato);
+
+}
+
+function modificaDocumento() {
+
+    tipiDocumento.remove();
+    document.formVisualizzaDocumento.action = 'attributiUtente.do';
+    document.formVisualizzaDocumento.cmd.value = 'modificaAttEstesi'
+    document.formVisualizzaDocumento.submit();
+}
+
+function aggiungiCollegato()
+  {     
+     var winURL = "elencoSelDocumenti.do?cmd=nuovaCerca&collegati=true&idDocProt=46349880&idDocDaSchedaDoc=46349880";
+     location.href =winURL;
+  }
+  
+function rimuoviCollegato(id)
+  {
+    if (confirm("Sei sicuro di voler eliminare questo collegamento?"))
+    {
+      removeDoc(id);
+    }
+  }
+
+function removeDoc(id)
+  {
+    var winURL = "elencoSelDocumenti.do?cmd=rimuoviCollegato&collegati=true&idDoc=46349880&idCollegato=" + id;
+    location.href =winURL;    
+  }
+ 
+  
+function apriModificaNote(){
+  
+  var url = 'elencoSelDocumenti.do?cmd=apriModificaNote&idDocProt=46349880&secureId=555450505C5E5F58&registroName=REGISTRO UFFICIALE&banner=false&secureIdFolder=&time=1776642977819';
+  var result = openWindow(url,"Note", 600, 500);
+}
+
+function apriModificaNecessitaRisposte(){  
+  var url = 'elencoSelDocumenti.do?cmd=apriModificaNecessitaRisposta&idDocProt=46349880&secureId=555450505C5E5F58&registroName=REGISTRO UFFICIALE&banner=false&time=1776642977819';
+  var result = openWindow(url,"Necessita Risposte", 600, 300);
+}
+
+function nascondiPaginazione(){
+	flagNasPagina = true;
+ }
+ 
+function openViewAllegato(pathAllegato){
+	var windowUrl = "docviewer?filepath=" + pathAllegato;
+	wh = window.open(windowUrl);
+	wh.focus();
+}
+
+window.addEventListener("beforeunload", function(e){
+	if(flagNasPagina == false){
+		var tablePag = window.opener.document.getElementById('tablePag');
+		var tableNav = window.opener.document.getElementById('tableNav');
+		if(tablePag !== null){
+			tablePag.style.visibility = "visible";
+		}
+		if(tableNav !== null){
+			tableNav.style.visibility = "visible";
+		}
+	}	
+}, false);
+
+</script>
+
+<script language="javascript" src="js/tooltip/tooltip.js?version=6.14.0 sp19"></script>
+<script language="javascript">
+function visualizzaAllegato( id, showSignature, idProfilo, allegatoNameDb, numOrdineAll )
+{
+
+   var documentoFrame = document.getElementById("documento");
+   var signaturesFrame = document.getElementById("signatures");
+   if(showSignature){ 	 
+   	 signaturesFrame.src = "docviewer?id=" + id + "&sqi=343E15E7C4DF8DDB5BD12D4FFDBAF311&type=ALL&isDatiSensibili=false&signature=true";
+   	 documentoFrame.style.height = '90%';	
+   	 document.getElementById("idsignatures").style.display='block';
+   }else{
+     documentoFrame.style.height = '100%';
+   	 document.getElementById("idsignatures").style.display='none'; 
+   }
+   var loc = "docviewer?id=" + id + "&sqi=343E15E7C4DF8DDB5BD12D4FFDBAF311&type=ALL&isDatiSensibili=false&timbraDocumento=true&allegatoNameDb=" + allegatoNameDb ;
+   loc += "&idProfiloAttuale=" + idProfilo + "&numOrdineAll=" + numOrdineAll;
+   documentoFrame.src = loc ;
+   document.getElementById('DOC_PRINCIPALE').style.visibility = 'visible';
+}
+
+/**
+ * Ripristina la visualizzazione del documento principale
+ */
+function ripristinaOriginale(){
+	
+	//nascondo il div che contiene le info di firma
+	document.getElementById("idsignatures").style.display='none';
+	
+	var documentoFrame = document.getElementById("documento");
+	documentoFrame.style.height = '100%';
+	documentoFrame.src = "docviewer?id=D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A358CE9C82969F6BDB29FEE40AC73ED085FAF2E07F0D1E8CFEB49EA0940CD45931BE4826A3B4712C3B6B64FBCE4E549086D4B75CC545B6A88432B02B81E09B5DCD&sqi=343E15E7C4DF8DDB5BD12D4FFDBAF311&flag=false&isDatiSensibili=false";
+	document.getElementById('DOC_PRINCIPALE').style.visibility = 'hidden';
+}
+
+function downloadAllegato(id)
+{
+	var idProfilojs = "343E15E7C4DF8DDB5BD12D4FFDBAF311";
+	openWindow('docviewer?id=' + id + '&sqi=' + idProfilojs + '&download=true&type=ALL','allegato',400, 500); 
+}
+
+function addAllegatoDaEditor() {
+	var url = "editor.do?cmd=allegaToEditor";
+	var nAllegati = '4';
+    var ids = "";
+	//var listaMotivazioni = "";
+	if (nAllegati > 0) {
+	   for (i = 0; i < nAllegati; i++) {
+	     var allegatoCheckBox = document.getElementById('idAllegato_' + i);
+	     if (allegatoCheckBox && allegatoCheckBox.checked) {
+		   ids = ids + allegatoCheckBox.value + ".";
+		   //listaMotivazioni = listaMotivazioni + "Allegato protocollo: " + allegatoCheckBox.value +".";
+		 }
+	    }
+		if (ids.length > 0) {
+		  ids = ids.substr(0, ids.length - 1);
+		  //listaMotivazioni = listaMotivazioni.substr(0, listaMotivazioni.length - 1);
+		  var idProfilojs = "46349880";
+		  //url = url + "&listaId=" + ids + "&listaMotivazioni=" + listaMotivazioni + "&idProfilo=" + idProfilojs +"&allegatiSingoli=true";
+		  url = url + "&listaId=" + ids + "&idProfiloAllDaEditor=" + idProfilojs +"&allegatiSingoli=true";
+	      location.href = url;
+		} else {
+		  alert('Selezionare uno o piu\' allegati');
+		}
+	}
+}
+
+function downloadDoc( id )
+{
+   openWindow( 'docviewer?id=' + id + '&sqi=343E15E7C4DF8DDB5BD12D4FFDBAF311&download=true', 'download', 400, 500); 
+}
+
+function downloadCopiaAnnullata( id )
+{
+   openWindow( 'docviewer?id=' + id + '&sqi=343E15E7C4DF8DDB5BD12D4FFDBAF311&download=true&flag=CopiaAnnullata', 400, 500);   
+}
+ 
+
+function modificaRiferimenti(idProfiloScheda) {
+	if (typeof tipiDocumento != 'undefined') {
+		tipiDocumento.remove();
+	}
+	formVisualizzaDocumento.idProfiloAttuale.value = idProfiloScheda;
+   	formVisualizzaDocumento.cmd.value = 'modificaRiferimenti';
+    formVisualizzaDocumento.submit(); 
+
+}
+  
+function assegnaX()
+{
+	var isSmist = formVisualizzaDocumento.isSmistamento.value;
+    var statoAss = formVisualizzaDocumento.statoAss.value;
+    var isConoscenza = formVisualizzaDocumento.isConoscenza.value;
+    var riassegnaJS = document.getElementById('riassegna').value;
+    var provenienza = "DA_SCHEDA_DOC";
+    if(isSmist && isSmist=="true"){
+        provenienza = "SMISTAMENTO";
+    }
+	var url = "assegna.do?cmd=assegnaDoc&idDocProt=46349880&smistamento=true&idRiassegnazione=105522530&idRiassegnazioneCompetenza=-1&popup=true&provenienza="+provenienza+"&riassegna=" + riassegnaJS;
+    if(isConoscenza == 'true'){
+    	url = url + "&forcedType=Conoscenza";
+	}
+	
+	document.location= url;
+}
+
+
+//Segnalazione dominio #545013 - START
+function eseguiGenericoNew(idRiassegnazione)
+{
+	var azione='';
+	var note= document.getElementById("noteApprovatore").value;
+	var approvaRadio=document.getElementById("approvaAction");
+	if(approvaRadio.checked){
+		azione=approvaRadio.value;
+	}else{
+		azione=document.getElementById("nonApprovaAction").value;
+		if(!note || (note && note.trim().length == 0)){
+			alert("Il campo note e' obbligatorio");
+			return
+		}
+	}
+	closeModalBox();
+	var url = "assegna.do?cmd=eseguiGenerico&id=";
+	url=url+idRiassegnazione;
+	url=url+"&azione="
+	url=url+azione;
+	url=url+"&noteMessaAtti=";
+	url=url+note;
+	window.close()
+	window.opener.location= url;
+		
+}
+
+function handleObbligatorietaNoteModalApprovaNonApprova(show){
+	var note= document.getElementById("noteApprovatore")
+	if(show){
+		document.getElementById("obbligatorLabel").style.display='';
+		note.className='campo-obbligatorio';
+	}else{
+		document.getElementById("obbligatorLabel").style.display='none';
+		note.className='';
+	}
+}
+
+
+function approvaNonApprova(idAssegnazione,richiedente){
+
+	var cmd='apriApprovaNonApprova';
+	var url="visualizzaDocumento.do?cmd=" + cmd+"&idAssegnazione="+idAssegnazione+"&richiedente="+richiedente;	
+	openModalBox(url, "Richiesta approvazione", 550, 350);
+}
+
+//Segnalazione dominio #545013 - end
+
+
+
+function restituisciNew(id){
+	var cmd='clickRestituzioneMassiva';
+	var url="assegna.do?cmd=" + cmd+"&id="+id+"&isModal=true";		
+	openModalBox(url, "Restituzione assegnazione", 550, 350);
+}
+
+function eseguiRestituisci(idRiassegnazione)
+{
+	var azione='';
+	var note= document.getElementById("motivoRestituzione").value.trim();	
+	if(! note || (note && note.length == 0)){
+		alert("Il campo Motivazione e' obbligatorio");
+		return
+	}		
+	closeModalBox();
+	var url = "assegna.do?cmd=restituisci&id=";
+	url=url+idRiassegnazione;
+	url=url+"&motivoRestituzione=";
+	url=url+note;
+	window.close()
+	window.opener.location= url;	
+}
+
+function concludiX(id)
+{
+    var orig = 5;
+    if("$origine"=="13"){
+        orig = 13;
+    }
+    document.location = "docAssegnati.do?cmd=concludi&origine="+orig+"&id="+id+"&POP=1"
+ }
+
+function lavora(id)
+{
+    var orig = 5;
+    if("$origine"=="13"){
+        orig = 13;
+    }
+    document.location = "docAssegnati.do?cmd=concludi&origine="+orig+"&id="+id+"&POP=1"
+ }
+ 
+function showListMittDest(flag)
+{
+	if(flag=='true')
+	{
+		olistMittDest.style.visibility = 'visible';
+	}else
+	{
+	  	olistMittDest.style.visibility = 'hidden';
+	}
+}
+function openListaTag( )
+{
+  var url = 'elencoTag.do?cmd=listaTag&idProfilo=46349880';  
+  openWindow(url,'Tags',700,500);
+}
+    
+function loginTo()
+{
+	window.location = "login.do?cmd=loginAfterView";
+}
+
+function GetXmlHttpObject(){
+	var xmlHttp=null;
+	try{
+	    // Firefox, Opera 8.0+, Safari
+	    xmlHttp=new XMLHttpRequest();
+	}catch (e){
+    	// Internet Explorer
+    	try{
+    	    xmlHttp=new ActiveXObject("Msxml2.XMLHTTP");
+    	}catch (e){
+            xmlHttp=new ActiveXObject("Microsoft.XMLHTTP");
+        }
+  	}
+	return xmlHttp;
+}
+
+
+function checkClassifiche() {
+	
+	var obbligoClassificazioneIngresso = 0;
+	var obbligoClassificazioneUscita = 0;
+	var obbligoClassificazioneInterna = 0;
+	var obbligoClassificazioneRegistrazione = 0;
+	
+	var modalita = 'E';	
+	var secureIdDocProtJs = '555450505C5E5F58';
+	var urlCheckClassifiche = "docAssegnati.do?cmd=checkClassifica&from=elencoAssegnazioniCompetenza&secureIdDocProt=" + secureIdDocProtJs + "&idAss=" +  + "&tipo=0";
+	
+	var xmlHttp=GetXmlHttpObject();
+	xmlHttp.open('POST', urlCheckClassifiche, false);
+	xmlHttp.onreadystatechange = function() {
+	    if(xmlHttp.readyState == 4) {
+	      if (xmlHttp.status == 200) {
+	          var response = JSON.parse(xmlHttp.response);
+			  haveClassifica = response['haveClassifica'];
+	      }
+	    }
+	};
+	xmlHttp.send();
+	  
+	if (modalita == 'E' && obbligoClassificazioneIngresso == '4' && !haveClassifica) {
+		  return false;
+	} else if (modalita == 'U' && obbligoClassificazioneUscita == '4' && !haveClassifica) {
+		  return false;
+	} else if (modalita == 'I' && obbligoClassificazioneInterna == '4' && !haveClassifica) {
+		  return false;
+	} else if (modalita == 'R' && obbligoClassificazioneRegistrazione == '4' && !haveClassifica) {
+		  return false;
+	} else {
+		  return true;
+	}
+
+}
+
+
+function prendiInCaricoDaDettaglio(url)
+{
+  var checkClassificazione = checkClassifiche();
+
+  if (!checkClassificazione) {
+	  alert('Il documento non e\'classificato, non e\' possibile prenderlo in carico');
+  } else {
+      window.opener.location = url;
+      window.close(); 
+  }
+
+}
+
+function prendiInCaricoERiassDaDettaglio(url) {
+   var checkClassificazione = checkClassifiche();
+   if (!checkClassificazione) {
+		  alert('Il documento non e\'classificato, non e\' possibile prenderlo in carico');
+   } else {	
+         location.href = url;
+    }
+}
+
+function prendiInCaricoEConcludi(url) {
+    var checkClassificazione = checkClassifiche();
+    if (!checkClassificazione) {
+	   alert('Il documento non e\'classificato, non e\' possibile prenderlo in carico');
+	} else {
+	   openModalBox(url, "Concluso", 550, 200);
+	}
+}
+
+    
+function closeAndRefresh(originex)
+{
+	if(window.opener.document.getElementById("re-fresh") && window.opener.document.getElementById("re-fresh").value == "true"){
+	  	
+	  	var parentForm = window.opener.document.forms[0];
+	  	
+	  	// refresh del form cercaAssegna
+	  	if(parentForm.name == 'cercaAssegna'){
+	  		if(parentForm.nonRiassegnati.checked){
+			 parentForm.searchNonRiassegnati.value = 'true';
+	   		 } else{
+		 	parentForm.searchNonRiassegnati.value = 'false';
+	    	}
+        	parentForm.cmd.value = 'cerca';
+        	parentForm.submit();
+	  	}
+	  	if(parentForm.name == 'formAssegnazione'){
+	  		parentForm.submit();
+	  	}
+    }
+    if(window.opener.document.forms[0].tipo && window.opener.document.forms[0] !=null  && window.opener.document.forms[0].tipo.value == "4"){
+    	var parentForm = window.opener.document.forms[0];
+    	if(parentForm.name == 'formAssegnazione'){
+    		parentForm.submit();
+    	}
+    }
+
+    if(originex == 13){
+        window.opener.location.reload();
+    }
+    window.close();
+}
+
+function vaiADocumentoDaScheda(cmd,numPagina,decrescente, idProfilo, direzione)
+{
+  alert(urlDo + "?cmd=" + cmd + "&numeroPagina=" + numPagina +"&decrescent=" + decrescente + "&secureId=" + idProfilo + "&direzione=" + direzione) 
+  var urlDo = "protocollazione.do";
+  document.location= urlDo + "?cmd=" + cmd + "&numeroPagina=" + numPagina +"&decrescent=" + decrescente + "&secureId=" + idProfilo + "&direzione=" + direzione;
+  
+}
+
+function salvaEConcludi(idAss) {
+    var noteMessaAttiEl = document.getElementById("noteMessaAtti");
+    
+    var url = "docAssegnati.do?cmd=prendiInCaricoConcludiMassivamente&provenienza=DA_SCHEDA_DOC&idAss=" + idAss;
+    if (noteMessaAttiEl && noteMessaAttiEl.value) {
+    	url = url + "&noteMessaAtti=" + noteMessaAttiEl.value;
+    }
+
+    closeModalBox();
+    window.close();
+	window.opener.location= url;
+
+ }
+	
+</script>
+
+<script language="JavaScript">
+
+
+function showTooltip(text) {
+	tooltip.show(text);
+};
+
+function hideTooltip() {
+	tooltip.hide();
+};
+
+function showTlpMittDest(nominativo,email,tipo,cipa,amministrazione,caoo,cuo,interop,codice,indirizzo,
+			comune,cap,telefono,codi_fiscale,raccomandata,qualifica,referente,tel_referente) {
+		
+	var soggetto = "Denominazione";
+	if (tipo == 'PF') {
+		soggetto = "Nominativo";
+	}
+	
+	var text = "<table class='lista'>"
+		+ "<tr><td class='titoli-lista'>Dati mittente/destinatario</td></tr>"
+			+ "<tr><td><font face=verdana size=1>" + soggetto + ": <b>"
+			+ nominativo + "</b></font></td></tr>";
+	if (tipo != '')
+		text += "<tr><td><font face=verdana size=1>Tipo: <b>"
+				+ tipo + "</b></font></td></tr>";
+	if (tipo == 'PAI') {
+		if (cipa != '')
+			text += "<tr><td><font face=verdana size=1>Codice IPA: <b>"
+					+ cipa + "</b></font></td></tr>";
+		if (amministrazione != '')
+			text += "<tr><td><font face=verdana size=1>Ente: <b>"
+					+ amministrazione + "</b></font></td></tr>";
+		if (caoo != '')
+			text += "<tr><td><font face=verdana size=1>Codice Unico AOO: <b>"
+					+ caoo + "</b></font></td></tr>";
+		if (cuo != '')
+			text += "<tr><td><font face=verdana size=1>Codice UO: <b>"
+					+ cuo + "</b></font></td></tr>";
+		if (interop != '')
+			text += "<tr><td><font face=verdana size=1>Endpoint Interop.: <b>"
+					+ interop + "</b></font></td></tr>";
+	}
+	if (codice != '')
+		text += "<tr><td><font face=verdana size=1>Codice: <b>"
+				+ codice + "</b></font></td></tr>";
+	if (indirizzo != '')
+		text += "<tr><td><font face=verdana size=1>Indirizzo: <b>"
+				+ indirizzo + "</b></font></td></tr>";
+	if (comune != '')
+		text += "<tr><td><font face=verdana size=1>Citta: <b>"
+				+ comune + "</b></font></td></tr>";
+	if (cap != '')
+		text += "<tr><td><font face=verdana size=1>CAP: <b>"
+				+ cap + "</b></font></td></tr>";
+	if (telefono != '')
+		text += "<tr><td><font face=verdana size=1>Telefono: <b>"
+				+ telefono + "</b></font></td></tr>";
+	
+	if (codi_fiscale != '')
+		text += "<tr><td><font face=verdana size=1>Codice fiscale: <b>"
+				+ codi_fiscale + "</b></font></td></tr>";
+	if (email != '')
+		text += "<tr><td><font face=verdana size=1>Email: <b>"
+				+ email + "</b></font></td></tr>";
+	if (raccomandata != '')
+		text += "<tr><td><font face=verdana size=1>Nr Raccomandata: <b>"
+				+ raccomandata + "</b></font></td></tr>";
+	if (tipo == 'PF') {
+		if (qualifica != '')
+			text += "<tr><td><font face=verdana size=1>Qualifica: <b>"
+					+ qualifica + "</b></font></td></tr>";
+	}
+
+	if (tipo == 'PG' || tipo == 'PAI' || tipo == 'PAE' ) {
+		if (referente != '')
+			text += "<tr><td><font face=verdana size=1>Referente: <b>"
+					+ referente + "</b></font></td></tr>";
+		if (tel_referente != '')
+			text += "<tr><td><font face=verdana size=1>Telefono referente: <b>"
+					+ tel_referente + "</b></font></td></tr>";
+	}
+	text += "</table>";
+	tooltip.show(text);
+};
+	
+function copy2Clipboard(text) {
+    	//console.log(text);
+		var temp = jQuery("<input>");
+		jQuery("body").append(temp);
+		temp.val(text).select();
+		document.execCommand("copy");
+		temp.remove();
+	};
+
+function clickCancellaDoc(idDoc, idFolder, idFascicolo) {
+    if (confirm("Si sta procedendo alla rimozione del documento dal fascicolo. Confermi l'operazione?")) {
+        var modUrl = "docFolder.do?cmd=clickCancella&secureIdDoc=" + idDoc
+                + "&secureIdFolder=" + idFolder + "&secureIdFascicolo=" + idFascicolo ;
+        openModalBox(modUrl, "Rimuovi documento", 300, 300);
+    }
+}
+
+function cancellaDocumento() {
+    var url = "docFolder.do?&from=daSchedaDocumento";
+    submitModalBox(url, document.docFolderForm);
+}
+</script>
+<style id="grisu-style-injected">
+    :root {
+      --peek-top: 10px;
+      --peek-left-hidden: -65px;
+      --peek-left-visible: -5px;
+      --overlay: rgba(15, 23, 42, 0.18);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 200vh;
+      font-family: Arial, Helvetica, sans-serif;
+      background:
+        radial-gradient(circle at 20% 20%, #f8fcff 0%, #eef8ff 24%, #dfeef8 45%, #f7fbff 100%);
+      color: #0f172a;
+    }
+
+    .page-demo {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 90px 24px 120px;
+    }
+
+    .page-demo h1 {
+      margin: 0 0 16px;
+      font-size: 2rem;
+    }
+
+    .page-demo p {
+      margin: 0 0 14px;
+      line-height: 1.6;
+      color: #334155;
+      max-width: 760px;
+    }
+
+    .hint-box {
+      margin-top: 30px;
+      padding: 18px 20px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.72);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      box-shadow: 0 8px 20px rgba(15,23,42,.05);
+    }
+
+    code {
+      background: #eef6ff;
+      padding: 2px 6px;
+      border-radius: 6px;
+    }
+
+    #grisu {
+      position: fixed;
+      top: var(--peek-top);
+      left: var(--peek-left-hidden);
+      z-index: 9999;
+      transition:
+        left 0.8s cubic-bezier(0.4, 0, 0.2, 1),
+        transform 0.8s cubic-bezier(0.4, 0, 0.2, 1),
+        opacity 0.3s ease;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    #grisu.peek {
+      left: var(--peek-left-visible);
+    }
+
+    #grisu.fly {
+      left: 37.5vw;
+      top: var(--peek-top);
+      transform: translateX(-50%) scale(1.15);
+    }
+
+    #grisu img {
+      display: block;
+      width: 150px;
+      max-width: min(70vw, 150px);
+      height: auto;
+      filter: drop-shadow(0 10px 22px rgba(15, 23, 42, 0.22));
+      transition: transform 0.2s ease;
+      pointer-events: none;
+    }
+
+    #grisu:hover img {
+      transform: scale(1.02);
+    }
+
+    #grisu.fly img {
+      width: 200px;
+      max-width: min(72vw, 200px);
+    }
+
+    #trail {
+      position: absolute;
+      left: -40px;
+      top: 60%;
+      width: 120px;
+      height: 40px;
+      pointer-events: none;
+      display: none;
+      overflow: visible;
+    }
+
+    .smoke {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      background: rgba(220, 220, 220, 0.6);
+      border-radius: 50%;
+      animation: smokeMove 1s linear forwards;
+    }
+
+    @keyframes smokeMove {
+      0% {
+        transform: translateX(0) scale(0.6);
+        opacity: 0.6;
+      }
+      100% {
+        transform: translateX(-80px) scale(1.4);
+        opacity: 0;
+      }
+    }
+
+    #overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9998;
+      display: none;
+      background: var(--overlay);
+      backdrop-filter: blur(2px);
+      pointer-events: none;
+    }
+
+    #overlay.show {
+      display: block;
+    }
+
+    #popup {
+      position: fixed;
+      top: var(--peek-top);
+      left: 50vw;
+      width: auto;
+      min-width: 420px;
+      max-width: min(45vw, 620px);
+      background: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 18px 45px rgba(15, 23, 42, 0.20);
+      overflow: hidden;
+      transform: translateY(10px) scale(0.98);
+      opacity: 0;
+      transition: transform 0.28s ease, opacity 0.28s ease;
+      pointer-events: auto;
+    }
+
+    #overlay.show #popup {
+      transform: translateY(0) scale(1);
+      opacity: 1;
+    }
+
+    .popup-header {
+      padding: 12px 16px 9px;
+      text-align: left;
+      font-size: 1rem;
+      font-weight: 700;
+      color: #0f172a;
+      border-bottom: 1px solid #dbe4ee;
+      background: #ffffff;
+    }
+
+    .popup-body {
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: nowrap;
+    }
+
+    .check-inline {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.8rem;
+      color: #334155;
+      white-space: nowrap;
+      user-select: none;
+    }
+
+    .check-inline input[type="checkbox"] {
+      width: 14px;
+      height: 14px;
+      margin: 0;
+      accent-color: #166cd7;
+      cursor: pointer;
+    }
+
+    .date-wrap {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    .date-wrap.show {
+      display: inline-flex;
+    }
+
+    .date-input {
+      height: 30px;
+      padding: 4px 8px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      color: #0f172a;
+      background: #fff;
+    }
+
+    .btn {
+      width: auto;
+      display: inline-block;
+      margin: 0;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid #0f5fc5;
+      background: linear-gradient(180deg, #2d84eb 0%, #166cd7 100%);
+      color: #fff;
+      font-size: 0.84rem;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.22);
+      transition: transform 0.15s ease, filter 0.15s ease;
+      white-space: nowrap;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      filter: brightness(1.03);
+    }
+
+    .popup-footer {
+      padding: 8px 16px 10px;
+      border-top: 1px solid #dbe4ee;
+      display: flex;
+      justify-content: flex-end;
+      background: #fbfdff;
+    }
+
+    .close-btn {
+      min-width: 82px;
+      padding: 7px 12px;
+      border-radius: 8px;
+      border: 1px solid #bfc8d4;
+      background: linear-gradient(180deg, #ffffff 0%, #f0f3f7 100%);
+      color: #111827;
+      font-size: 0.84rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .close-btn:hover {
+      filter: brightness(0.98);
+    }
+
+    @media (max-width: 900px) {
+      #grisu img {
+        width: 140px;
+      }
+
+      #grisu.fly img {
+        width: 180px;
+      }
+
+      #popup {
+        min-width: 360px;
+        max-width: min(48vw, 520px);
+      }
+    }
+
+    @media (max-width: 640px) {
+      :root {
+        --peek-left-hidden: -52px;
+        --peek-left-visible: -6px;
+      }
+
+      #grisu img {
+        width: 115px;
+      }
+
+      #grisu.fly img {
+        width: 145px;
+      }
+
+      #popup {
+        left: 46vw;
+        min-width: 0;
+        width: min(52vw, 320px);
+      }
+
+      .popup-body {
+        gap: 8px;
+        padding: 10px 10px;
+        overflow-x: auto;
+      }
+
+      .btn {
+        padding: 7px 9px;
+        font-size: 0.75rem;
+      }
+
+      .popup-header {
+        font-size: 0.92rem;
+        padding: 10px 10px 8px;
+      }
+
+      .popup-footer {
+        padding: 8px 10px 10px;
+      }
+    }
+  </style></head>
+<body>
+
+<span class="errore"></span>
+
+
+<script src="js/modalbox/prototype.js?version=6.14.0 sp19" type="text/javascript"></script> 
+<script src="js/signer/scriptaculous/scriptaculous.js?version=6.14.0 sp19" type="text/javascript"></script><script type="text/javascript" src="https://protocollo.dipvvf.it/folium/js/signer/scriptaculous/builder.js"></script><script type="text/javascript" src="https://protocollo.dipvvf.it/folium/js/signer/scriptaculous/effects.js"></script><script type="text/javascript" src="https://protocollo.dipvvf.it/folium/js/signer/scriptaculous/dragdrop.js"></script><script type="text/javascript" src="https://protocollo.dipvvf.it/folium/js/signer/scriptaculous/controls.js"></script><script type="text/javascript" src="https://protocollo.dipvvf.it/folium/js/signer/scriptaculous/slider.js"></script><script type="text/javascript" src="https://protocollo.dipvvf.it/folium/js/signer/scriptaculous/sound.js"></script>
+<script src="js/signer/fieldSignature.js?version=6.14.0 sp19" type="text/javascript"></script>
+<script src="js/signer/signatureDiv.js?version=6.14.0 sp19" type="text/javascript"></script>
+<script src="js/signer/sign.js?version=6.14.0 sp19" type="text/javascript"></script>
+<link href="fsv/css/sign.css" type="text/css"><!--script type="text/javascript" src="js/modalbox/prototype.js"></script-->
+<!--script type="text/javascript" src="js/modalbox/scriptaculous.js?load=builder,effects"></script-->
+
+<script type="text/javascript" src="js/modalbox/modalbox.js?version=6.14.0 sp19"></script>
+<link rel="stylesheet" href="fsv/css/modalbox.css" type="text/css">
+<script type="text/javascript" src="js/modalbox/foliumBox.js?version=6.14.0 sp19"></script><form name="formVisualizzaDocumento" action="visualizzaDocumento.do" method="post" target="" style="margin-bottom:0px; height:100%">
+	<input type="hidden" name="idProfiloAttuale" value="46349880">
+    <input type="hidden" name="idTipoDocumentoSelezionato" value="">  
+    <input type="hidden" name="cmd" value="">
+    <input type="hidden" name="isSmistamento" value="false">
+    <input type="hidden" name="statoAss" value="Da eseguire">
+    <input type="hidden" name="isConoscenza" value="false">
+
+
+
+<style type="text/css">
+	textarea#bossiStyle
+	{
+		border: 0px;
+		overflow: auto;
+		background-color: #FFFFFF;
+		font-family: Verdana;
+		font-size: 10px;
+	}
+	textarea#bossiStyleEvidenziata
+	{
+		border: 0px;
+		overflow: auto;
+		background-color: #DDDDDD;
+		font-family: Verdana;
+		font-size: 10px;
+	}
+	textarea#bossiModalStyle
+	{
+		border: 0px;
+		overflow: auto;
+		background-color: #EEEEEE;
+		font-family: Verdana;
+		font-size: 10px;
+	}
+	textarea#bossiStyleMaschera
+	{
+		border: 0px;
+		overflow: auto;
+		background-color: #E0E6EC;
+		font-family: Verdana;
+		font-size: 10px;
+	}
+</style>
+<div valign="top">
+ 	 	
+			<input class="bottone" type="button" id="chiudi" name="chiudi" value="Chiudi Scheda" onclick="closeAndRefresh();">
+		
+
+	
+				<input type="button" id="inCarico" class="b-modifica" value="Prendi In Carico" onclick="prendiInCaricoDaDettaglio('docAssegnati.do?cmd=presaInCarico&amp;idAssegnazionePerDettaglio=105522530')">&nbsp;
+	
+	                       <input type="button" id="inCaricoRiassegna" class="b-modifica" value="Prendi in Carico e Riassegna" onclick="prendiInCaricoERiassDaDettaglio('assegna.do?cmd=assegnazioniForm&amp;idAssegnazionePerDettaglio=105522530&amp;origine=0&amp;secureIdDocProt=555450505C5E5F58&amp;provenienza=DA_SCHEDA_DOC')">&nbsp;
+           <input type="button" id="inCaricoConcludi" class="b-modifica" value="Prendi in Carico e Concludi" onclick="prendiInCaricoEConcludi('docAccettati.do?cmd=clickMettiAgliAtti&amp;idAssegnazionePerDettaglio=105522530&amp;provenienza=DA_SCHEDA_DOC')">&nbsp;
+         	
+	
+	
+				<input type="button" class="b-salva" value="Restituisci" id="idRestMassiva" name="restituisci" onclick="restituisciNew(105522530)">&nbsp;
+	
+ 	</div><div valign="top">
+	 	</div><div id="block_container">
+	<div id="bloc1" valign="top"><a href="visualizzaDocumento.do?cmd=visualizzaDoc&amp;assegnato=1&amp;tipo=&amp;secureId=&amp;registroName=&amp;idAssegnazione=&amp;idRiassegnazioneCompetenza=-1&amp;idAssegnazionePerDettaglio=&amp;presaInCarico=true&amp;currentPage=68&amp;totPages=68&amp;paginaPrecedente=true&amp;sortField=&amp;sortType=" onclick="nascondiPaginazione()"> Precedente </a></div>
+
+	<div id="bloc2" valign="top" align="right"><a href="visualizzaDocumento.do?cmd=visualizzaDoc&amp;assegnato=1&amp;tipo=0&amp;secureId=555450555053515B&amp;registroName=REGISTRO UFFICIALE&amp;idAssegnazione=105424741&amp;idRiassegnazioneCompetenza=-1&amp;idAssegnazionePerDettaglio=105424741&amp;presaInCarico=true&amp;currentPage=68&amp;totPages=68&amp;paginaSuccessiva=false&amp;sortField=&amp;sortType=" onclick="nascondiPaginazione()"> Successivo </a></div>
+</div><table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+ 	
+ 	
+	
+	
+
+ <tbody><tr>
+    <td valign="TOP" width="30%">
+       <table width="100%" border="0" cellpadding="0" cellspacing="0">
+          <tbody><tr>
+              <td width="100%">
+                  <div id="profilo">
+                   <table width="100%" border="0" cellpadding="1" cellspacing="1">
+                   <tbody><tr>
+                      	<td class="tabbed-panel" align="left"><span class="titolo-panel" id="profilotxt">Profilo</span></td>
+                    </tr>
+                                        <tr>
+                    	<td class="titolo-pagina" align="center">dipvvf.DIR-SIC.REGISTRO UFFICIALE.I.0022772.27-06-2024.h.13:59</td>
+                    </tr>
+                                                            <tr>
+                        <td height="100%">
+                          <table style="height: 100%; border:0; cellpadding:0; cellspacing:0" class="table table-hover table-borderless">
+                        
+                                                    <tbody><tr>
+                                <td colspan="2" align="left">
+                                    &nbsp;REGISTRO UFFICIALE (E), N.22772
+                                    <br>
+                                    &nbsp;Data: 27/06/2024 13:59
+                                </td>
+                            </tr>
+																		    
+													<tr>
+                                <td valign="top">
+                                &nbsp;<span class="titolo-pagina">Data Ricezione:</span>
+                                </td>
+                                <td>&nbsp;27/06/2024 13:53:00</td>
+                            </tr> 
+													<tr>
+                                <td align="left" valign="top">
+                                    <span class="titolo-pagina">
+                                    &nbsp;Oggetto:
+                                    </span>
+                                 </td>
+                                 <td align="left">
+                                                                   <label id="bossiStyle" readonly="true" rows="5" cols="40" style="resize:none;">Protocollo nr: 25338 - del 27/06/2024 - DCEMER - Direzione Centrale per l'Emergenza ed il Soccorso Tecnico Aggiornamento per ispettori attrezzature PETZL - Sessione 9 settembre 2024.</label>                                 
+                                 				                                                    </td>
+                            </tr>
+                            
+	                     							
+                        							<tr>
+								<td valign="top">
+								<span class="titolo-pagina">&nbsp;Modalità:</span>
+								</td>
+								<td>
+																												  Entrata
+																																			</td>
+							</tr>
+																
+										
+											
+                    		                            <tr>
+                                <td align="left" valign="top" colspan="2">                                    
+                                	<span class="titolo-pagina">
+                                    
+                                                	                                                        
+                                    &nbsp;Mittenti:<a href="#"><img id="visualizzaMittDest" align="bottom" src="fsv/imgs/piu.gif" border="0" alt="Visualizza Mittenti" title="Visualizza Mittenti"></a><a href="#"><img id="nascondiMittDest" style="display:none" align="bottom" src="fsv/imgs/meno.gif" border="0" alt="Nascondi Mittenti" title="Nascondi Mittenti"></a>
+                                    </span>
+                                
+                                 
+                                 								<br>
+				 				 <div id="divMittDest" style="display:none">
+							      	<table class="griglia" width="100%" cellspacing="0" cellpadding="0" border="0">
+								      <tbody><tr>    
+									      <td class="titolo-griglia" width="50%">Mittente</td>
+										  <td class="titolo-griglia" width="40%" style="white-space:nowrap">Mezzo</td>
+										  <td class="titolo-griglia" width="10%" style="white-space:nowrap">Email</td>	
+										  <td class="titolo-griglia" width="10%" style="white-space:nowrap">Sped.</td>									  	
+								      </tr>
+								  								  	 								       <tr class="riga-normale">
+								      								   	
+								      								      								   	
+								   	<td class="cella-griglia" width="60%" style="white-space:nowrap" onmouseover="showTlpMittDest('DCEMER  Direzione Centrale per l'Emergenza e il Soccorso Tecnico','dc.emergenza@cert.vigilfuoco.it','PG','','','','','','EMER','Piazza del Viminale, 1','Roma','00184','','','','', '','');" onmouseout="tooltip.hide();">DCEMER  Direzione Centrale per l'Emergenza e il Soccorso Tecnico</td>
+								    <td class="cella-griglia" width="40%">E-mail ad altra Amministrazione</td>
+								    <td class="cella-griglia" width="40%">dc.emergenza@cert.vigilfuoco.it</td>
+								 
+								    <td width="70px" bgcolor="" class="cella-griglia">	
+								        																																																																</td>
+								  
+							      </tr>
+							    							 </tbody></table> 
+						     </div>
+                         	                         	</td>
+                        </tr>                            
+                                                    
+                                                		
+                                                        
+							
+							
+															
+								<tr>
+									<td align="left">
+										<span class="titolo-pagina">
+										&nbsp;Protocollo&nbsp;mittente:
+										</span>
+									</td>
+									<td align="left">
+									&nbsp;0025338
+									</td>
+								</tr>
+							
+                                                        	
+                            <tr>
+                                <td align="left">
+                                    <span class="titolo-pagina">
+                                    &nbsp;Data documento:
+                                    </span>
+                                 </td>
+                                 <td align="left">
+                                   &nbsp;27/06/2024
+                                 </td>
+                            </tr>
+                            
+							
+							<tr>
+                                <td align="left">
+                                    <span class="titolo-pagina">
+                                    <br>&nbsp;Operatore:
+                                    </span>
+                                 </td>
+                                 <td style="white-space:nowrap"><br>			<span style="white-space:nowrap">ALESSIA MILITELLO</span>
+	</td>
+                            </tr>
+				
+			                            <tr>
+             	 <td align="left" colspan="2">
+				<span class="titolo-pagina">
+				<br>&nbsp;Firmatari del documento principale:&nbsp; 
+				<a href="#"><img id="visualizzaFirmatari" align="bottom" src="fsv/imgs/piu.gif" border="0" alt="Visualizza Firmatari" title="Visualizza Firmatari"></a><a href="#"><img id="nascondiFirmatari" style="display:none" align="bottom" src="fsv/imgs/meno.gif" border="0" alt="Nascondi Firmatari" title="Nascondi Firmatari"></a>
+				</span>			                                     
+				      <br>		      
+				      <div id="divFirmatari" style="display:none">
+				      	<table class="griglia" width="100%" cellspacing="0" cellpadding="0" border="0">
+					      <tbody><tr>    
+					      <td class="titolo-griglia" width="70%">Nome</td>
+							<td class="titolo-griglia" width="10%" style="white-space:nowrap">Data Firma</td>		
+							<td class="titolo-griglia" width="10%" style="white-space:nowrap">Valida dal</td>			
+							<td class="titolo-griglia" width="10%" style="white-space:nowrap">Sino al</td>
+					      </tr>        
+					  					  	 					       <tr class="riga-normale">
+					      					    <td class="cella-griglia" width="70%" style="white-space:nowrap">			<span class="hotspot" onmouseover="tooltip.show('MINISTERO DELL\'INTERNO - DIPARTIMENTO DEI VIGILI DEL FUOCO');" onmouseout="tooltip.hide();" style="white-space:nowrap">MINISTERO DELL'...</span>
+	</td>
+					    <td class="cella-griglia" width="10%">27/06/2024</td>
+						<td class="cella-griglia" width="10%">07/04/2021</td>					
+						<td class="cella-griglia" width="10%">07/04/2025</td>
+					      </tr>        
+					    					 </tbody></table> 
+				     </div>
+				</td>
+                </tr>  
+			                                
+                            
+                          <tr>
+             			    <td align="left" colspan="2">
+				<span class="titolo-pagina">
+				<br>&nbsp;Assegnazioni:&nbsp; </span>  doc. visto il: 27/06/2024 15:00
+                <span class="titolo-pagina">
+				<a href="#"><img id="visualizzaAssegnazioni" align="bottom" src="fsv/imgs/piu.gif" border="0" alt="Visualizza Assegnazioni" title="Visualizza Assegnazioni"></a><a href="#"><img id="nascondiAssegnazioni" style="display:none" align="bottom" src="fsv/imgs/meno.gif" border="0" alt="Nascondi Assegnazioni" title="Nascondi Assegnazioni"></a>
+				</span>			                                     
+				      <br>		      
+				      <div id="divAssegnazioni" style="display:none">
+				      	<table class="griglia" width="100%" cellspacing="0" cellpadding="0" border="0">
+					      <tbody><tr>                
+						<td class="titolo-griglia" width="30%">Assegnatario</td>
+						 							<td class="titolo-griglia" width="5%">D.O.</td>
+						 							<td class="titolo-griglia" width="35%">Assegnante (Uff.)</td>		
+							<td class="titolo-griglia" width="10%">Azione</td>			
+							<td class="titolo-griglia" width="10%" style="white-space:nowrap">Data inizio</td>
+							<td class="titolo-griglia" width="10%">Note</td>
+					      </tr>        
+					  
+  			              			            					  
+					    					      					       <tr class="riga-normale">
+					      							<td class="cella-griglia" width="30%" style="white-space:nowrap">
+											<span style="white-space:nowrap">UFFICIO EMERGENZA</span>
+								</td>
+						 							<td class="cella-griglia" width="5%">No</td>
+						 							<td class="cella-griglia" width="35%">			<span style="white-space:nowrap">MILITELLO ALESSIA (DIR-SIC)</span>
+	</td>
+							<td class="cella-griglia" width="10%">Competenza: Da eseguire</td>					
+							<td class="cella-griglia" width="10%">27/06/2024 13:59:32</td>
+							<td class="cella-griglia" width="10%">
+																							</td>
+					<!--									    							 <td colspan="2"></td>
+							  -->
+							</tr>
+					    					  
+  			              			            					  
+					    					      					       <tr class="riga-evidenziata">
+					      							<td class="cella-griglia" width="30%" style="white-space:nowrap">
+											<span style="white-space:nowrap">VALLEFUOCO GAETANO</span>
+								</td>
+						 							<td class="cella-griglia" width="5%">No</td>
+						 							<td class="cella-griglia" width="35%">			<span style="white-space:nowrap">MILITELLO ALESSIA (DIR-SIC)</span>
+	</td>
+							<td class="cella-griglia" width="10%">Conoscenza: Da eseguire</td>					
+							<td class="cella-griglia" width="10%">27/06/2024 13:59:32</td>
+							<td class="cella-griglia" width="10%">
+																							</td>
+					<!--									    							 <td colspan="2"></td>
+							  -->
+							</tr>
+					    					  
+  			              			            					  
+					    					      					       <tr class="riga-normale">
+					      							<td class="cella-griglia" width="30%" style="white-space:nowrap">
+											<span style="white-space:nowrap">VALLEFUOCO GAETANO</span>
+								</td>
+						 							<td class="cella-griglia" width="5%">No</td>
+						 							<td class="cella-griglia" width="35%">			<span style="white-space:nowrap">MILITELLO ALESSIA (DIR-SIC)</span>
+	</td>
+							<td class="cella-griglia" width="10%">Conoscenza: Conclusa</td>					
+							<td class="cella-griglia" width="10%">27/06/2024 13:59:32</td>
+							<td class="cella-griglia" width="10%">
+																							</td>
+					<!--									    							 <td colspan="2"></td>
+							  -->
+							</tr>
+					    					  					 </tbody></table> 
+				     </div>
+				</td>	  
+							   </tr>
+                            
+                                <tr>
+                                    <td valign="top" colspan="2">
+	                    <span class="titolo-pagina">
+		                    <br>&nbsp;Allegati:&nbsp;
+		                    <a href="#"><img id="visualizzaAllegati" align="bottom" src="fsv/imgs/piu.gif" border="0" alt="Visualizza Allegati" title="Visualizza Allegati"></a><a href="#"><img id="nascondiAllegati" style="display:none" align="bottom" src="fsv/imgs/meno.gif" border="0" alt="Nascondi Allegati" title="Nascondi Allegati"></a>
+	                    </span>
+                    </td>
+				</tr>
+                <tr>
+                	<td colspan="2">
+                	<div id="divAllegati" style="display:none;">
+                	<table class="griglia" width="100%" cellspacing="0" cellpadding="0" border="0">
+                    <tbody><tr>   
+					    						<td class="titolo-griglia" width="30%">Nome</td>
+						<td class="titolo-griglia" width="45%" style="white-space:nowrap">Descrizione - Collocazione</td>
+						<td class="titolo-griglia" width="10%">Data Inserimento</td>
+						<td class="titolo-griglia" width="10%">Utente Inserimento</td>
+						
+				      </tr>
+					                                        						       <tr class="riga-normale">
+					      											 	<td class="cella-griglia" width="30%" style="white-space:nowrap;height:20px">
+                    	                    	                    	                    															    							    &nbsp;<input type="checkbox" class="fileC" name="file" value="D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A358CE9C82969F6BDB29FEE40AC73ED0854E67BAA6873F2E0FCB759D217B3DAF793AE5CFCB3963E76EA14ED080A11A13FE9E7D2EA836412C33AC25733DB1A36309">
+							    							    							      <a href="JavaScript:downloadAllegato('D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A358CE9C82969F6BDB29FEE40AC73ED0854E67BAA6873F2E0FCB759D217B3DAF793AE5CFCB3963E76EA14ED080A11A13FE9E7D2EA836412C33AC25733DB1A36309')"><img align="top" src="fsv/imgs/download.gif" width="18" height="16" border="0" alt="Download" title="Download"></a>
+                                                                    								    						   			<a href="javascript:visualizzaAllegatoEml('anteprimaEml','D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A358CE9C82969F6BDB29FEE40AC73ED0854E67BAA6873F2E0FCB759D217B3DAF793AE5CFCB3963E76EA14ED080A11A13FE9E7D2EA836412C33AC25733DB1A36309','', '46349880', '$counter')">						
+    																			<span style="white-space:nowrap">messaggio-originale.eml</span>
+	</a>								
+    																					                 	</td>
+	                 	<td class="cella-griglia" width="45%" style="white-space:nowrap">			<span class="hotspot" onmouseover="tooltip.show('Allegato del messaggio di posta - part_of_mail');" onmouseout="tooltip.hide();" style="white-space:nowrap">Allegato del messaggio di pos...</span>
+	</td>
+                        <td class="cella-griglia" width="10%">27/06/2024 13:59:18</td>
+                        <td class="cella-griglia" width="10%">MILITELLO ALESSIA</td>
+	                 	</tr>
+	                                    						       <tr class="riga-evidenziata">
+					      											 	<td class="cella-griglia" width="30%" style="white-space:nowrap;height:20px">
+                    	                    	                    	                    															    							    &nbsp;<input type="checkbox" class="fileC" name="file" value="D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A358CE9C82969F6BDB29FEE40AC73ED085F243AFEA147A9D6E288B755B5E3AF6D43FE4C17D7B60A4B43DC016F835CB17048837393FB22483F047A2F8CD8FEA8331">
+							    							    							      <a href="JavaScript:downloadAllegato('D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A358CE9C82969F6BDB29FEE40AC73ED085F243AFEA147A9D6E288B755B5E3AF6D43FE4C17D7B60A4B43DC016F835CB17048837393FB22483F047A2F8CD8FEA8331')"><img align="top" src="fsv/imgs/download.gif" width="18" height="16" border="0" alt="Download" title="Download"></a>
+                                                                    								    									<a href="javascript:visualizzaAllegato( 'D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A358CE9C82969F6BDB29FEE40AC73ED085F243AFEA147A9D6E288B755B5E3AF6D43FE4C17D7B60A4B43DC016F835CB17048837393FB22483F047A2F8CD8FEA8331', false, 46349880, '__body.html', '2' )">
+    																			<span style="white-space:nowrap">__body.html</span>
+	</a>								
+    																					                 	</td>
+	                 	<td class="cella-griglia" width="45%" style="white-space:nowrap">			<span class="hotspot" onmouseover="tooltip.show('Allegato del messaggio di posta - part_of_mail');" onmouseout="tooltip.hide();" style="white-space:nowrap">Allegato del messaggio di pos...</span>
+	</td>
+                        <td class="cella-griglia" width="10%">27/06/2024 13:59:18</td>
+                        <td class="cella-griglia" width="10%">MILITELLO ALESSIA</td>
+	                 	</tr>
+	                                    						       <tr class="riga-normale">
+					      											 	<td class="cella-griglia" width="30%" style="white-space:nowrap;height:20px">
+                    	                    	                    	                    															    							    &nbsp;<input type="checkbox" class="fileC" name="file" value="D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A358CE9C82969F6BDB29FEE40AC73ED0850027B912B3CD923574459A4C45B29508ADCCE9DB1D9F7CEFD88B8E1B828CC5949A441C9BD1AE84395EC963EDA0B580E0">
+							    							    							      <a href="JavaScript:downloadAllegato('D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A358CE9C82969F6BDB29FEE40AC73ED0850027B912B3CD923574459A4C45B29508ADCCE9DB1D9F7CEFD88B8E1B828CC5949A441C9BD1AE84395EC963EDA0B580E0')"><img align="top" src="fsv/imgs/download.gif" width="18" height="16" border="0" alt="Download" title="Download"></a>
+                                                                    								    									<a href="javascript:visualizzaAllegato( 'D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A358CE9C82969F6BDB29FEE40AC73ED0850027B912B3CD923574459A4C45B29508ADCCE9DB1D9F7CEFD88B8E1B828CC5949A441C9BD1AE84395EC963EDA0B580E0', false, 46349880, 'Segnatura.xml', '3' )">
+    																			<span style="white-space:nowrap">Segnatura.xml</span>
+	</a>								
+    																					                 	</td>
+	                 	<td class="cella-griglia" width="45%" style="white-space:nowrap">			<span class="hotspot" onmouseover="tooltip.show('Allegato del messaggio di posta - part_of_mail');" onmouseout="tooltip.hide();" style="white-space:nowrap">Allegato del messaggio di pos...</span>
+	</td>
+                        <td class="cella-griglia" width="10%">27/06/2024 13:59:18</td>
+                        <td class="cella-griglia" width="10%">MILITELLO ALESSIA</td>
+	                 	</tr>
+	                                    						       <tr class="riga-evidenziata">
+					      											 	<td class="cella-griglia" width="30%" style="white-space:nowrap;height:20px">
+                    	                    	                    	                    															    							    &nbsp;<input type="checkbox" class="fileC" name="file" value="D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A3106529D4694E1DDA8ED089852F11ECE277BC4DA9A30835129485E223C226FE15BA709FB2CB516B476C19508A184D5DAEF287DD13C2BA19529FEBA018F7D61996">
+							    							    							      <a href="JavaScript:downloadAllegato('D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A3106529D4694E1DDA8ED089852F11ECE277BC4DA9A30835129485E223C226FE15BA709FB2CB516B476C19508A184D5DAEF287DD13C2BA19529FEBA018F7D61996')"><img align="top" src="fsv/imgs/download.gif" width="18" height="16" border="0" alt="Download" title="Download"></a>
+                                                                    								    									<a href="javascript:visualizzaAllegato( 'D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A3106529D4694E1DDA8ED089852F11ECE277BC4DA9A30835129485E223C226FE15BA709FB2CB516B476C19508A184D5DAEF287DD13C2BA19529FEBA018F7D61996', false, 46349880, '1105-REG-1719488396166-2024.06.26_Aggiornamento+ispettori+PETZL_Friuli+Venezia+Giulia_Sicilia.pdf.p7m', '4' )">
+    																			<span class="hotspot" onmouseover="tooltip.show('1105-REG-1719488396166-2024.06.26_Aggiornamento+ispettori+PETZL_Friuli+Venezia+Giulia_Sicilia.pdf.p7m');" onmouseout="tooltip.hide();" style="white-space:nowrap">1105-REG-1719488396166...</span>
+	</a>								
+    																					                 	</td>
+	                 	<td class="cella-griglia" width="45%" style="white-space:nowrap">			<span class="hotspot" onmouseover="tooltip.show('Allegato del messaggio di posta - part_of_mail');" onmouseout="tooltip.hide();" style="white-space:nowrap">Allegato del messaggio di pos...</span>
+	</td>
+                        <td class="cella-griglia" width="10%">27/06/2024 13:59:18</td>
+                        <td class="cella-griglia" width="10%">MILITELLO ALESSIA</td>
+	                 	</tr>
+	                	                </tbody></table><br>
+	                	                &nbsp;<input type="button" class="b-salva" value="Download" id="downloadC" onclick="downloadCumulativo()">
+	                	                <table id="DOC_PRINCIPALE" style="visibility:hidden;"><tbody><tr>
+					  <td>
+                    	<a href="#" onclick="javascript:ripristinaOriginale();">
+                    	<img src="fsv/imgs/back.gif" border="0" alt="Visualizza documento principale" title="Visualizza documento principale"></a>
+                    	</td>
+                        <td>
+                    	<a href="#" onclick="javascript:ripristinaOriginale();">Documento principale</a>
+						</td></tr>
+	                </tbody></table>
+                    </div>
+                    </td>
+                                </tr>
+                
+                                                <tr>
+                    <td align="left">
+                        <span class="titolo-pagina">&nbsp;Note:</span>
+                                             </td>
+                     <td align="left" style="white-space:nowrap">			<span class="hotspot" onmouseover="tooltip.show('Email inviata da: Dipartimento dei Vigili del Fuoco del Soccorso Pubblico e della Difesa Civile - Direzione Centrale per l\'Emergenza ed il Soccorso Tecnico. Note:');" onmouseout="tooltip.hide();" style="white-space:nowrap">Email inviata da: Dipartime...</span>
+	</td>
+                </tr>
+                                
+                                                
+                                
+                <tr>
+                    <td valign="top">
+                    &nbsp;<span class="titolo-pagina">Classificazioni:</span>
+                    </td>
+                    <td style="white-space:nowrap">
+                                                           			&nbsp;
+	                    </td>
+                </tr>
+                
+                					
+								                
+	                	                <tr>
+	                	<td><span class="titolo-pagina" style="white-space:nowrap"><br>&nbsp;Documenti collegati:&nbsp;</span> 
+	                	 <a href="#" onclick="javascript:aggiungiCollegato()">
+	                      <img border="0" title="Aggiungi collegato" src="fsv/imgs/new.gif">
+	                     </a>
+	                    </td>
+	                	<td><br>(Nessuno)</td>
+	                </tr>
+	                                
+				                <tr>
+                	<td><span class="titolo-pagina" style="white-space:nowrap"><br>&nbsp;Documenti che collegano:&nbsp;</span></td>
+                	<td><br>(Nessuno)</td>
+                </tr>
+                
+	    	    <tr>
+			<td valign="top">
+				<br>&nbsp;<span class="titolo-pagina" style="white-space:nowrap">Livello Riservatezza:</span>
+			</td>
+			<td><br>&nbsp;NON CLASSIFICATO</td>
+	    </tr> 
+	                                  
+                        
+				
+					     			<tr>
+	                 <td valign="top" colspan="2">
+	                  <a href="#" onclick="downloadDoc('D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A3106529D4694E1DDA8ED089852F11ECE244D8733767554DA986E7ED7219A357FC5B57F2A7B496982919BA2B16AE86A2A5BEAE3E0800633E54A09EA72332B07DD4')">Download documento originale</a>
+	                 </td>
+     			</tr>  
+             
+									
+					     			<tr>
+	                <td valign="top" colspan="2">
+	                  <a href="#" onclick="downloadDoc('D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A358CE9C82969F6BDB29FEE40AC73ED085FAF2E07F0D1E8CFEB49EA0940CD45931BE4826A3B4712C3B6B64FBCE4E549086D4B75CC545B6A88432B02B81E09B5DCD')">Download documento protocollato</a>
+	                </td>
+     			</tr> 
+     											
+		   
+		                          </tbody></table>
+                        </td>        
+                    </tr>
+                    </tbody></table>
+                  </div>
+              </td>
+          </tr>
+        </tbody></table>
+     </td>
+     <td valign="TOP" width="70%">
+	 	 <div id="idsignatures" style="display:none;height:10%">
+         <iframe id="signatures" src="common/empty.html" scrolling="auto" marginheight="0" marginwidth="0" frameborder="0" width="100%" height="100%"></iframe> 
+    </div>	 
+						  <iframe id="documento" title="frameDoc" style="height:100%;" src="docviewer?id=D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A358CE9C82969F6BDB29FEE40AC73ED085FAF2E07F0D1E8CFEB49EA0940CD45931BE4826A3B4712C3B6B64FBCE4E549086D4B75CC545B6A88432B02B81E09B5DCD&amp;sqi=343E15E7C4DF8DDB5BD12D4FFDBAF311&amp;flag=false&amp;isDatiSensibili=false" marginheight="0" marginwidth="0" width="100%" frameborder="0"></iframe>
+				      </td>
+  </tr>
+</tbody></table>
+    <script language="javascript">
+   window.focus();
+</script>
+<script>
+    // Get the modal
+    var modal = document.getElementById('myModal');
+
+    // Get the button that opens the modal
+    var btn = document.getElementById("myBtn");
+    var btnAnn = document.getElementById("annullamodale");
+    // Get the <span> element that closes the modal
+    var span = document.getElementsByClassName("close")[0];
+
+    // When the user clicks the button, open the modal
+    if (btn && modal) {
+        btn.onclick = function() {
+            modal.style.display = "block";
+        }
+    }
+
+    if (btnAnn && modal) {
+        btnAnn.onclick = function() {
+            modal.style.display = "none";
+        }
+    }
+
+    // When the user clicks on <span> (x), close the modal
+    if (span && modal) {
+        span.onclick = function() {
+            modal.style.display = "none";
+        }
+    }
+
+    // When the user clicks anywhere outside of the modal, close it
+    window.onclick = function(event) {
+      if (event.target == modal) {
+        modal.style.display = "none";
+      }
+    }
+
+    function savePubblicatoFromFascicolo() {
+         var strUrl = "elencoSelDocumenti.do?cmd=salvaModificaPubblicato&popup=true&idDocProt=46349880&idFolder=$formVisualizzaDocumento.SecureIdFolder.toString()";
+         strUrl = replaceAllSpace(strUrl);
+         window.opener.intializeGrid("$formVisualizzaDocumento.SecureIdFolder");
+         window.location = strUrl;
+    }
+
+    function savePubblicato() {
+         var strUrl = "elencoSelDocumenti.do?cmd=salvaModificaPubblicato&idDocProt=46349880&secureId=555450505C5E5F58&registroName=REGISTRO UFFICIALE&banner=false&time=1776642977819";
+         strUrl = replaceAllSpace(strUrl);
+         window.location = strUrl;
+    }
+
+    function submitAnnullaDoc(){
+        var strUrl = "visualizzaDocumento.do?cmd=apriAnnulla&idDocProt=46349880&secureId=555450505C5E5F58&idAssegnazionePerDettaglio=&presaInCarico=$presaInCarico";
+        strUrl = replaceAllSpace(strUrl);
+        window.location = strUrl;
+    }
+
+    function eseguiGenerico(tipo, idAssegnazione, richiedente){
+        var selAzione = document.getElementById("idAzione" + idAssegnazione);
+        var azione = selAzione.value;
+        var url="visualizzaDocumento.do?cmd=apriEsegui&idAssegnazione="+idAssegnazione+"&azione="+azione+"&richiedente="+richiedente;
+        var titolo = tipo + ": " + azione;
+        openModalBox(url, titolo, 550, 350);
+    }
+
+    function eseguiAzioneGenerica(idAssegnazione, azione){
+        var note= ''
+        if( azione === 'Non approva' && note === '' ){
+            alert("Il campo note e' obbligatorio")
+        } else {
+            alert(azione+idAssegnazione)
+            var url = "visualizzaDocumento.do?cmd=eseguiAzione&noteAzione="+note+"&idRiassegnazione="+idAssegnazione+"&selectedAzione="+azione;
+            window.location = url;
+        }
+    }
+</script>
+
+
+
+
+</form>
+
+
+
+<div id="grisu" aria-label="Assistente Grisù" title="Apri assistente" class="fly">
+    <div id="trail" style="display: none;"></div>
+    <img id="grisuImg" src="chrome-extension://mjgmlddcapibpomaaliffodhbhpoejpc/grisu_fly.png" alt="Grisù al top centro">
+  </div><div id="overlay" aria-hidden="false" class="show">
+    <div id="popup" role="dialog" aria-modal="true" aria-labelledby="popupTitle">
+      <div class="popup-header" id="popupTitle">Come posso aiutarti?</div>
+
+      <div class="popup-body">
+        <label class="check-inline">
+          <input type="checkbox" id="chkLavorare">
+          <span>Da Lavorare</span>
+        </label>
+
+        <label class="check-inline">
+          <input type="checkbox" id="chkScadenza">
+          <span>scadenza</span>
+        </label>
+
+        <div class="date-wrap show" id="dateWrap">
+          <input type="date" id="dataScadenza" class="date-input" aria-label="Scegli una data" title="Scegli una data">
+        </div>
+
+        <button class="btn">Aquisisci</button>
+      </div>
+
+      <div class="popup-footer">
+        <button class="close-btn">Chiudi</button>
+      </div>
+    </div>
+  </div></body></html>
