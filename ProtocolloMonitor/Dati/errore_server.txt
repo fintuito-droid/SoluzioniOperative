@@ -2166,3 +2166,563 @@ JSON salvato in: C:\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.
 ================================================================================
 20/04/2026 01:56:35
 Salvato in Access. IDProtocollo = 48
+
+================================================================================
+28/04/2026 17:47:19
+Richiesta ricevuta
+
+================================================================================
+28/04/2026 17:47:19
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=5456515C5354565E&registroName=REGISTRO%20UFFICIALE&idAssegnazione=135969241&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=135969241&presaInCarico=false&edit=false&currentPage=1&totPages=68&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true
+
+================================================================================
+28/04/2026 17:47:19
+Lunghezza HTML: 71711
+
+================================================================================
+28/04/2026 17:47:19
+HTML salvato in: D:\OneDrive\FunTecVVF\Sviluppo\SoluzioniOperative\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+28/04/2026 17:47:19
+Oggetto: POSTA CERTIFICATA: Protocollo nr: 7088 - del 28/04/2026 - COM-SR - Comando Prov. VVF SIRACUSA Intervento n. 2007/2026 - Rinvenimento di cadavere in via Augusta n. 33 -
+
+================================================================================
+28/04/2026 17:47:19
+Modalita: Entrata
+
+================================================================================
+28/04/2026 17:47:19
+DaLavorare: True
+
+================================================================================
+28/04/2026 17:47:19
+DataScadenza: 2026-04-30
+
+================================================================================
+28/04/2026 17:47:19
+JSON salvato in: D:\OneDrive\FunTecVVF\Sviluppo\SoluzioniOperative\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+28/04/2026 17:47:20
+Salvato in Access. IDProtocollo = 49
+
+================================================================================
+28/04/2026 17:48:06
+Richiesta ricevuta
+
+================================================================================
+28/04/2026 17:48:06
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=5456515C565F505A&registroName=REGISTRO%20UFFICIALE&idAssegnazione=135959153&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=135959153&presaInCarico=false&edit=false&currentPage=1&totPages=68&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true
+
+================================================================================
+28/04/2026 17:48:06
+Lunghezza HTML: 104320
+
+================================================================================
+28/04/2026 17:48:06
+HTML salvato in: D:\OneDrive\FunTecVVF\Sviluppo\SoluzioniOperative\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+28/04/2026 17:48:06
+Oggetto: Convenzione Consip Lotto 13 CIG B26E737C48 - Convenzione per l'affidamento dei servizi di pulizia ed igiene ambientale nonché degli altri servizi aggiuntivi da eseguirsi in tutti gli immobili adibiti ad uso caserma per le Pubbliche Amministrazioni, ai sensi dell'articolo 26, Legge 23 Dicembre 1999 n. 488 e s.m.i. e dell'articolo 58, Legge 23 Dicembre 2000 n. 388 - periodo 01/08/2024 - 30/07/2027. Richiesta preventivo per adeguamento del servizio di pulizia a seguito di trasferimento parziale presso la sede di via Braille - rimodulazione superfici.
+
+================================================================================
+28/04/2026 17:48:06
+Modalita: Uscita
+
+================================================================================
+28/04/2026 17:48:06
+DaLavorare: True
+
+================================================================================
+28/04/2026 17:48:06
+DataScadenza: 2026-05-08
+
+================================================================================
+28/04/2026 17:48:06
+JSON salvato in: D:\OneDrive\FunTecVVF\Sviluppo\SoluzioniOperative\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+28/04/2026 17:48:06
+Salvato in Access. IDProtocollo = 50
+
+================================================================================
+28/04/2026 18:01:01
+Richiesta ricevuta
+
+================================================================================
+28/04/2026 18:01:01
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=545651535351525E&registroName=REGISTRO%20UFFICIALE&idAssegnazione=135933810&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=135933810&presaInCarico=false&edit=false&currentPage=1&totPages=68&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true
+
+================================================================================
+28/04/2026 18:01:01
+Lunghezza HTML: 65229
+
+================================================================================
+28/04/2026 18:01:01
+HTML salvato in: D:\OneDrive\FunTecVVF\Sviluppo\SoluzioniOperative\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+28/04/2026 18:01:01
+Oggetto: POSTA CERTIFICATA: I: Trasmissione POA relativo al bimestre di maggio/2026 giugno/2026
+
+================================================================================
+28/04/2026 18:01:01
+Modalita: Entrata
+
+================================================================================
+28/04/2026 18:01:01
+DaLavorare: True
+
+================================================================================
+28/04/2026 18:01:01
+DataScadenza: None
+
+================================================================================
+28/04/2026 18:01:01
+JSON salvato in: D:\OneDrive\FunTecVVF\Sviluppo\SoluzioniOperative\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+28/04/2026 18:01:02
+Salvato in Access. IDProtocollo = 51
+
+================================================================================
+28/04/2026 18:35:59
+Richiesta ricevuta
+
+================================================================================
+28/04/2026 18:35:59
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=5456515C50565E51&registroName=REGISTRO%20UFFICIALE&idAssegnazione=135962954&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=135962954&presaInCarico=false&edit=false&currentPage=1&totPages=68&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true
+
+================================================================================
+28/04/2026 18:35:59
+Lunghezza HTML: 113763
+
+================================================================================
+28/04/2026 18:35:59
+HTML salvato in: D:\OneDrive\FunTecVVF\Sviluppo\SoluzioniOperative\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+28/04/2026 18:36:00
+Oggetto: Bollettino di Criticità Nazionale e Bollettino Incendi Boschivi.
+
+================================================================================
+28/04/2026 18:36:00
+Modalita: Uscita
+
+================================================================================
+28/04/2026 18:36:00
+DaLavorare: True
+
+================================================================================
+28/04/2026 18:36:00
+DataScadenza: 2026-04-30
+
+================================================================================
+28/04/2026 18:36:00
+JSON salvato in: D:\OneDrive\FunTecVVF\Sviluppo\SoluzioniOperative\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+28/04/2026 18:36:00
+Salvato in Access. IDProtocollo = 52
+
+================================================================================
+28/04/2026 18:41:10
+Richiesta ricevuta
+
+================================================================================
+28/04/2026 18:41:10
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=5456515352535E5A&registroName=REGISTRO%20UFFICIALE&idAssegnazione=135936340&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=135936340&presaInCarico=false&edit=false&currentPage=1&totPages=68&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true
+
+================================================================================
+28/04/2026 18:41:10
+Lunghezza HTML: 67101
+
+================================================================================
+28/04/2026 18:41:10
+HTML salvato in: D:\OneDrive\FunTecVVF\Sviluppo\SoluzioniOperative\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+28/04/2026 18:41:10
+Oggetto: Turnazione mese di Maggio 2026 NCR
+
+================================================================================
+28/04/2026 18:41:10
+Modalita: Entrata
+
+================================================================================
+28/04/2026 18:41:10
+DaLavorare: True
+
+================================================================================
+28/04/2026 18:41:10
+DataScadenza: None
+
+================================================================================
+28/04/2026 18:41:10
+JSON salvato in: D:\OneDrive\FunTecVVF\Sviluppo\SoluzioniOperative\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+28/04/2026 18:41:11
+Salvato in Access. IDProtocollo = 53
+
+================================================================================
+28/04/2026 19:07:11
+Richiesta ricevuta
+
+================================================================================
+28/04/2026 19:07:11
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=545651525453555E&registroName=REGISTRO%20UFFICIALE&idAssegnazione=135897821&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=135897821&presaInCarico=false&edit=false&currentPage=1&totPages=68&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true
+
+================================================================================
+28/04/2026 19:07:11
+Lunghezza HTML: 73958
+
+================================================================================
+28/04/2026 19:07:11
+HTML salvato in: D:\OneDrive\FunTecVVF\Sviluppo\SoluzioniOperative\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+28/04/2026 19:07:11
+Oggetto: Protocollo nr: 13648 - del 27/04/2026 - COM-CT - Comando Prov. VVF CATANIA Forza minima nei turni di servizio per la gestione del servizio antincendio negli aeroporti di cui alla Tabella A della Legge 23 dicembre 1980 n. 930 - Quesito
+
+================================================================================
+28/04/2026 19:07:11
+Modalita: Entrata
+
+================================================================================
+28/04/2026 19:07:11
+DaLavorare: True
+
+================================================================================
+28/04/2026 19:07:11
+DataScadenza: None
+
+================================================================================
+28/04/2026 19:07:11
+JSON salvato in: D:\OneDrive\FunTecVVF\Sviluppo\SoluzioniOperative\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+28/04/2026 19:07:12
+Salvato in Access. IDProtocollo = 54
+
+================================================================================
+28/04/2026 19:24:36
+Richiesta ricevuta
+
+================================================================================
+28/04/2026 19:24:36
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=545652505556555D&registroName=REGISTRO%20UFFICIALE&idAssegnazione=135410208&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=135410208&presaInCarico=false&edit=false&currentPage=4&totPages=68&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true
+
+================================================================================
+28/04/2026 19:24:36
+Lunghezza HTML: 71146
+
+================================================================================
+28/04/2026 19:24:36
+HTML salvato in: D:\OneDrive\FunTecVVF\Sviluppo\SoluzioniOperative\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+28/04/2026 19:24:36
+Oggetto: POSTA CERTIFICATA: Protocollo nr: 4253 - del 17/04/2026 - COM-RG - Comando Prov. VVF RAGUSA Verifica ispettiva presso il Comando VV.F. di Ragusa e il Distaccamento Aeroportuale di Comiso su delega della Procura di Ragusa - Utilizzo PFAS nei liquidi schiumogeni - Richieste documentali e prime evidenze. INFORMATIVA.
+
+================================================================================
+28/04/2026 19:24:36
+Modalita: Entrata
+
+================================================================================
+28/04/2026 19:24:36
+DaLavorare: True
+
+================================================================================
+28/04/2026 19:24:36
+DataScadenza: 2026-05-15
+
+================================================================================
+28/04/2026 19:24:36
+JSON salvato in: D:\OneDrive\FunTecVVF\Sviluppo\SoluzioniOperative\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+28/04/2026 19:24:36
+Salvato in Access. IDProtocollo = 55
+
+================================================================================
+28/04/2026 19:25:37
+Richiesta ricevuta
+
+================================================================================
+28/04/2026 19:25:37
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=545652545654505F&registroName=REGISTRO%20UFFICIALE&idAssegnazione=135272868&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=135272868&presaInCarico=false&edit=false&currentPage=4&totPages=68&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true
+
+================================================================================
+28/04/2026 19:25:37
+Lunghezza HTML: 69793
+
+================================================================================
+28/04/2026 19:25:37
+HTML salvato in: D:\OneDrive\FunTecVVF\Sviluppo\SoluzioniOperative\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+28/04/2026 19:25:38
+Oggetto: POSTA CERTIFICATA: Protocollo nr: 9464 - del 15/04/2026 - COM-ME - Comando Prov. VVF MESSINA Richiesta applicazione servizio pulizia aggiuntivo extra canone presso il locale "Archivio" presso la sede Centrale.
+
+================================================================================
+28/04/2026 19:25:38
+Modalita: Entrata
+
+================================================================================
+28/04/2026 19:25:38
+DaLavorare: True
+
+================================================================================
+28/04/2026 19:25:38
+DataScadenza: None
+
+================================================================================
+28/04/2026 19:25:38
+JSON salvato in: D:\OneDrive\FunTecVVF\Sviluppo\SoluzioniOperative\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+28/04/2026 19:25:38
+Salvato in Access. IDProtocollo = 56
+
+================================================================================
+29/04/2026 08:46:42
+Richiesta ricevuta
+
+================================================================================
+29/04/2026 08:46:42
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=5456515C5055525E&registroName=REGISTRO%20UFFICIALE&idAssegnazione=135984016&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=135984016&presaInCarico=false&edit=false&currentPage=1&totPages=68&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true
+
+================================================================================
+29/04/2026 08:46:42
+Lunghezza HTML: 74454
+
+================================================================================
+29/04/2026 08:46:42
+HTML salvato in: D:\OneDrive\FunTecVVF\Sviluppo\SoluzioniOperative\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+29/04/2026 08:46:42
+Oggetto: Protocollo nr: 11349 - del 28/04/2026 - DCEMER - Direzione Centrale per l'Emergenza ed il Soccorso Tecnico Servizio assicurativo polizza Sanitaria e polizza Responsabilità Civile per Unità Cinofile VVF Proroga copertura assicurativa fino al 31/10/2026
+
+================================================================================
+29/04/2026 08:46:42
+Modalita: Entrata
+
+================================================================================
+29/04/2026 08:46:42
+DaLavorare: False
+
+================================================================================
+29/04/2026 08:46:42
+DataScadenza: None
+
+================================================================================
+29/04/2026 08:46:42
+JSON salvato in: D:\OneDrive\FunTecVVF\Sviluppo\SoluzioniOperative\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+29/04/2026 08:46:43
+Salvato in Access. IDProtocollo = 57
+
+================================================================================
+29/04/2026 08:47:53
+Richiesta ricevuta
+
+================================================================================
+29/04/2026 08:47:53
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=5456515C5D575551&registroName=REGISTRO%20UFFICIALE&idAssegnazione=135975491&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=135975491&presaInCarico=false&edit=false&currentPage=1&totPages=68&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true
+
+================================================================================
+29/04/2026 08:47:53
+Lunghezza HTML: 74356
+
+================================================================================
+29/04/2026 08:47:54
+HTML salvato in: D:\OneDrive\FunTecVVF\Sviluppo\SoluzioniOperative\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+29/04/2026 08:47:54
+Oggetto: Autorizzazionje invio in missione personale Nucleo Tlc Sicilia 1
+
+================================================================================
+29/04/2026 08:47:54
+Modalita: Uscita
+
+================================================================================
+29/04/2026 08:47:54
+DaLavorare: True
+
+================================================================================
+29/04/2026 08:47:54
+DataScadenza: None
+
+================================================================================
+29/04/2026 08:47:54
+JSON salvato in: D:\OneDrive\FunTecVVF\Sviluppo\SoluzioniOperative\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+29/04/2026 08:47:54
+Salvato in Access. IDProtocollo = 58
+
+================================================================================
+29/04/2026 08:49:19
+Richiesta ricevuta
+
+================================================================================
+29/04/2026 08:49:19
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=545652535755545F&registroName=REGISTRO%20UFFICIALE&idAssegnazione=135701375&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=135701375&presaInCarico=false&edit=false&currentPage=2&totPages=68&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true
+
+================================================================================
+29/04/2026 08:49:19
+Lunghezza HTML: 70530
+
+================================================================================
+29/04/2026 08:49:19
+HTML salvato in: D:\OneDrive\FunTecVVF\Sviluppo\SoluzioniOperative\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+29/04/2026 08:49:19
+Oggetto: POSTA CERTIFICATA: Preventivo derattizzazione e disinfestazione
+
+================================================================================
+29/04/2026 08:49:19
+Modalita: Entrata
+
+================================================================================
+29/04/2026 08:49:19
+DaLavorare: False
+
+================================================================================
+29/04/2026 08:49:19
+DataScadenza: None
+
+================================================================================
+29/04/2026 08:49:19
+JSON salvato in: D:\OneDrive\FunTecVVF\Sviluppo\SoluzioniOperative\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+29/04/2026 08:49:19
+Salvato in Access. IDProtocollo = 59
+
+================================================================================
+29/04/2026 08:50:42
+Richiesta ricevuta
+
+================================================================================
+29/04/2026 08:50:42
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=5456515455545E5F&registroName=REGISTRO%20UFFICIALE&idAssegnazione=135652183&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=135652183&presaInCarico=false&edit=false&currentPage=2&totPages=68&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true#
+
+================================================================================
+29/04/2026 08:50:42
+Lunghezza HTML: 92375
+
+================================================================================
+29/04/2026 08:50:42
+HTML salvato in: D:\OneDrive\FunTecVVF\Sviluppo\SoluzioniOperative\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+29/04/2026 08:50:42
+Oggetto: Protocollo nr: 10594 - del 22/04/2026 - DCEMER - Direzione Centrale per l'Emergenza ed il Soccorso Tecnico Attuazione Circolare EM 1/2020 - programmazione delle esercitazioni nazionali e regionali di Colonna Mobile - Anno 2026. Calendario attività esercitative.
+
+================================================================================
+29/04/2026 08:50:42
+Modalita: Entrata
+
+================================================================================
+29/04/2026 08:50:42
+DaLavorare: False
+
+================================================================================
+29/04/2026 08:50:42
+DataScadenza: None
+
+================================================================================
+29/04/2026 08:50:42
+JSON salvato in: D:\OneDrive\FunTecVVF\Sviluppo\SoluzioniOperative\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+29/04/2026 08:50:43
+Salvato in Access. IDProtocollo = 60
+
+================================================================================
+29/04/2026 08:51:14
+Richiesta ricevuta
+
+================================================================================
+29/04/2026 08:51:14
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=5456515C565F505A&registroName=REGISTRO%20UFFICIALE&idAssegnazione=135959153&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=135959153&presaInCarico=false&edit=false&currentPage=1&totPages=68&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true
+
+================================================================================
+29/04/2026 08:51:14
+Lunghezza HTML: 104315
+
+================================================================================
+29/04/2026 08:51:14
+HTML salvato in: D:\OneDrive\FunTecVVF\Sviluppo\SoluzioniOperative\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+29/04/2026 08:51:14
+Oggetto: Convenzione Consip Lotto 13 CIG B26E737C48 - Convenzione per l'affidamento dei servizi di pulizia ed igiene ambientale nonché degli altri servizi aggiuntivi da eseguirsi in tutti gli immobili adibiti ad uso caserma per le Pubbliche Amministrazioni, ai sensi dell'articolo 26, Legge 23 Dicembre 1999 n. 488 e s.m.i. e dell'articolo 58, Legge 23 Dicembre 2000 n. 388 - periodo 01/08/2024 - 30/07/2027. Richiesta preventivo per adeguamento del servizio di pulizia a seguito di trasferimento parziale presso la sede di via Braille - rimodulazione superfici.
+
+================================================================================
+29/04/2026 08:51:14
+Modalita: Uscita
+
+================================================================================
+29/04/2026 08:51:14
+DaLavorare: True
+
+================================================================================
+29/04/2026 08:51:14
+DataScadenza: None
+
+================================================================================
+29/04/2026 08:51:14
+JSON salvato in: D:\OneDrive\FunTecVVF\Sviluppo\SoluzioniOperative\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+29/04/2026 08:51:14
+Salvato in Access. IDProtocollo = 50
+
+================================================================================
+29/04/2026 08:51:46
+Richiesta ricevuta
+
+================================================================================
+29/04/2026 08:51:46
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=54565153555F505E&registroName=REGISTRO%20UFFICIALE&idAssegnazione=135908439&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=135908439&presaInCarico=false&edit=false&currentPage=1&totPages=68&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true
+
+================================================================================
+29/04/2026 08:51:46
+Lunghezza HTML: 93506
+
+================================================================================
+29/04/2026 08:51:46
+HTML salvato in: D:\OneDrive\FunTecVVF\Sviluppo\SoluzioniOperative\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+29/04/2026 08:51:46
+Oggetto: Convenzione Consip Lotto 13 CIG B26E737C48 - Convenzione per l'affidamento dei servizi di pulizia ed igiene ambientale nonché degli altri servizi aggiuntivi da eseguirsi in tutti gli immobili adibiti ad uso caserma per le Pubbliche Amministrazioni, ai sensi dell'articolo 26, Legge 23 Dicembre 1999 n. 488 e s.m.i. e dell'articolo 58, Legge 23 Dicembre 2000 n. 388 - periodo 01/08/2024 - 30/07/2027. Ratifica intervento di pulizia straordinaria extra canone presso il distaccamento di Cefalù e richiesta consuntivo delle spese
+
+================================================================================
+29/04/2026 08:51:46
+Modalita: Uscita
+
+================================================================================
+29/04/2026 08:51:46
+DaLavorare: True
+
+================================================================================
+29/04/2026 08:51:46
+DataScadenza: None
+
+================================================================================
+29/04/2026 08:51:46
+JSON salvato in: D:\OneDrive\FunTecVVF\Sviluppo\SoluzioniOperative\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+29/04/2026 08:51:46
+Salvato in Access. IDProtocollo = 61

@@ -1,0 +1,4 @@
+flask
+pyodbc
+beautifulsoup4
+requests

@@ -2,7 +2,7 @@ import pyodbc
 from datetime import datetime
 
 
-DB_PATH = r"C:\SoluzioniOperative\ProtocolloMonitor\db\ProtocolloMonitor.accdb"
+DB_PATH = r"D:\OneDrive\FunTecVVF\Sviluppo\SoluzioniOperative\BackEnd_Access\ProtocolloMonitor.accdb"
 
 
 def connessione_access():

@@ -1,67 +1,127 @@
 {
-  "registro_descrizione": "REGISTRO UFFICIALE.I.0022772.27-06-2024.h.13:59 REGISTRO UFFICIALE",
-  "registro_sigla": "E",
-  "numero_protocollo": "22772",
-  "data_protocollo": "27/06/2024 13:59",
-  "titolo_pagina": "dipvvf.DIR-SIC.REGISTRO UFFICIALE.I.0022772.27-06-2024.h.13:59",
-  "data_spedizione": "",
-  "oggetto": "Protocollo nr: 25338 - del 27/06/2024 - DCEMER - Direzione Centrale per l'Emergenza ed il Soccorso Tecnico Aggiornamento per ispettori attrezzature PETZL - Sessione 9 settembre 2024.",
-  "modalita": "Entrata",
-  "data_documento": "27/06/2024",
-  "operatore": "ALESSIA MILITELLO",
+  "registro_descrizione": "REGISTRO UFFICIALE.0016604.U.2026.28-04-2026.h.07:41 REGISTRO UFFICIALE",
+  "registro_sigla": "U",
+  "numero_protocollo": "16604",
+  "data_protocollo": "28/04/2026 07:41",
+  "titolo_pagina": "Direzione Regionale VVF SICILIA.DIR-SIC_UFFICIO_GARE.REGISTRO UFFICIALE.0016604.U.2026.28-04-2026.h.07:41",
+  "data_spedizione": "28/04/2026 09:05:15",
+  "oggetto": "Convenzione Consip Lotto 13 CIG B26E737C48 - Convenzione per l'affidamento dei servizi di pulizia ed igiene ambientale nonché degli altri servizi aggiuntivi da eseguirsi in tutti gli immobili adibiti ad uso caserma per le Pubbliche Amministrazioni, ai sensi dell'articolo 26, Legge 23 Dicembre 1999 n. 488 e s.m.i. e dell'articolo 58, Legge 23 Dicembre 2000 n. 388 - periodo 01/08/2024 - 30/07/2027. Ratifica intervento di pulizia straordinaria extra canone presso il distaccamento di Cefalù e richiesta consuntivo delle spese",
+  "modalita": "Uscita",
+  "data_documento": "27/04/2026",
+  "operatore": "FRANCESCO MATRANGA",
   "livello_riservatezza": "NON CLASSIFICATO",
   "destinatari": [
     {
-      "destinatario": "DCEMER Direzione Centrale per l'Emergenza e il Soccorso Tecnico",
-      "mezzo": "E-mail ad altra Amministrazione",
-      "email": "dc.emergenza@cert.vigilfuoco.it",
+      "destinatario": "D'Orazio Valentina",
+      "mezzo": "E-mail",
+      "email": "valentina.dorazio@vigilfuoco.it",
       "data_spedizione": "",
       "numero_raccomandata": "",
       "data_consegna": "",
       "dati_aggiuntivi": "",
       "stato_spedizione": ""
+    },
+    {
+      "destinatario": "Dipartimento dei ...",
+      "mezzo": "E-mail Interna Dipartimento",
+      "email": "com.palermo@cert.vigilfuoco.it",
+      "data_spedizione": "28/04/2026 07:44:10",
+      "numero_raccomandata": "N/A",
+      "data_consegna": "28/04/2026 07:45:28",
+      "dati_aggiuntivi": "N/A",
+      "stato_spedizione": "Messaggio consegnato"
+    },
+    {
+      "destinatario": "CICLAT - Consorzi...",
+      "mezzo": "E-mail",
+      "email": "ciclat-bo@pec.ciclat.it",
+      "data_spedizione": "28/04/2026 07:44:12",
+      "numero_raccomandata": "N/A",
+      "data_consegna": "28/04/2026 07:44:14",
+      "dati_aggiuntivi": "N/A",
+      "stato_spedizione": "Messaggio consegnato"
+    },
+    {
+      "destinatario": "CICLAT - Consorzi...",
+      "mezzo": "E-mail",
+      "email": "consip.caserme@ciclat.it",
+      "data_spedizione": "",
+      "numero_raccomandata": "",
+      "data_consegna": "",
+      "dati_aggiuntivi": "",
+      "stato_spedizione": ""
+    },
+    {
+      "destinatario": "DCRISLOG Area I:...",
+      "mezzo": "E-mail Interna Dipartimento",
+      "email": "ril.serviziimmobiliari@cert.vigilfuoco.it",
+      "data_spedizione": "28/04/2026 09:05:15",
+      "numero_raccomandata": "N/A",
+      "data_consegna": "28/04/2026 09:06:37",
+      "dati_aggiuntivi": "N/A",
+      "stato_spedizione": "Messaggio consegnato"
     }
   ],
   "firmatari": [
     {
-      "nome": "MINISTERO DELL'...",
-      "data_firma": "27/06/2024",
-      "valida_dal": "07/04/2021",
-      "sino_al": "07/04/2025"
+      "nome": "MATRANGA FRANCESCO",
+      "data_firma": "27/04/2026",
+      "valida_dal": "05/07/2023",
+      "sino_al": "02/07/2033"
+    },
+    {
+      "nome": "MICHELE BURGIO",
+      "data_firma": "27/04/2026",
+      "valida_dal": "07/01/2025",
+      "sino_al": "05/01/2035"
+    },
+    {
+      "nome": "SERGIO INZERILLO",
+      "data_firma": "27/04/2026",
+      "valida_dal": "05/12/2025",
+      "sino_al": "03/12/2035"
     }
   ],
   "assegnazioni": [
     {
-      "assegnatario": "UFFICIO EMERGENZA",
+      "assegnatario": "UFFICIO GARE",
       "do": "No",
-      "assegnante_ufficio": "MILITELLO ALESSIA (DIR-SIC)",
+      "assegnante_ufficio": "MATRANGA FRANCESCO (DIR-SIC_UFFI...",
       "azione": "Competenza: Da eseguire",
-      "data_inizio": "27/06/2024 13:59:32",
+      "data_inizio": "28/04/2026 07:42:26",
       "note": ""
     },
     {
-      "assegnatario": "VALLEFUOCO GAETANO",
+      "assegnatario": "MATRANGA FRANCESCO",
       "do": "No",
-      "assegnante_ufficio": "MILITELLO ALESSIA (DIR-SIC)",
+      "assegnante_ufficio": "MATRANGA FRANCESCO (DIR-SIC_UFFI...",
+      "azione": "Competenza: Da eseguire",
+      "data_inizio": "28/04/2026 07:42:26",
+      "note": ""
+    },
+    {
+      "assegnatario": "BURGIO MICHELE",
+      "do": "No",
+      "assegnante_ufficio": "MATRANGA FRANCESCO (DIR-SIC_UFFI...",
       "azione": "Conoscenza: Da eseguire",
-      "data_inizio": "27/06/2024 13:59:32",
+      "data_inizio": "28/04/2026 07:42:26",
       "note": ""
     },
     {
-      "assegnatario": "VALLEFUOCO GAETANO",
+      "assegnatario": "INZERILLO SERGIO",
       "do": "No",
-      "assegnante_ufficio": "MILITELLO ALESSIA (DIR-SIC)",
-      "azione": "Conoscenza: Conclusa",
-      "data_inizio": "27/06/2024 13:59:32",
+      "assegnante_ufficio": "MATRANGA FRANCESCO (DIR-SIC_UFFI...",
+      "azione": "Conoscenza: Da eseguire",
+      "data_inizio": "28/04/2026 07:42:26",
       "note": ""
     }
   ],
-  "documento_originale_token": "D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A3106529D4694E1DDA8ED089852F11ECE244D8733767554DA986E7ED7219A357FC5B57F2A7B496982919BA2B16AE86A2A5BEAE3E0800633E54A09EA72332B07DD4",
-  "documento_protocollato_token": "D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A358CE9C82969F6BDB29FEE40AC73ED085FAF2E07F0D1E8CFEB49EA0940CD45931BE4826A3B4712C3B6B64FBCE4E549086D4B75CC545B6A88432B02B81E09B5DCD",
-  "documento_originale_onclick": "downloadDoc('D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A3106529D4694E1DDA8ED089852F11ECE244D8733767554DA986E7ED7219A357FC5B57F2A7B496982919BA2B16AE86A2A5BEAE3E0800633E54A09EA72332B07DD4')",
-  "documento_protocollato_onclick": "downloadDoc('D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A358CE9C82969F6BDB29FEE40AC73ED085FAF2E07F0D1E8CFEB49EA0940CD45931BE4826A3B4712C3B6B64FBCE4E549086D4B75CC545B6A88432B02B81E09B5DCD')",
-  "iframe_documento_src": "docviewer?id=D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A358CE9C82969F6BDB29FEE40AC73ED085FAF2E07F0D1E8CFEB49EA0940CD45931BE4826A3B4712C3B6B64FBCE4E549086D4B75CC545B6A88432B02B81E09B5DCD&sqi=343E15E7C4DF8DDB5BD12D4FFDBAF311&flag=false&isDatiSensibili=false",
-  "url_sorgente": "https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=555450505C5E5F58&registroName=REGISTRO%20UFFICIALE&idAssegnazione=105522530&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=105522530&presaInCarico=false&edit=false&currentPage=68&totPages=68&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true",
+  "documento_originale_token": "D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A3DCF8B765225EC9DACADCCB9E6DFC8FFBA2B3E5390513E33F6EEAE6B074DEE528BF63A741F716AC3996DA873CC47482DD974D23CE9048BD09CF873F1F2CFF0705",
+  "documento_protocollato_token": "D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A3DCF8B765225EC9DACADCCB9E6DFC8FFBBF8B4881E1CEF9B5A221CA8123ED343B493FFD47F6125074A47B294D8CF941F1D721D4C56DE6D6402784FFBDF032CB60",
+  "documento_originale_onclick": "downloadDoc('D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A3DCF8B765225EC9DACADCCB9E6DFC8FFBA2B3E5390513E33F6EEAE6B074DEE528BF63A741F716AC3996DA873CC47482DD974D23CE9048BD09CF873F1F2CFF0705')",
+  "documento_protocollato_onclick": "downloadDoc('D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A3DCF8B765225EC9DACADCCB9E6DFC8FFBBF8B4881E1CEF9B5A221CA8123ED343B493FFD47F6125074A47B294D8CF941F1D721D4C56DE6D6402784FFBDF032CB60')",
+  "iframe_documento_src": "docviewer?id=D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A3DCF8B765225EC9DACADCCB9E6DFC8FFBBF8B4881E1CEF9B5A221CA8123ED343B493FFD47F6125074A47B294D8CF941F1D721D4C56DE6D6402784FFBDF032CB60&sqi=7E2228949BC12DF40B4FBCC50BEDF7B0&flag=false&isDatiSensibili=false",
+  "url_sorgente": "https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=54565153555F505E&registroName=REGISTRO%20UFFICIALE&idAssegnazione=135908439&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=135908439&presaInCarico=false&edit=false&currentPage=1&totPages=68&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true",
   "daLavorare": true,
-  "dataScadenza": "2026-08-16"
+  "dataScadenza": null
 }

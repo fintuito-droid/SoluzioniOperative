@@ -81,6 +81,49 @@ def estrai_oggetto(soup):
 def estrai_destinatari(soup):
     risultati = []
 
+    def riga_destinatario_valida(destinatario, mezzo, email):
+        valori_spuri = {
+            "",
+            "data spedizione",
+            "data consegna",
+            "nume. racc.",
+            "numero racc.",
+            "n/a",
+            "mezzo",
+            "email",
+            "sped."
+        }
+
+        d = (destinatario or "").strip().lower()
+        m = (mezzo or "").strip().lower()
+        e = (email or "").strip().lower()
+
+        if d in valori_spuri:
+            return False
+
+        # scarta righe che iniziano con una data
+        if re.fullmatch(r"\d{2}/\d{2}/\d{4}.*", destinatario.strip()):
+            return False
+
+        # scarta righe tooltip: Data Spedizione / Nume. Racc. / Data Consegna
+        if d == "data spedizione" or m == "nume. racc." or e == "data consegna":
+            return False
+
+        # una riga vera normalmente ha un mezzo significativo
+        mezzi_validi = {
+            "e-mail",
+            "email",
+            "e-mail interna",
+            "pec",
+            "posta elettronica",
+            "consegna manuale"
+        }
+
+        if m not in mezzi_validi and "mail" not in m:
+            return False
+
+        return True
+
     div = soup.find("div", id="divMittDest")
     if not div:
         return risultati
@@ -98,10 +141,17 @@ def estrai_destinatari(soup):
         if len(tds) < 4:
             continue
 
+        destinatario = testo_cella(tds[0])
+        mezzo = testo_cella(tds[1])
+        email = testo_cella(tds[2])
+
+        if not riga_destinatario_valida(destinatario, mezzo, email):
+            continue
+
         record = {
-            "destinatario": testo_cella(tds[0]),
-            "mezzo": testo_cella(tds[1]),
-            "email": testo_cella(tds[2]),
+            "destinatario": destinatario,
+            "mezzo": mezzo,
+            "email": email,
             "data_spedizione": "",
             "numero_raccomandata": "",
             "data_consegna": "",
