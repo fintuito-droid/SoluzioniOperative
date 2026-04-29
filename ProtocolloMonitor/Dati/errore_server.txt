@@ -2726,3 +2726,43 @@ JSON salvato in: D:\OneDrive\FunTecVVF\Sviluppo\SoluzioniOperative\SoluzioniOper
 ================================================================================
 29/04/2026 08:51:46
 Salvato in Access. IDProtocollo = 61
+
+================================================================================
+29/04/2026 13:03:04
+Richiesta ricevuta
+
+================================================================================
+29/04/2026 13:03:04
+URL: https://protocollo.dipvvf.it/folium/visualizzaDocumento.do?cmd=visualizzaDoc&assegnato=1&tipo=0&secureId=545651535351525E&registroName=REGISTRO%20UFFICIALE&idAssegnazione=135933810&idRiassegnazioneCompetenza=-1&idAssegnazionePerDettaglio=135933810&presaInCarico=false&edit=false&currentPage=1&totPages=68&sortField=&sortType=&daTab=true&stato=Da%20eseguire&popup=true
+
+================================================================================
+29/04/2026 13:03:04
+Lunghezza HTML: 65454
+
+================================================================================
+29/04/2026 13:03:04
+HTML salvato in: D:\OneDrive\FunTecVVF\Sviluppo\SoluzioniOperative\SoluzioniOperative\ProtocolloMonitor\dati\pagina_protocollo.html
+
+================================================================================
+29/04/2026 13:03:04
+Oggetto: POSTA CERTIFICATA: I: Trasmissione POA relativo al bimestre di maggio/2026 giugno/2026
+
+================================================================================
+29/04/2026 13:03:04
+Modalita: Entrata
+
+================================================================================
+29/04/2026 13:03:04
+DaLavorare: True
+
+================================================================================
+29/04/2026 13:03:04
+DataScadenza: None
+
+================================================================================
+29/04/2026 13:03:04
+JSON salvato in: D:\OneDrive\FunTecVVF\Sviluppo\SoluzioniOperative\SoluzioniOperative\ProtocolloMonitor\dati\ultimo_protocollo.json
+
+================================================================================
+29/04/2026 13:03:05
+Salvato in Access. IDProtocollo = 51

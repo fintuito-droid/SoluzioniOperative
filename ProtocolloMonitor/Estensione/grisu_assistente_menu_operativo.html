@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Grisù Assistente</title>
+  <title>Direzione Regionale VVF SICILIA.DIR-SIC_UFFICIO_GARE</title>
   <style>
     :root {
       --peek-top: 10px;
@@ -376,6 +376,12 @@
           />
         </div>
 
+        <div id="boxTipoDocumento" style="display:none;">
+          <select id="tipoDocumento" class="date-input">
+            <option value="">Tipo documento</option>
+          </select>
+        </div>
+
         <button class="btn" onclick="acquisisciDati()">Aquisisci</button>
       </div>
 
@@ -395,6 +401,8 @@
     const chkLavorare = document.getElementById('chkLavorare');
     const dateWrap = document.getElementById('dateWrap');
     const dataScadenza = document.getElementById('dataScadenza');
+    const boxTipoDocumento = document.getElementById('boxTipoDocumento');
+    const tipoDocumento = document.getElementById('tipoDocumento');
 
     let isOpen = false;
     let isAnimating = false;
@@ -458,13 +466,48 @@
         dateWrap.classList.remove('show');
         dataScadenza.value = '';
       }
+  
     }
 
-    function openPopup() {
-      isOpen = true;
-      overlay.classList.add('show');
-      overlay.setAttribute('aria-hidden', 'false');
+    async function caricaTipologiaDocumento(titoloPagina) {
+
+  console.log("Titolo ricevuto:", titoloPagina);
+
+  tipoDocumento.innerHTML = `
+    <option value="">Tipo documento</option>
+    <option value="1">Preventivo</option>
+    <option value="2">POA</option>
+    <option value="3">VdC</option>
+    <option value="4">Ispezione</option>
+    <option value="5">Rendiconto</option>
+  `;
+
+  boxTipoDocumento.style.display = 'block';
+}
+
+    function getTitoloPaginaFolium() {
+      const el = document.querySelector(".titolo-pagina");
+
+      if (el) {
+        return el.textContent.trim();
+      }
+
+      return document.title;
     }
+
+
+
+    function openPopup() {
+        isOpen = true;
+        overlay.classList.add('show');
+        overlay.setAttribute('aria-hidden', 'false');
+
+        const titoloPagina = getTitoloPaginaFolium();
+        console.log("TitoloPagina Folium:", titoloPagina);
+
+        caricaTipologiaDocumento(titoloPagina);
+      
+      }
 
     function closePopup() {
       overlay.classList.remove('show');
@@ -484,7 +527,8 @@
       const payload = {
         daLavorare: chkLavorare.checked,
         scadenza: chkScadenza.checked,
-        data: chkScadenza.checked ? dataScadenza.value || null : null
+        data: chkScadenza.checked ? dataScadenza.value || null : null,
+        tipoDocumento: tipoDocumento.value || null
       };
 
       alert(

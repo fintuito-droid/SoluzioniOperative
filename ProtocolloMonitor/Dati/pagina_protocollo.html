@@ -252,7 +252,7 @@
 				} else {
 					jQuery("#caricaJQ").removeAttr("disabled");
 					jQuery("#attributes_panel").hide();
-					jQuery("#attributes_panel").load("attributiUtente.do?cmd=caricaAttributiEstesi&extension=" + docType + "&provenienza=schedaDocumento&secureId=54565153555F505E");
+					jQuery("#attributes_panel").load("attributiUtente.do?cmd=caricaAttributiEstesi&extension=" + docType + "&provenienza=schedaDocumento&secureId=545651535351525E");
 					jQuery("#attributes_panel").slideDown("slow");
 					jQuery("#extensionName").prop('disabled', false);
 					jQuery("#extensionName").val(jQuery("#tipiDocumento option:selected").text());
@@ -452,7 +452,7 @@ function createHiddenInput(name, value) {
 		}
 
 		function aggiungiCollegato() {
-			var winURL = "elencoSelDocumenti.do?cmd=nuovaCerca&collegati=true&idDocProt=54270976&idDocDaSchedaDoc=54270976";
+			var winURL = "elencoSelDocumenti.do?cmd=nuovaCerca&collegati=true&idDocProt=54276756&idDocDaSchedaDoc=54276756";
 			location.href = winURL;
 		}
 
@@ -463,17 +463,17 @@ function createHiddenInput(name, value) {
 		}
 
 		function removeDoc(id) {
-			var winURL = "elencoSelDocumenti.do?cmd=rimuoviCollegato&collegati=true&idDoc=54270976&idCollegato=" + id;
+			var winURL = "elencoSelDocumenti.do?cmd=rimuoviCollegato&collegati=true&idDoc=54276756&idCollegato=" + id;
 			location.href = winURL;
 		}
 
 		function apriModificaNote() {
-			var url = 'elencoSelDocumenti.do?cmd=apriModificaNote&idDocProt=54270976&secureId=54565153555F505E&registroName=REGISTRO UFFICIALE&banner=false&secureIdFolder=&time=1777445460980';
+			var url = 'elencoSelDocumenti.do?cmd=apriModificaNote&idDocProt=54276756&secureId=545651535351525E&registroName=REGISTRO UFFICIALE&banner=false&secureIdFolder=&time=1777460375708';
 			var result = openWindow(url, "Note", 600, 500);
 		}
 
 		function apriModificaNecessitaRisposte() {
-			var url = 'elencoSelDocumenti.do?cmd=apriModificaNecessitaRisposta&idDocProt=54270976&secureId=54565153555F505E&registroName=REGISTRO UFFICIALE&banner=false&time=1777445460980';
+			var url = 'elencoSelDocumenti.do?cmd=apriModificaNecessitaRisposta&idDocProt=54276756&secureId=545651535351525E&registroName=REGISTRO UFFICIALE&banner=false&time=1777460375708';
 			var result = openWindow(url, "Necessita Risposte", 600, 300);
 		}
 
@@ -504,14 +504,14 @@ function createHiddenInput(name, value) {
 			var documentoFrame = document.getElementById("documento");
 			var signaturesFrame = document.getElementById("signatures");
 			if (showSignature) {
-				signaturesFrame.src = "docviewer?id=" + id + "&sqi=7E2228949BC12DF40B4FBCC50BEDF7B0&type=ALL&isDatiSensibili=false&signature=true";
+				signaturesFrame.src = "docviewer?id=" + id + "&sqi=934916232DDC80DA0C05A30C716E60EE&type=ALL&isDatiSensibili=false&signature=true";
 				documentoFrame.style.height = '90%';
 				document.getElementById("idsignatures").style.display = 'block';
 			} else {
 				documentoFrame.style.height = '100%';
 				document.getElementById("idsignatures").style.display = 'none';
 			}
-			var loc = "docviewer?id=" + id + "&sqi=7E2228949BC12DF40B4FBCC50BEDF7B0&type=ALL&isDatiSensibili=false&timbraDocumento=true&allegatoNameDb=" + allegatoNameDb;
+			var loc = "docviewer?id=" + id + "&sqi=934916232DDC80DA0C05A30C716E60EE&type=ALL&isDatiSensibili=false&timbraDocumento=true&allegatoNameDb=" + allegatoNameDb;
 			loc += "&idProfiloAttuale=" + idProfilo + "&numOrdineAll=" + numOrdineAll;
 			documentoFrame.src = loc;
 			document.getElementById('DOC_PRINCIPALE').style.visibility = 'visible';
@@ -526,18 +526,18 @@ function createHiddenInput(name, value) {
 
 			var documentoFrame = document.getElementById("documento");
 			documentoFrame.style.height = '100%';
-			documentoFrame.src = "docviewer?id=D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A3DCF8B765225EC9DACADCCB9E6DFC8FFBBF8B4881E1CEF9B5A221CA8123ED343B493FFD47F6125074A47B294D8CF941F1D721D4C56DE6D6402784FFBDF032CB60&sqi=7E2228949BC12DF40B4FBCC50BEDF7B0&flag=false&isDatiSensibili=false";
+			documentoFrame.src = "docviewer?id=D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A357FD8F3BC79F84251E01FE4037E4B807E8357E6FC200FDEB46ED19A758A77B79B2CF2CE5DEAFE3220318C8CE28A5FC464AC18E12CEB4B44303BBE1EECB7CB071&sqi=934916232DDC80DA0C05A30C716E60EE&flag=false&isDatiSensibili=false";
 			document.getElementById('DOC_PRINCIPALE').style.visibility = 'hidden';
 		}
 
 		function downloadAllegato(id) {
-			var idProfilojs = "7E2228949BC12DF40B4FBCC50BEDF7B0";
+			var idProfilojs = "934916232DDC80DA0C05A30C716E60EE";
 			openWindow('docviewer?id=' + id + '&sqi=' + idProfilojs + '&download=true&type=ALL', 'allegato', 400, 500);
 		}
 
 		function addAllegatoDaEditor() {
 			var url = "editor.do?cmd=allegaToEditor";
-			var nAllegati = '8';
+			var nAllegati = '2';
 			var ids = "";
 			if (nAllegati > 0) {
 				for (i = 0; i < nAllegati; i++) {
@@ -549,7 +549,7 @@ function createHiddenInput(name, value) {
 				if (ids.length > 0) {
 					ids = ids.substr(0, ids.length - 1);
 					//listaMotivazioni = listaMotivazioni.substr(0, listaMotivazioni.length - 1);
-					var idProfilojs = "54270976";
+					var idProfilojs = "54276756";
 					url = url + "&listaId=" + ids + "&idProfiloAllDaEditor=" + idProfilojs + "&allegatiSingoli=true";
 					location.href = url;
 				} else {
@@ -559,11 +559,11 @@ function createHiddenInput(name, value) {
 		}
 
 		function downloadDoc(id) {
-			openWindow('docviewer?id=' + id + '&sqi=7E2228949BC12DF40B4FBCC50BEDF7B0&download=true', 'download', 400, 500);
+			openWindow('docviewer?id=' + id + '&sqi=934916232DDC80DA0C05A30C716E60EE&download=true', 'download', 400, 500);
 		}
 
 		function downloadCopiaAnnullata(id) {
-			openWindow('docviewer?id=' + id + '&sqi=7E2228949BC12DF40B4FBCC50BEDF7B0&download=true&flag=CopiaAnnullata', 400, 500);
+			openWindow('docviewer?id=' + id + '&sqi=934916232DDC80DA0C05A30C716E60EE&download=true&flag=CopiaAnnullata', 400, 500);
 		}
 
 		function modificaRiferimenti(idProfiloScheda) {
@@ -584,7 +584,7 @@ function createHiddenInput(name, value) {
 			if (isSmist && isSmist == "true") {
 				provenienza = "SMISTAMENTO";
 			}
-			var url = "assegna.do?cmd=assegnaDoc&idDocProt=54270976&smistamento=true&idRiassegnazione=135908439&idRiassegnazioneCompetenza=-1&popup=true&provenienza=" + provenienza + "&riassegna=" + riassegnaJS;
+			var url = "assegna.do?cmd=assegnaDoc&idDocProt=54276756&smistamento=true&idRiassegnazione=135933810&idRiassegnazioneCompetenza=-1&popup=true&provenienza=" + provenienza + "&riassegna=" + riassegnaJS;
 			if (isConoscenza == 'true') {
 				url = url + "&forcedType=Conoscenza";
 			}
@@ -700,7 +700,7 @@ function createHiddenInput(name, value) {
 			}
 		}
 		function openListaTag() {
-			var url = 'elencoTag.do?cmd=listaTag&idProfilo=54270976';
+			var url = 'elencoTag.do?cmd=listaTag&idProfilo=54276756';
 			openWindow(url, 'Tags', 700, 500);
 		}
 
@@ -729,8 +729,8 @@ function createHiddenInput(name, value) {
 			var obbligoClassificazioneUscita = 0;
 			var obbligoClassificazioneInterna = 0;
 			var obbligoClassificazioneRegistrazione = 0;
-			var modalita = 'U';
-			var secureIdDocProtJs = '54565153555F505E';
+			var modalita = 'E';
+			var secureIdDocProtJs = '545651535351525E';
 			var urlCheckClassifiche = "docAssegnati.do?cmd=checkClassifica&from=elencoAssegnazioniCompetenza&secureIdDocProt=" + secureIdDocProtJs + "&idAss=" +  + "&tipo=0";
 
 			var xmlHttp = GetXmlHttpObject();
@@ -985,7 +985,7 @@ function createHiddenInput(name, value) {
 		
 		function downloadBackupAllegati()
 		{
-			var urldownload = "allegati.do?cmd=downloadBackup&idDoc=54270976";
+			var urldownload = "allegati.do?cmd=downloadBackup&idDoc=54276756";
 			openWindow(urldownload, 'download', 400, 300); 
 		}
 	</script>
@@ -1327,7 +1327,7 @@ function createHiddenInput(name, value) {
 
 	
 	<form id="protocolloForm" name="formVisualizzaDocumento" action="visualizzaDocumento.do" method="post" target="" style="margin-bottom:0px; height:100%">
-				<input type="hidden" name="idProfiloAttuale" value="54270976">
+				<input type="hidden" name="idProfiloAttuale" value="54276756">
 		<input type="hidden" name="idTipoDocumentoSelezionato" value="">
 				<input type="hidden" name="cmd" value="">
 		<input type="hidden" name="isSmistamento" value="false">
@@ -1378,16 +1378,14 @@ function createHiddenInput(name, value) {
 			 	
 			<input class="bottone" type="button" id="chiudi" name="chiudi" value="Chiudi Scheda" onclick="closeAndRefresh();">
 		    	
-			
+				<input type="button" id="inCarico" class="b-modifica" value="Prendi In Carico" onclick="prendiInCaricoDaDettaglio('docAssegnati.do?cmd=presaInCarico&amp;idAssegnazionePerDettaglio=135933810')">&nbsp;
 	
-				<input type="button" id="inCarico" class="b-modifica" value="Prendi In Carico" onclick="prendiInCaricoDaDettaglio('docAssegnati.do?cmd=presaInCarico&amp;idAssegnazionePerDettaglio=135908439')">&nbsp;
-	
-	                       <input type="button" id="inCaricoRiassegna" class="b-modifica" value="Prendi in Carico e Riassegna" onclick="prendiInCaricoERiassDaDettaglio('assegna.do?cmd=assegnazioniForm&amp;idAssegnazionePerDettaglio=135908439&amp;origine=0&amp;secureIdDocProt=54565153555F505E&amp;provenienza=DA_SCHEDA_DOC')">&nbsp;
-           <input type="button" id="inCaricoConcludi" class="b-modifica" value="Prendi in Carico e Concludi" onclick="prendiInCaricoEConcludi('docAccettati.do?cmd=clickMettiAgliAtti&amp;idAssegnazionePerDettaglio=135908439&amp;provenienza=DA_SCHEDA_DOC')">&nbsp;
+	                       <input type="button" id="inCaricoRiassegna" class="b-modifica" value="Prendi in Carico e Riassegna" onclick="prendiInCaricoERiassDaDettaglio('assegna.do?cmd=assegnazioniForm&amp;idAssegnazionePerDettaglio=135933810&amp;origine=0&amp;secureIdDocProt=545651535351525E&amp;provenienza=DA_SCHEDA_DOC')">&nbsp;
+           <input type="button" id="inCaricoConcludi" class="b-modifica" value="Prendi in Carico e Concludi" onclick="prendiInCaricoEConcludi('docAccettati.do?cmd=clickMettiAgliAtti&amp;idAssegnazionePerDettaglio=135933810&amp;provenienza=DA_SCHEDA_DOC')">&nbsp;
          	
 	
 	
-				<input type="button" class="b-salva" value="Restituisci" id="idRestMassiva" name="restituisci" onclick="restituisciNew(135908439, null, null, null)">&nbsp;
+				<input type="button" class="b-salva" value="Restituisci" id="idRestMassiva" name="restituisci" onclick="restituisciNew(135933810, null, null, null)">&nbsp;
 	
 	
 
@@ -1395,9 +1393,9 @@ function createHiddenInput(name, value) {
 	
 			</div><div valign="top">
 						</div><div id="block_container">
-							<div id="bloc1" valign="top"><a href="visualizzaDocumento.do?cmd=visualizzaDoc&amp;assegnato=1&amp;tipo=0&amp;secureId=545651535154565A&amp;registroName=REGISTRO UFFICIALE&amp;idAssegnazione=135922052&amp;idRiassegnazioneCompetenza=-1&amp;idAssegnazionePerDettaglio=135922052&amp;presaInCarico=true&amp;currentPage=1&amp;totPages=68&amp;paginaPrecedente=false&amp;sortField=&amp;sortType=" onclick="nascondiPaginazione()"> Precedente </a></div>
+							<div id="bloc1" valign="top"><a href="visualizzaDocumento.do?cmd=visualizzaDoc&amp;assegnato=1&amp;tipo=0&amp;secureId=5456515C565F505A&amp;registroName=REGISTRO UFFICIALE&amp;idAssegnazione=135959154&amp;idRiassegnazioneCompetenza=-1&amp;idAssegnazionePerDettaglio=135959154&amp;presaInCarico=true&amp;currentPage=1&amp;totPages=68&amp;paginaPrecedente=false&amp;sortField=&amp;sortType=" onclick="nascondiPaginazione()"> Precedente </a></div>
 			
-							<div id="bloc2" valign="top" align="right"><a href="visualizzaDocumento.do?cmd=visualizzaDoc&amp;assegnato=1&amp;tipo=0&amp;secureId=54565153555F505E&amp;registroName=REGISTRO UFFICIALE&amp;idAssegnazione=135908438&amp;idRiassegnazioneCompetenza=-1&amp;idAssegnazionePerDettaglio=135908438&amp;presaInCarico=true&amp;currentPage=1&amp;totPages=68&amp;paginaSuccessiva=false&amp;sortField=&amp;sortType=" onclick="nascondiPaginazione()"> Successivo </a></div>
+							<div id="bloc2" valign="top" align="right"><a href="visualizzaDocumento.do?cmd=visualizzaDoc&amp;assegnato=1&amp;tipo=0&amp;secureId=545651535351525E&amp;registroName=REGISTRO UFFICIALE&amp;idAssegnazione=135933809&amp;idRiassegnazioneCompetenza=-1&amp;idAssegnazionePerDettaglio=135933809&amp;presaInCarico=true&amp;currentPage=1&amp;totPages=68&amp;paginaSuccessiva=false&amp;sortField=&amp;sortType=" onclick="nascondiPaginazione()"> Successivo </a></div>
 						</div><table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
 			
 			
@@ -1415,39 +1413,33 @@ function createHiddenInput(name, value) {
 										<td class="tabbed-panel" align="left"><span class="titolo-panel" id="profilotxt">Profilo</span></td>
 									</tr>
 																		<tr>
-										<td class="titolo-pagina" align="center">Direzione Regionale VVF SICILIA.DIR-SIC_UFFICIO_GARE.REGISTRO UFFICIALE.0016604.U.2026.28-04-2026.h.07:41</td>
+										<td class="titolo-pagina" align="center">Direzione Regionale VVF SICILIA.DIR-SIC-SEGRETERIA.REGISTRO UFFICIALE.0016667.E.2026.28-04-2026.h.10:59</td>
 									</tr>
 																											<tr>
 										<td height="100%">
 											<table style="height: 100%; border:0; cellpadding:0; cellspacing:0" class="table table-hover table-borderless">
 																								<tbody><tr>
 													<td colspan="2" align="left">
-													&nbsp;REGISTRO UFFICIALE (U), N.16604
+													&nbsp;REGISTRO UFFICIALE (E), N.16667
 													<br>
-													&nbsp;Data: 28/04/2026 07:41
+													&nbsp;Data: 28/04/2026 10:59
 													</td>
 												</tr>
+												
 												
 																								<tr>
-													<td valign="top" width="60%">
-													&nbsp;<span class="titolo-pagina">Data Spedizione:</span>
+													<td valign="top">
+													&nbsp;<span class="titolo-pagina">Data Ricezione:</span>
 													</td>
-													<td>&nbsp;28/04/2026 09:05:15</td>
+													<td>&nbsp;28/04/2026 10:36:00</td>
 												</tr>
-												
 												
 												<tr>
 													<td align="left" valign="top">
 														<span class="titolo-pagina">&nbsp;Oggetto:</span>
 													</td>
 													<td align="left">
-																												<label id="bossiStyle" readonly="true" rows="5" cols="40" style="resize:none;">Convenzione Consip Lotto 13 CIG B26E737C48 - Convenzione per l'affidamento dei
-servizi di pulizia ed igiene ambientale nonché degli altri servizi aggiuntivi da eseguirsi in
-tutti gli immobili adibiti ad uso caserma per le Pubbliche Amministrazioni, ai sensi
-dell'articolo 26, Legge 23 Dicembre 1999 n. 488 e s.m.i. e dell'articolo 58, Legge 23
-Dicembre 2000 n. 388 - periodo 01/08/2024 - 30/07/2027.
-Ratifica intervento di pulizia straordinaria extra canone presso il distaccamento di Cefalù
-e richiesta consuntivo delle spese</label>
+																												<label id="bossiStyle" readonly="true" rows="5" cols="40" style="resize:none;">POSTA CERTIFICATA: I: Trasmissione POA relativo al bimestre di  maggio/2026 giugno/2026</label>
 																																									</td>
 												</tr>
 
@@ -1457,8 +1449,8 @@ e richiesta consuntivo delle spese</label>
 														<span class="titolo-pagina">&nbsp;Modalità:</span>
 													</td>
 													<td>
-																														Uscita
-																																																																					</td>
+																																												Entrata
+																																																							</td>
 												</tr>
 												
 												
@@ -1467,7 +1459,7 @@ e richiesta consuntivo delle spese</label>
 																								<tr>
 													<td align="left" valign="top" colspan="4">
 														<span class="titolo-pagina">
-																																										&nbsp;Destinatari:<a href="#"><img id="visualizzaMittDest" align="bottom" src="fsv/imgs/piu.gif" border="0" alt="Visualizza Destinatari" title="Visualizza Destinatari"></a><a href="#"><img id="nascondiMittDest" style="display:none" align="bottom" src="fsv/imgs/meno.gif" border="0" alt="Nascondi Destinatari" title="Nascondi Destinatari"></a>
+																																										&nbsp;Mittenti:<a href="#"><img id="visualizzaMittDest" align="bottom" src="fsv/imgs/piu.gif" border="0" alt="Visualizza Mittenti" title="Visualizza Mittenti"></a><a href="#"><img id="nascondiMittDest" style="display:none" align="bottom" src="fsv/imgs/meno.gif" border="0" alt="Nascondi Mittenti" title="Nascondi Mittenti"></a>
 														</span>
                                                     </td>
 												</tr>
@@ -1476,59 +1468,11 @@ e richiesta consuntivo delle spese</label>
 														<div id="divMittDest" style="display:none">
 														<table class="griglia" width="100%" cellspacing="0" cellpadding="0" border="0">
 															<tbody><tr>
-																<td class="titolo-griglia" width="50%">Destinatario</td>
+																<td class="titolo-griglia" width="50%">Mittente</td>
 																<td class="titolo-griglia" width="40%" style="white-space:nowrap">Mezzo</td>
 																<td class="titolo-griglia" width="10%" style="white-space:nowrap">Email</td>
 																<td class="titolo-griglia" width="10%" style="white-space:nowrap">Sped.</td>
 															</tr>
-																																															<tr class="riga-normale">
-																
-																																		<td class="cella-griglia" width="60%" style="white-space:nowrap" onmouseover="showTlpMittDest('D'Orazio Valentina','valentina.dorazio@vigilfuoco.it','PF','','','','','','','','','','','','','', '','');" onmouseout="tooltip.hide();">
-																									<span style="white-space:nowrap">D'Orazio Valentina</span>
-																						</td>
-																	<td class="cella-griglia" width="40%">E-mail</td>
-																	<td class="cella-griglia" width="40%">valentina.dorazio@vigilfuoco.it</td>
-																	<td width="70px" bgcolor="" class="cella-griglia CellWithTooltip">
-																																				<img src="fsv/imgs/nopec.png" border="0" title="Destinatario con email non PEC">
-																																			</td>
-																</tr>
-																																															<tr class="riga-evidenziata">
-																
-																																		<td class="cella-griglia" width="60%" style="white-space:nowrap" onmouseover="showTlpMittDest('Dipartimento dei Vigili del Fuoco/Comando Prov. VVF PALERMO','com.palermo@cert.vigilfuoco.it','PAI','ABF166E','Dipartimento dei Vigili del Fuoco','COM-PA','','','COM-PA','','PALERMO','','','','','', '','');" onmouseout="tooltip.hide();">
-																									<span class="hotspot" onmouseover="tooltip.show('Dipartimento dei Vigili del Fuoco/Comando Prov. VVF PALERMO');" onmouseout="tooltip.hide();" style="white-space:nowrap">Dipartimento dei ...</span>
-																						</td>
-																	<td class="cella-griglia" width="40%">E-mail Interna Dipartimento</td>
-																	<td class="cella-griglia" width="40%">com.palermo@cert.vigilfuoco.it</td>
-																	<td width="70px" bgcolor="" class="cella-griglia CellWithTooltip">
-																																																								<img src="fsv/imgs/ico_check.png" border="0" title="PEC consegnata">
-																			
-																																						<img src="fsv/imgs/spedizioni.gif" border="0">
-																			<span class="CellTooltip">
-																				<table class="griglia" width="100%" cellspacing="0" cellpadding="0" border="0">
-																				<tbody><tr>
-																					<td class="titolo-griglia">Data Spedizione</td>
-																					<td class="titolo-griglia">Nume. Racc.</td>
-																					<td class="titolo-griglia">Data Consegna</td>
-																					<td class="titolo-griglia">Dati Aggiuntivi</td>
-																					<td class="titolo-griglia">Stato Spedizione</td>
-																				</tr>
-																																																																																			<tr class="riga-normale">
-																						<td align="center">
-																							 28/04/2026 07:44:10 																						</td>
-																						<td align="center">
-																							 N/A 																						</td>
-																						<td align="center">
-																							 28/04/2026  07:45:28 																						</td>
-																						<td align="center">
-																							 N/A 																						</td>
-																						<td align="center">
-																																																																																																																							Messaggio consegnato
-																																																																																													</td>
-																					</tr>
-																																							</tbody></table>
-																			</span>
-																																																						</td>
-																</tr>
 																																															<tr class="riga-normale">
 																
 																																		<td class="cella-griglia" width="60%" style="white-space:nowrap" onmouseover="showTlpMittDest('CICLAT - Consorzio Italiano Cooperative Lavoratori Ausiliari Traffico','ciclat-bo@pec.ciclat.it','PG','','Dipartimento dei Vigili del Fuoco','','','','','','','','','','','', '','');" onmouseout="tooltip.hide();">
@@ -1536,82 +1480,8 @@ e richiesta consuntivo delle spese</label>
 																						</td>
 																	<td class="cella-griglia" width="40%">E-mail</td>
 																	<td class="cella-griglia" width="40%">ciclat-bo@pec.ciclat.it</td>
-																	<td width="70px" bgcolor="" class="cella-griglia CellWithTooltip">
-																																																								<img src="fsv/imgs/ico_check.png" border="0" title="PEC consegnata">
-																			
-																																						<img src="fsv/imgs/spedizioni.gif" border="0">
-																			<span class="CellTooltip">
-																				<table class="griglia" width="100%" cellspacing="0" cellpadding="0" border="0">
-																				<tbody><tr>
-																					<td class="titolo-griglia">Data Spedizione</td>
-																					<td class="titolo-griglia">Nume. Racc.</td>
-																					<td class="titolo-griglia">Data Consegna</td>
-																					<td class="titolo-griglia">Dati Aggiuntivi</td>
-																					<td class="titolo-griglia">Stato Spedizione</td>
-																				</tr>
-																																																																																			<tr class="riga-normale">
-																						<td align="center">
-																							 28/04/2026 07:44:12 																						</td>
-																						<td align="center">
-																							 N/A 																						</td>
-																						<td align="center">
-																							 28/04/2026  07:44:14 																						</td>
-																						<td align="center">
-																							 N/A 																						</td>
-																						<td align="center">
-																																																																																																																							Messaggio consegnato
-																																																																																													</td>
-																					</tr>
-																																							</tbody></table>
-																			</span>
-																																																						</td>
-																</tr>
-																																															<tr class="riga-evidenziata">
-																
-																																		<td class="cella-griglia" width="60%" style="white-space:nowrap" onmouseover="showTlpMittDest('CICLAT - Consorzio Italiano Cooperative Lavoratori Ausiliari Traffico','consip.caserme@ciclat.it','PG','','Dipartimento dei Vigili del Fuoco','','','','','','','','','','','', '','');" onmouseout="tooltip.hide();">
-																									<span class="hotspot" onmouseover="tooltip.show('CICLAT - Consorzio Italiano Cooperative Lavoratori Ausiliari Traffico');" onmouseout="tooltip.hide();" style="white-space:nowrap">CICLAT - Consorzi...</span>
-																						</td>
-																	<td class="cella-griglia" width="40%">E-mail</td>
-																	<td class="cella-griglia" width="40%">consip.caserme@ciclat.it</td>
-																	<td width="70px" bgcolor="" class="cella-griglia CellWithTooltip">
-																																				<img src="fsv/imgs/nopec.png" border="0" title="Destinatario con email non PEC">
-																																			</td>
-																</tr>
-																																															<tr class="riga-normale">
-																
-																																		<td class="cella-griglia" width="60%" style="white-space:nowrap" onmouseover="showTlpMittDest('DCRISLOG  Area I: Gestione delle Risorse Immobiliari','ril.serviziimmobiliari@cert.vigilfuoco.it','PG','','Dipartimento dei Vigili del Fuoco','RISLOGI','','','RISLOGI','Via Cavour, 5','Roma','00184','','','','', '','');" onmouseout="tooltip.hide();">
-																									<span class="hotspot" onmouseover="tooltip.show('DCRISLOG  Area I: Gestione delle Risorse Immobiliari');" onmouseout="tooltip.hide();" style="white-space:nowrap">DCRISLOG  Area I:...</span>
-																						</td>
-																	<td class="cella-griglia" width="40%">E-mail Interna Dipartimento</td>
-																	<td class="cella-griglia" width="40%">ril.serviziimmobiliari@cert.vigilfuoco.it</td>
-																	<td width="70px" bgcolor="" class="cella-griglia CellWithTooltip">
-																																																								<img src="fsv/imgs/ico_check.png" border="0" title="PEC consegnata">
-																			
-																																						<img src="fsv/imgs/spedizioni.gif" border="0">
-																			<span class="CellTooltip">
-																				<table class="griglia" width="100%" cellspacing="0" cellpadding="0" border="0">
-																				<tbody><tr>
-																					<td class="titolo-griglia">Data Spedizione</td>
-																					<td class="titolo-griglia">Nume. Racc.</td>
-																					<td class="titolo-griglia">Data Consegna</td>
-																					<td class="titolo-griglia">Dati Aggiuntivi</td>
-																					<td class="titolo-griglia">Stato Spedizione</td>
-																				</tr>
-																																																																																			<tr class="riga-normale">
-																						<td align="center">
-																							 28/04/2026 09:05:15 																						</td>
-																						<td align="center">
-																							 N/A 																						</td>
-																						<td align="center">
-																							 28/04/2026  09:06:37 																						</td>
-																						<td align="center">
-																							 N/A 																						</td>
-																						<td align="center">
-																																																																																																																							Messaggio consegnato
-																																																																																													</td>
-																					</tr>
-																																							</tbody></table>
-																			</span>
+																	<td width="70px" bgcolor="" class="cella-griglia">
+																																																																												
 																																																						</td>
 																</tr>
 																													</tbody></table>
@@ -1620,79 +1490,23 @@ e richiesta consuntivo delle spese</label>
 																									</tr>
 												
 												
-																								<tr>
-													<td colspan="2">
-														<span class="titolo-pagina">&nbsp;Ricevute PEC ( 7/9 )
-															<a href="#" onclick="jQuery('#divRicevute').load('ricevute.do?cmd=schedaView&amp;idProfilo=54565153555F505E')"><img id="visualizzaRicevute" align="bottom" src="fsv/imgs/piu.gif" border="0" alt="Visualizza Ricevute" title="Visualizza Ricevute"></a><a href="#"><img id="nascondiRicevute" style="display:none" align="bottom" src="fsv/imgs/meno.gif" border="0" alt="Nascondi Ricevute" title="Nascondi Ricevute"></a>
-														</span>
-														<br>
-														<div id="divRicevute" style="display:none"></div>
-													</td>
-												</tr>
 												
 												
 												
-																								<tr>
-													<td align="left">
-														<span class="titolo-pagina">&nbsp;Data documento:</span>
-													</td>
-													<td align="left">&nbsp;27/04/2026</td>
-													</tr>
 												
 												<tr>
 													<td align="left">
 														<span class="titolo-pagina"><br>&nbsp;Operatore:</span>
 													</td>
-													<td style="white-space:nowrap"><br>							<span style="white-space:nowrap">FRANCESCO MATRANGA</span>
+													<td style="white-space:nowrap"><br>							<span style="white-space:nowrap">MARIA BILLITTERI</span>
 					</td>
 												</tr>
 
-																																				<tr>
-													<td align="left" colspan="2">
-														<span class="titolo-pagina">
-															<br>&nbsp;Firmatari del documento principale:&nbsp;
-															<a href="#"><img id="visualizzaFirmatari" align="bottom" src="fsv/imgs/piu.gif" border="0" alt="Visualizza Firmatari" title="Visualizza Firmatari"></a>
-															<a href="#"><img id="nascondiFirmatari" style="display:none" align="bottom" src="fsv/imgs/meno.gif" border="0" alt="Nascondi Firmatari" title="Nascondi Firmatari"></a>
-														</span>
-														<br>
-														<div id="divFirmatari" style="display:none">
-															<table class="griglia" width="100%" cellspacing="0" cellpadding="0" border="0">
-																<tbody><tr>
-																	<td class="titolo-griglia" width="70%">Nome</td>
-																	<td class="titolo-griglia" width="10%" style="white-space:nowrap">Data Firma</td>
-																	<td class="titolo-griglia" width="10%" style="white-space:nowrap">Valida dal</td>
-																	<td class="titolo-griglia" width="10%" style="white-space:nowrap">Sino al</td>
-																</tr>
-																																																		<tr class="riga-normale">
-																																			<td class="cella-griglia" width="70%" style="white-space:nowrap">							<span style="white-space:nowrap">MATRANGA FRANCESCO</span>
-					</td>
-																		<td class="cella-griglia" width="10%">27/04/2026</td>
-																		<td class="cella-griglia" width="10%">05/07/2023</td>
-																		<td class="cella-griglia" width="10%">02/07/2033</td>
-																	</tr>
-																																																		<tr class="riga-evidenziata">
-																																			<td class="cella-griglia" width="70%" style="white-space:nowrap">							<span style="white-space:nowrap">MICHELE BURGIO</span>
-					</td>
-																		<td class="cella-griglia" width="10%">27/04/2026</td>
-																		<td class="cella-griglia" width="10%">07/01/2025</td>
-																		<td class="cella-griglia" width="10%">05/01/2035</td>
-																	</tr>
-																																																		<tr class="riga-normale">
-																																			<td class="cella-griglia" width="70%" style="white-space:nowrap">							<span style="white-space:nowrap">SERGIO INZERILLO</span>
-					</td>
-																		<td class="cella-griglia" width="10%">27/04/2026</td>
-																		<td class="cella-griglia" width="10%">05/12/2025</td>
-																		<td class="cella-griglia" width="10%">03/12/2035</td>
-																	</tr>
-																															</tbody></table>
-														</div>
-													</td>
-												</tr>
-												
+																								
 																								<tr>
 																									<td align="left" colspan="2">
 														<span class="titolo-pagina">
-														<br>&nbsp;Assegnazioni:&nbsp; </span>  doc. visto il: 
+														<br>&nbsp;Assegnazioni:&nbsp; </span>  doc. visto il: 28/04/2026 18:00
 														<span class="titolo-pagina">
 															<a href="#"><img id="visualizzaAssegnazioni" align="bottom" src="fsv/imgs/piu.gif" border="0" alt="Visualizza Assegnazioni" title="Visualizza Assegnazioni"></a>
 															<a href="#"><img id="nascondiAssegnazioni" style="display:none" align="bottom" src="fsv/imgs/meno.gif" border="0" alt="Nascondi Assegnazioni" title="Nascondi Assegnazioni"></a>
@@ -1711,52 +1525,26 @@ e richiesta consuntivo delle spese</label>
 																																																		
 																																																					<tr class="riga-normale">
 																																					<td class="cella-griglia" width="30%" style="white-space:nowrap">
-																											<span style="white-space:nowrap">UFFICIO GARE</span>
-																								</td>
-																																						<td class="cella-griglia" width="5%">No</td>
-																																						<td class="cella-griglia" width="35%">							<span class="hotspot" onmouseover="tooltip.show('MATRANGA FRANCESCO (DIR-SIC_UFFICIO_GARE)');" onmouseout="tooltip.hide();" style="white-space:nowrap">MATRANGA FRANCESCO (DIR-SIC_UFFI...</span>
-					</td>
-																			<td class="cella-griglia" width="10%">Competenza: Da eseguire</td>
-																			<td class="cella-griglia" width="10%">28/04/2026 07:42:26</td>
-																			<td class="cella-griglia" width="10%">
-																																																									</td>
-																		</tr>
-																																																																			
-																																																					<tr class="riga-evidenziata">
-																																					<td class="cella-griglia" width="30%" style="white-space:nowrap">
 																											<span style="white-space:nowrap">MATRANGA FRANCESCO</span>
 																								</td>
 																																						<td class="cella-griglia" width="5%">No</td>
-																																						<td class="cella-griglia" width="35%">							<span class="hotspot" onmouseover="tooltip.show('MATRANGA FRANCESCO (DIR-SIC_UFFICIO_GARE)');" onmouseout="tooltip.hide();" style="white-space:nowrap">MATRANGA FRANCESCO (DIR-SIC_UFFI...</span>
+																																						<td class="cella-griglia" width="35%">							<span class="hotspot" onmouseover="tooltip.show('BILLITTERI MARIA (DIR-SIC-SEGRETERIA)');" onmouseout="tooltip.hide();" style="white-space:nowrap">BILLITTERI MARIA (DIR-SIC-SEGRET...</span>
 					</td>
 																			<td class="cella-griglia" width="10%">Competenza: Da eseguire</td>
-																			<td class="cella-griglia" width="10%">28/04/2026 07:42:26</td>
-																			<td class="cella-griglia" width="10%">
-																																																									</td>
-																		</tr>
-																																																																			
-																																																					<tr class="riga-normale">
-																																					<td class="cella-griglia" width="30%" style="white-space:nowrap">
-																											<span style="white-space:nowrap">BURGIO MICHELE</span>
-																								</td>
-																																						<td class="cella-griglia" width="5%">No</td>
-																																						<td class="cella-griglia" width="35%">							<span class="hotspot" onmouseover="tooltip.show('MATRANGA FRANCESCO (DIR-SIC_UFFICIO_GARE)');" onmouseout="tooltip.hide();" style="white-space:nowrap">MATRANGA FRANCESCO (DIR-SIC_UFFI...</span>
-					</td>
-																			<td class="cella-griglia" width="10%">Conoscenza: Da eseguire</td>
-																			<td class="cella-griglia" width="10%">28/04/2026 07:42:26</td>
+																			<td class="cella-griglia" width="10%">28/04/2026 11:00:02</td>
 																			<td class="cella-griglia" width="10%">
 																																																									</td>
 																		</tr>
 																																																																			
 																																																					<tr class="riga-evidenziata">
 																																					<td class="cella-griglia" width="30%" style="white-space:nowrap">
-																											<span style="white-space:nowrap">INZERILLO SERGIO</span>
+																											<span style="white-space:nowrap">UFFICIO GARE</span>
 																								</td>
 																																						<td class="cella-griglia" width="5%">No</td>
-																																						<td class="cella-griglia" width="35%">							<span class="hotspot" onmouseover="tooltip.show('MATRANGA FRANCESCO (DIR-SIC_UFFICIO_GARE)');" onmouseout="tooltip.hide();" style="white-space:nowrap">MATRANGA FRANCESCO (DIR-SIC_UFFI...</span>
+																																						<td class="cella-griglia" width="35%">							<span class="hotspot" onmouseover="tooltip.show('BILLITTERI MARIA (DIR-SIC-SEGRETERIA)');" onmouseout="tooltip.hide();" style="white-space:nowrap">BILLITTERI MARIA (DIR-SIC-SEGRET...</span>
 					</td>
-																			<td class="cella-griglia" width="10%">Conoscenza: Da eseguire</td>
-																			<td class="cella-griglia" width="10%">28/04/2026 07:42:26</td>
+																			<td class="cella-griglia" width="10%">Competenza: Da eseguire</td>
+																			<td class="cella-griglia" width="10%">28/04/2026 11:00:02</td>
 																			<td class="cella-griglia" width="10%">
 																																																									</td>
 																		</tr>
@@ -1789,153 +1577,39 @@ e richiesta consuntivo delle spese</label>
 																																																			<td class="cella-griglia" width="30%" style="white-space:nowrap;height:20px">
 																																																			
 																	
-																																																								&nbsp;<input type="checkbox" class="fileC" name="file" value="D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A393B35FDA89F693A6E55948F0DBE242875ADBAC8F11C0C4C34A6EC40485EF411FF4C8FCA80AE85E3A0D183516E0B7AA525F8997B8EB1C9641296BCA92404FD26B">
+																																																								&nbsp;<input type="checkbox" class="fileC" name="file" value="D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A357FD8F3BC79F84251E01FE4037E4B807089DD58A6672B1963A6ED5043BBFAE82BE2041848DC2CA9C5F5431BA4845DE6A51A806F2BE59CA1E013ED3A688C47FE8">
 																			
-																																						<a href="JavaScript:downloadAllegato('D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A393B35FDA89F693A6E55948F0DBE242875ADBAC8F11C0C4C34A6EC40485EF411FF4C8FCA80AE85E3A0D183516E0B7AA525F8997B8EB1C9641296BCA92404FD26B')">
+																																						<a href="JavaScript:downloadAllegato('D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A357FD8F3BC79F84251E01FE4037E4B807089DD58A6672B1963A6ED5043BBFAE82BE2041848DC2CA9C5F5431BA4845DE6A51A806F2BE59CA1E013ED3A688C47FE8')">
 																				<img align="top" src="fsv/imgs/download.gif" width="18" height="16" border="0" alt="Download" title="Download">
 																			</a>
 																																							
-																																																												<a href="javascript:visualizzaAllegatoEml('anteprimaEml','D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A393B35FDA89F693A6E55948F0DBE242875ADBAC8F11C0C4C34A6EC40485EF411FF4C8FCA80AE85E3A0D183516E0B7AA525F8997B8EB1C9641296BCA92404FD26B','', '54270976', '$counter')">
-																																															<span style="white-space:nowrap">email_126594523.eml</span>
-																									</a>
-																																																																							</td>
-																	<td class="cella-griglia" width="45%" style="white-space:nowrap">							<span class="hotspot" onmouseover="tooltip.show('RICEVUTA CONSEGNA da parte di: com.palermo@cert.vigilfuoco.it');" onmouseout="tooltip.hide();" style="white-space:nowrap">RICEVUTA CONSEGNA da parte di...</span>
-					</td>
-																	<td class="cella-griglia" width="10%">28/04/2026 07:55:18</td>
-																	<td class="cella-griglia" width="10%">Sistema  </td>
-																</tr>
-																																																		<tr class="riga-evidenziata">
-																																																			<td class="cella-griglia" width="30%" style="white-space:nowrap;height:20px">
-																																																			
-																	
-																																																								&nbsp;<input type="checkbox" class="fileC" name="file" value="D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A393B35FDA89F693A6E55948F0DBE242874D1CCC4B1429D8B409EFBE37C5921D35944380BCDD3785FFFE6E147FAC7087AD59CF5925E611E868E070AC147A936466">
-																			
-																																						<a href="JavaScript:downloadAllegato('D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A393B35FDA89F693A6E55948F0DBE242874D1CCC4B1429D8B409EFBE37C5921D35944380BCDD3785FFFE6E147FAC7087AD59CF5925E611E868E070AC147A936466')">
-																				<img align="top" src="fsv/imgs/download.gif" width="18" height="16" border="0" alt="Download" title="Download">
-																			</a>
-																																							
-																																																												<a href="javascript:visualizzaAllegatoEml('anteprimaEml','D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A393B35FDA89F693A6E55948F0DBE242874D1CCC4B1429D8B409EFBE37C5921D35944380BCDD3785FFFE6E147FAC7087AD59CF5925E611E868E070AC147A936466','', '54270976', '$counter')">
-																																															<span style="white-space:nowrap">email_126594525.eml</span>
-																									</a>
-																																																																							</td>
-																	<td class="cella-griglia" width="45%" style="white-space:nowrap">							<span class="hotspot" onmouseover="tooltip.show('RICEVUTA CONSEGNA da parte di: ril.risorseimmobiliari@cert.vigilfuoco.it');" onmouseout="tooltip.hide();" style="white-space:nowrap">RICEVUTA CONSEGNA da parte di...</span>
-					</td>
-																	<td class="cella-griglia" width="10%">28/04/2026 07:55:18</td>
-																	<td class="cella-griglia" width="10%">Sistema  </td>
-																</tr>
-																																																		<tr class="riga-normale">
-																																																			<td class="cella-griglia" width="30%" style="white-space:nowrap;height:20px">
-																																																			
-																	
-																																																								&nbsp;<input type="checkbox" class="fileC" name="file" value="D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A393B35FDA89F693A6E55948F0DBE24287D136FE642F36C32710424E64203A051C9A30D6C06FCB56F77BF24AC065B7FF054B2FA0F119ACB119DBB3CD93C8A24F72">
-																			
-																																						<a href="JavaScript:downloadAllegato('D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A393B35FDA89F693A6E55948F0DBE24287D136FE642F36C32710424E64203A051C9A30D6C06FCB56F77BF24AC065B7FF054B2FA0F119ACB119DBB3CD93C8A24F72')">
-																				<img align="top" src="fsv/imgs/download.gif" width="18" height="16" border="0" alt="Download" title="Download">
-																			</a>
-																																							
-																																																												<a href="javascript:visualizzaAllegatoEml('anteprimaEml','D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A393B35FDA89F693A6E55948F0DBE24287D136FE642F36C32710424E64203A051C9A30D6C06FCB56F77BF24AC065B7FF054B2FA0F119ACB119DBB3CD93C8A24F72','', '54270976', '$counter')">
-																																															<span style="white-space:nowrap">email_126594522.eml</span>
-																									</a>
-																																																																							</td>
-																	<td class="cella-griglia" width="45%" style="white-space:nowrap">							<span class="hotspot" onmouseover="tooltip.show('RICEVUTA ACCETTAZIONE del messaggio inviato a: ril.risorseimmobiliari@cert.vigilfuoco.it; com.palermo@cert.vigilfuoco.it; ');" onmouseout="tooltip.hide();" style="white-space:nowrap">RICEVUTA ACCETTAZIONE del mes...</span>
-					</td>
-																	<td class="cella-griglia" width="10%">28/04/2026 07:55:18</td>
-																	<td class="cella-griglia" width="10%">Sistema  </td>
-																</tr>
-																																																		<tr class="riga-evidenziata">
-																																																			<td class="cella-griglia" width="30%" style="white-space:nowrap;height:20px">
-																																																			
-																	
-																																																								&nbsp;<input type="checkbox" class="fileC" name="file" value="D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A393B35FDA89F693A6E55948F0DBE24287DAC8CF0D6F19078040363A4910A6A0FD86A17F4A91C4E06FC41949783AF289699F7148181FD6172ED72BDB6483C835B6">
-																			
-																																						<a href="JavaScript:downloadAllegato('D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A393B35FDA89F693A6E55948F0DBE24287DAC8CF0D6F19078040363A4910A6A0FD86A17F4A91C4E06FC41949783AF289699F7148181FD6172ED72BDB6483C835B6')">
-																				<img align="top" src="fsv/imgs/download.gif" width="18" height="16" border="0" alt="Download" title="Download">
-																			</a>
-																																							
-																																																												<a href="javascript:visualizzaAllegatoEml('anteprimaEml','D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A393B35FDA89F693A6E55948F0DBE24287DAC8CF0D6F19078040363A4910A6A0FD86A17F4A91C4E06FC41949783AF289699F7148181FD6172ED72BDB6483C835B6','', '54270976', '$counter')">
-																																															<span style="white-space:nowrap">email_126594518.eml</span>
-																									</a>
-																																																																							</td>
-																	<td class="cella-griglia" width="45%" style="white-space:nowrap">							<span class="hotspot" onmouseover="tooltip.show('RICEVUTA CONSEGNA da parte di: ciclat-bo@pec.ciclat.it');" onmouseout="tooltip.hide();" style="white-space:nowrap">RICEVUTA CONSEGNA da parte di...</span>
-					</td>
-																	<td class="cella-griglia" width="10%">28/04/2026 07:55:18</td>
-																	<td class="cella-griglia" width="10%">Sistema  </td>
-																</tr>
-																																																		<tr class="riga-normale">
-																																																			<td class="cella-griglia" width="30%" style="white-space:nowrap;height:20px">
-																																																			
-																	
-																																																								&nbsp;<input type="checkbox" class="fileC" name="file" value="D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A393B35FDA89F693A6E55948F0DBE242879185275436283B4F5212F32630351E1FBBF6784B67BD28ED0CAD48EEC80B463BF2AD7B32B06CE8F753A50986B6542DAF">
-																			
-																																						<a href="JavaScript:downloadAllegato('D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A393B35FDA89F693A6E55948F0DBE242879185275436283B4F5212F32630351E1FBBF6784B67BD28ED0CAD48EEC80B463BF2AD7B32B06CE8F753A50986B6542DAF')">
-																				<img align="top" src="fsv/imgs/download.gif" width="18" height="16" border="0" alt="Download" title="Download">
-																			</a>
-																																							
-																																																												<a href="javascript:visualizzaAllegatoEml('anteprimaEml','D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A393B35FDA89F693A6E55948F0DBE242879185275436283B4F5212F32630351E1FBBF6784B67BD28ED0CAD48EEC80B463BF2AD7B32B06CE8F753A50986B6542DAF','', '54270976', '$counter')">
-																																															<span style="white-space:nowrap">email_126594517.eml</span>
-																									</a>
-																																																																							</td>
-																	<td class="cella-griglia" width="45%" style="white-space:nowrap">							<span class="hotspot" onmouseover="tooltip.show('RICEVUTA ACCETTAZIONE del messaggio inviato a: ciclat-bo@pec.ciclat.it; consip.caserme@ciclat.it; valentina.dorazio@vigilfuoco.it; ');" onmouseout="tooltip.hide();" style="white-space:nowrap">RICEVUTA ACCETTAZIONE del mes...</span>
-					</td>
-																	<td class="cella-griglia" width="10%">28/04/2026 07:55:18</td>
-																	<td class="cella-griglia" width="10%">Sistema  </td>
-																</tr>
-																																																		<tr class="riga-evidenziata">
-																																																			<td class="cella-griglia" width="30%" style="white-space:nowrap;height:20px">
-																																																			
-																	
-																																																								&nbsp;<input type="checkbox" class="fileC" name="file" value="D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A3074F4DAFDA7A357204316F529C0043B856D9B30FDCE2DE1539F2693134C8C39BC868D69412F2064BAA4A09D83DA5EDC27F815B88BD63E9A6B9349182755BEF40">
-																			
-																																						<a href="JavaScript:downloadAllegato('D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A3074F4DAFDA7A357204316F529C0043B856D9B30FDCE2DE1539F2693134C8C39BC868D69412F2064BAA4A09D83DA5EDC27F815B88BD63E9A6B9349182755BEF40')">
-																				<img align="top" src="fsv/imgs/download.gif" width="18" height="16" border="0" alt="Download" title="Download">
-																			</a>
-																																							
-																																																												<a href="javascript:visualizzaAllegato( 'D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A3074F4DAFDA7A357204316F529C0043B856D9B30FDCE2DE1539F2693134C8C39BC868D69412F2064BAA4A09D83DA5EDC27F815B88BD63E9A6B9349182755BEF40', false, 54270976, 'Segnatura.xml', '6' )">
-																																															<span style="white-space:nowrap">Segnatura.xml</span>
+																																																												<a href="javascript:visualizzaAllegatoEml('anteprimaEml','D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A357FD8F3BC79F84251E01FE4037E4B807089DD58A6672B1963A6ED5043BBFAE82BE2041848DC2CA9C5F5431BA4845DE6A51A806F2BE59CA1E013ED3A688C47FE8','', '54276756', '$counter')">
+																																															<span style="white-space:nowrap">messaggio-originale.eml</span>
 																									</a>
 																																																																							</td>
 																	<td class="cella-griglia" width="45%" style="white-space:nowrap">							<span class="hotspot" onmouseover="tooltip.show('Allegato del messaggio di posta - part_of_mail');" onmouseout="tooltip.hide();" style="white-space:nowrap">Allegato del messaggio di pos...</span>
 					</td>
-																	<td class="cella-griglia" width="10%">28/04/2026 08:59:39</td>
+																	<td class="cella-griglia" width="10%">28/04/2026 10:59:40</td>
 																	<td class="cella-griglia" width="10%">BILLITTERI MARIA</td>
-																</tr>
-																																																		<tr class="riga-normale">
-																																																			<td class="cella-griglia" width="30%" style="white-space:nowrap;height:20px">
-																																																			
-																	
-																																																								&nbsp;<input type="checkbox" class="fileC" name="file" value="D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A34B5AFC8E5E30FECDEBEC865E288CEBF2271FE2DE291D9CE901C75FD7D0B0F2384EDE722638306DBBF8996527FCD540320C1C445593E0A7C32638C02E64A30037">
-																			
-																																						<a href="JavaScript:downloadAllegato('D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A34B5AFC8E5E30FECDEBEC865E288CEBF2271FE2DE291D9CE901C75FD7D0B0F2384EDE722638306DBBF8996527FCD540320C1C445593E0A7C32638C02E64A30037')">
-																				<img align="top" src="fsv/imgs/download.gif" width="18" height="16" border="0" alt="Download" title="Download">
-																			</a>
-																																							
-																																																												<a href="javascript:visualizzaAllegatoEml('anteprimaEml','D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A34B5AFC8E5E30FECDEBEC865E288CEBF2271FE2DE291D9CE901C75FD7D0B0F2384EDE722638306DBBF8996527FCD540320C1C445593E0A7C32638C02E64A30037','', '54270976', '$counter')">
-																																															<span style="white-space:nowrap">email_126604374.eml</span>
-																									</a>
-																																																																							</td>
-																	<td class="cella-griglia" width="45%" style="white-space:nowrap">							<span class="hotspot" onmouseover="tooltip.show('RICEVUTA ACCETTAZIONE del messaggio inviato a: ril.serviziimmobiliari@cert.vigilfuoco.it; ');" onmouseout="tooltip.hide();" style="white-space:nowrap">RICEVUTA ACCETTAZIONE del mes...</span>
-					</td>
-																	<td class="cella-griglia" width="10%">28/04/2026 09:15:21</td>
-																	<td class="cella-griglia" width="10%">Sistema  </td>
 																</tr>
 																																																		<tr class="riga-evidenziata">
 																																																			<td class="cella-griglia" width="30%" style="white-space:nowrap;height:20px">
 																																																			
 																	
-																																																								&nbsp;<input type="checkbox" class="fileC" name="file" value="D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A34B5AFC8E5E30FECDEBEC865E288CEBF2E091D724829F74528495A02FE7C54EFCB3294EBC83AE17F0AC9A411858AF11CCCEA0B51AB2D9213DF07F5832971DAD5B">
+																																																								&nbsp;<input type="checkbox" class="fileC" name="file" value="D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A357FD8F3BC79F84251E01FE4037E4B8070AF858AB43F008A892037171D77F531650BA6A772FACD5B275BDE3BEE5CF5D061A8BAAB0F4392503FED57645652335FE">
 																			
-																																						<a href="JavaScript:downloadAllegato('D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A34B5AFC8E5E30FECDEBEC865E288CEBF2E091D724829F74528495A02FE7C54EFCB3294EBC83AE17F0AC9A411858AF11CCCEA0B51AB2D9213DF07F5832971DAD5B')">
+																																						<a href="JavaScript:downloadAllegato('D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A357FD8F3BC79F84251E01FE4037E4B8070AF858AB43F008A892037171D77F531650BA6A772FACD5B275BDE3BEE5CF5D061A8BAAB0F4392503FED57645652335FE')">
 																				<img align="top" src="fsv/imgs/download.gif" width="18" height="16" border="0" alt="Download" title="Download">
 																			</a>
 																																							
-																																																												<a href="javascript:visualizzaAllegatoEml('anteprimaEml','D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A34B5AFC8E5E30FECDEBEC865E288CEBF2E091D724829F74528495A02FE7C54EFCB3294EBC83AE17F0AC9A411858AF11CCCEA0B51AB2D9213DF07F5832971DAD5B','', '54270976', '$counter')">
-																																															<span style="white-space:nowrap">email_126604375.eml</span>
+																																																												<a href="javascript:visualizzaAllegato( 'D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A357FD8F3BC79F84251E01FE4037E4B8070AF858AB43F008A892037171D77F531650BA6A772FACD5B275BDE3BEE5CF5D061A8BAAB0F4392503FED57645652335FE', false, 54276756, 'image002.png', '2' )">
+																																															<span style="white-space:nowrap">image002.png</span>
 																									</a>
 																																																																							</td>
-																	<td class="cella-griglia" width="45%" style="white-space:nowrap">							<span class="hotspot" onmouseover="tooltip.show('RICEVUTA CONSEGNA da parte di: ril.serviziimmobiliari@cert.vigilfuoco.it');" onmouseout="tooltip.hide();" style="white-space:nowrap">RICEVUTA CONSEGNA da parte di...</span>
+																	<td class="cella-griglia" width="45%" style="white-space:nowrap">							<span class="hotspot" onmouseover="tooltip.show('Allegato del messaggio di posta - part_of_mail');" onmouseout="tooltip.hide();" style="white-space:nowrap">Allegato del messaggio di pos...</span>
 					</td>
-																	<td class="cella-griglia" width="10%">28/04/2026 09:15:21</td>
-																	<td class="cella-griglia" width="10%">Sistema  </td>
+																	<td class="cella-griglia" width="10%">28/04/2026 10:59:40</td>
+																	<td class="cella-griglia" width="10%">BILLITTERI MARIA</td>
 																</tr>
 																															</tbody></table>
 															<br>
@@ -1994,13 +1668,13 @@ e richiesta consuntivo delle spese</label>
 																																				
 																																						<tr>
 														<td valign="top" colspan="2">
-															<a href="#" onclick="downloadDoc('D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A3DCF8B765225EC9DACADCCB9E6DFC8FFBA2B3E5390513E33F6EEAE6B074DEE528BF63A741F716AC3996DA873CC47482DD974D23CE9048BD09CF873F1F2CFF0705')">Download documento originale</a>
+															<a href="#" onclick="downloadDoc('D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A357FD8F3BC79F84251E01FE4037E4B80710D78164C9228D7D2E4786B0FC91B7A3E2D119DC4A74AC0B8E0D9727A08C13EABCA137F43C5882AEC955D9ABB34DDF69')">Download documento originale</a>
 														</td>
 													</tr>
 																									
 																																						<tr>
 														<td valign="top" colspan="2">
-															<a href="#" onclick="downloadDoc('D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A3DCF8B765225EC9DACADCCB9E6DFC8FFBBF8B4881E1CEF9B5A221CA8123ED343B493FFD47F6125074A47B294D8CF941F1D721D4C56DE6D6402784FFBDF032CB60')">Download documento protocollato</a>
+															<a href="#" onclick="downloadDoc('D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A357FD8F3BC79F84251E01FE4037E4B807E8357E6FC200FDEB46ED19A758A77B79B2CF2CE5DEAFE3220318C8CE28A5FC464AC18E12CEB4B44303BBE1EECB7CB071')">Download documento protocollato</a>
 														</td>
 													</tr>
 																									
@@ -2019,7 +1693,7 @@ e richiesta consuntivo delle spese</label>
 					<iframe id="signatures" src="common/empty.html" scrolling="auto" marginheight="0" marginwidth="0" frameborder="0" width="100%" height="100%"></iframe>
 				</div>
 
-										<iframe id="documento" title="frameDoc" style="height:100%;" src="docviewer?id=D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A3DCF8B765225EC9DACADCCB9E6DFC8FFBBF8B4881E1CEF9B5A221CA8123ED343B493FFD47F6125074A47B294D8CF941F1D721D4C56DE6D6402784FFBDF032CB60&amp;sqi=7E2228949BC12DF40B4FBCC50BEDF7B0&amp;flag=false&amp;isDatiSensibili=false" marginheight="0" marginwidth="0" width="100%" frameborder="0"></iframe>
+										<iframe id="documento" title="frameDoc" style="height:100%;" src="docviewer?id=D438D846549AC3AF20B5B3DB00A6A6F3A8365FD2227957D5BEB3C03B849EB8A357FD8F3BC79F84251E01FE4037E4B807E8357E6FC200FDEB46ED19A758A77B79B2CF2CE5DEAFE3220318C8CE28A5FC464AC18E12CEB4B44303BBE1EECB7CB071&amp;sqi=934916232DDC80DA0C05A30C716E60EE&amp;flag=false&amp;isDatiSensibili=false" marginheight="0" marginwidth="0" width="100%" frameborder="0"></iframe>
 													</td>
 			</tr>
 		</tbody></table>
@@ -2066,20 +1740,20 @@ e richiesta consuntivo delle spese</label>
 		}
 
 		function savePubblicatoFromFascicolo() {
-				 var strUrl = "elencoSelDocumenti.do?cmd=salvaModificaPubblicato&popup=true&idDocProt=54270976&idFolder=$formVisualizzaDocumento.SecureIdFolder.toString()";
+				 var strUrl = "elencoSelDocumenti.do?cmd=salvaModificaPubblicato&popup=true&idDocProt=54276756&idFolder=$formVisualizzaDocumento.SecureIdFolder.toString()";
 				 strUrl = replaceAllSpace(strUrl);
 				 window.opener.intializeGrid("$formVisualizzaDocumento.SecureIdFolder");
 				 window.location = strUrl;
 		}
 
 		function savePubblicato() {
-				 var strUrl = "elencoSelDocumenti.do?cmd=salvaModificaPubblicato&idDocProt=54270976&secureId=54565153555F505E&registroName=REGISTRO UFFICIALE&banner=false&time=1777445460980";
+				 var strUrl = "elencoSelDocumenti.do?cmd=salvaModificaPubblicato&idDocProt=54276756&secureId=545651535351525E&registroName=REGISTRO UFFICIALE&banner=false&time=1777460375708";
 				 strUrl = replaceAllSpace(strUrl);
 				 window.location = strUrl;
 		}
 
 		function submitAnnullaDoc(){
-				var strUrl = "visualizzaDocumento.do?cmd=apriAnnulla&idDocProt=54270976&secureId=54565153555F505E&idAssegnazionePerDettaglio=&presaInCarico=$presaInCarico";
+				var strUrl = "visualizzaDocumento.do?cmd=apriAnnulla&idDocProt=54276756&secureId=545651535351525E&idAssegnazionePerDettaglio=&presaInCarico=$presaInCarico";
 				strUrl = replaceAllSpace(strUrl);
 				window.location = strUrl;
 		}
@@ -2106,12 +1780,12 @@ e richiesta consuntivo delle spese</label>
 
 
 	function documentoConforme() {
-				 window.location="visualizzaDocumento.do?cmd=conformita&secureId=54565153555F505E&secureIdFolder=";
+				 window.location="visualizzaDocumento.do?cmd=conformita&secureId=545651535351525E&secureIdFolder=";
 		}
 
 
 	function documentoConformeAllegati(id) {
-				 window.location="visualizzaDocumento.do?cmd=conformita&secureId=54565153555F505E&secureIdFolder=&idAllegato="+id;
+				 window.location="visualizzaDocumento.do?cmd=conformita&secureId=545651535351525E&secureIdFolder=&idAllegato="+id;
 		}
 	</script>
 
@@ -2134,8 +1808,14 @@ e richiesta consuntivo delle spese</label>
           <span>scadenza</span>
         </label>
 
-        <div class="date-wrap" id="dateWrap">
+        <div class="date-wrap show" id="dateWrap">
           <input type="date" id="dataScadenza" class="date-input" aria-label="Scegli una data" title="Scegli una data">
+        </div>
+
+        <div id="boxTipoDocumento" style="display:none;">
+          <select id="tipoDocumento" class="date-input">
+            <option value="">Tipo documento</option>
+          </select>
         </div>
 
         <button class="btn">Aquisisci</button>

@@ -4,6 +4,7 @@ from pathlib import Path
 import json
 import traceback
 from datetime import datetime
+import pyodbc
 
 from estrai_protocollo import estrai_dati_nodo
 from salva_access import salva_protocollo_access
@@ -18,6 +19,14 @@ DATI_DIR.mkdir(exist_ok=True)
 FILE_HTML = DATI_DIR / "pagina_protocollo.html"
 FILE_JSON = DATI_DIR / "ultimo_protocollo.json"
 FILE_LOG = DATI_DIR / "errore_server.txt"
+DB_ACCESS = r"D:\OneDrive\FunTecVVF\Sviluppo\SoluzioniOperative\BackEnd_Access\ProtocolloMonitor.accdb"
+
+def get_connessione_access():
+    conn_str = (
+        r"DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};"
+        rf"DBQ={DB_ACCESS};"
+    )
+    return pyodbc.connect(conn_str)
 
 
 def scrivi_log(testo):
@@ -89,6 +98,79 @@ def ricevi_html():
             "errore": str(e),
             "dettaglio": dettaglio
         }), 500
+
+@app.route("/liste/tipologia-documento", methods=["POST"])
+def liste_tipologia_documento():
+
+    try:
+        data = request.get_json(force=True)
+        titolo_pagina = data.get("titoloPagina", "").strip()
+
+        scrivi_log("Richiesta lista tipologia documento")
+        scrivi_log(f"TitoloPagina: {titolo_pagina}")
+
+        sql = """
+        SELECT
+            L_ValoriLista.IDValore,
+            L_ValoriLista.DescrizioneValore
+        FROM
+            ((L_ModuliApplicativi
+            INNER JOIN L_AmbitiOperativi
+                ON L_ModuliApplicativi.IDModulo = L_AmbitiOperativi.IDModulo)
+            INNER JOIN L_ListeContesto
+                ON L_AmbitiOperativi.IDAmbito = L_ListeContesto.IDAmbito)
+            INNER JOIN L_ValoriLista
+                ON L_ListeContesto.IDLista = L_ValoriLista.IDLista
+        WHERE
+            L_ModuliApplicativi.CodiceModulo='PROTOCOLLO_MONITOR'
+            AND ?
+                LIKE L_AmbitiOperativi.CodiceAmbito & '*'
+            AND L_ListeContesto.CodiceCampo='tipologia_documento'
+            AND L_ValoriLista.Attivo=True
+        ORDER BY
+            L_ValoriLista.[Ordine]
+        """
+
+        conn = get_connessione_access()
+        cur = conn.cursor()
+
+        cur.execute(sql, (titolo_pagina,))
+
+        righe = cur.fetchall()
+
+        valori = []
+
+        for r in righe:
+            valori.append({
+                "idValore": r.IDValore,
+                "descrizioneValore": r.DescrizioneValore
+            })
+
+        cur.close()
+        conn.close()
+
+        scrivi_log(f"Valori trovati: {len(valori)}")
+
+        return jsonify({
+            "success": True,
+            "valori": valori
+        })
+
+    except Exception as e:
+
+        dettaglio = traceback.format_exc()
+
+        scrivi_log("ERRORE lista tipologia documento")
+        scrivi_log(str(e))
+        scrivi_log(dettaglio)
+
+        return jsonify({
+            "success": False,
+            "errore": str(e),
+            "valori": []
+        }), 500
+
+
 
 @app.route("/ping", methods=["GET"])
 def ping():
