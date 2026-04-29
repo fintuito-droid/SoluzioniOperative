@@ -19,7 +19,9 @@ DATI_DIR.mkdir(exist_ok=True)
 FILE_HTML = DATI_DIR / "pagina_protocollo.html"
 FILE_JSON = DATI_DIR / "ultimo_protocollo.json"
 FILE_LOG = DATI_DIR / "errore_server.txt"
+
 DB_ACCESS = r"D:\OneDrive\FunTecVVF\Sviluppo\SoluzioniOperative\BackEnd_Access\ProtocolloMonitor.accdb"
+
 
 def get_connessione_access():
     conn_str = (
@@ -48,6 +50,7 @@ def ricevi_html():
 
         da_lavorare = bool(flags.get("daLavorare", False))
         data_scadenza = flags.get("data")
+        tipologia_documento = flags.get("tipoDocumento")
 
         scrivi_log(f"URL: {url}")
         scrivi_log(f"Lunghezza HTML: {len(html)}")
@@ -63,7 +66,7 @@ def ricevi_html():
         dati["url_sorgente"] = url
         dati["daLavorare"] = da_lavorare
         dati["dataScadenza"] = data_scadenza
-
+        dati["tipologia_documento"] = tipologia_documento
 
         scrivi_log(f"Oggetto: {dati.get('oggetto', '')}")
         scrivi_log(f"Modalita: {dati.get('modalita', '')}")
@@ -76,7 +79,12 @@ def ricevi_html():
         )
         scrivi_log(f"JSON salvato in: {FILE_JSON}")
 
+        dati["tipologia_documento"] = tipologia_documento
+
+        scrivi_log(f"TIPOLOGIA PRIMA DI ACCESS: {dati.get('tipologia_documento')}")
+
         id_protocollo = salva_protocollo_access(dati)
+
         scrivi_log(f"Salvato in Access. IDProtocollo = {id_protocollo}")
 
         return jsonify({
@@ -93,13 +101,88 @@ def ricevi_html():
         scrivi_log("=== ERRORE NEL SERVER ===")
         scrivi_log(str(e))
         scrivi_log(dettaglio)
+
         return jsonify({
             "ok": False,
             "errore": str(e),
             "dettaglio": dettaglio
         }), 500
 
+
 @app.route("/liste/tipologia-documento", methods=["POST"])
+def liste_tipologia_documento():
+
+    try:
+        data = request.get_json(force=True)
+        titolo_pagina = data.get("titoloPagina", "").strip()
+
+        conn = get_connessione_access()
+        cur = conn.cursor()
+
+        cur.execute("""
+            SELECT IDModulo
+            FROM L_ModuliApplicativi
+            WHERE CodiceModulo='PROTOCOLLO_MONITOR'
+        """)
+
+        row = cur.fetchone()
+        if not row:
+            return jsonify({"success": True, "valori": []})
+
+        id_modulo = row.IDModulo
+
+        cur.execute("""
+            SELECT IDAmbito, CodiceAmbito
+            FROM L_AmbitiOperativi
+            WHERE IDModulo=?
+        """, (id_modulo,))
+
+        id_ambito = None
+
+        for r in cur.fetchall():
+            if r.CodiceAmbito in titolo_pagina:
+                id_ambito = r.IDAmbito
+                break
+
+        if not id_ambito:
+            return jsonify({"success": True, "valori": []})
+
+        cur.execute("""
+            SELECT V.IDValore, V.DescrizioneValore
+            FROM L_ListeContesto LC
+            INNER JOIN L_ValoriLista V
+                ON LC.IDLista = V.IDLista
+            WHERE
+                LC.IDModulo=?
+                AND LC.IDAmbito=?
+                AND LC.CodiceCampo='tipologia_documento'
+                AND LC.Attiva=True
+                AND V.Attivo=True
+            ORDER BY V.[Ordine]
+        """, (id_modulo, id_ambito))
+
+        valori = []
+
+        for r in cur.fetchall():
+            valori.append({
+                "idValore": r.IDValore,
+                "descrizioneValore": r.DescrizioneValore
+            })
+
+        cur.close()
+        conn.close()
+
+        return jsonify({
+            "success": True,
+            "valori": valori
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "errore": str(e),
+            "valori": []
+        }), 500
 def liste_tipologia_documento():
 
     try:
@@ -135,7 +218,6 @@ def liste_tipologia_documento():
         cur = conn.cursor()
 
         cur.execute(sql, (titolo_pagina,))
-
         righe = cur.fetchall()
 
         valori = []
@@ -171,10 +253,10 @@ def liste_tipologia_documento():
         }), 500
 
 
-
 @app.route("/ping", methods=["GET"])
 def ping():
     return "OK"
+
 
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=True, use_reloader=False)

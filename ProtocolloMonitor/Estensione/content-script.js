@@ -23,9 +23,10 @@
   }
 
   async function chiudiFinestraAssistente() {
-    const risposta = await inviaMessaggioRuntime({ type: "CHIUDI_FINESTRA_ASSISTENTE" });
+    const risposta = await inviaMessaggioRuntime({
+      type: "CHIUDI_FINESTRA_ASSISTENTE"
+    });
 
-    // fallback nel caso il background non chiuda la finestra
     if (!risposta || risposta.ok !== true) {
       try {
         window.close();
@@ -36,7 +37,6 @@
   }
 
   try {
-    // Richiede subito la massimizzazione finestra
     await inviaMessaggioRuntime({ type: "MASSIMIZZA_FINESTRA" });
 
     const htmlUrl = chrome.runtime.getURL("grisu_assistente_menu_operativo.html");
@@ -46,7 +46,6 @@
     const parser = new DOMParser();
     const doc = parser.parseFromString(htmlText, "text/html");
 
-    // Inietta lo style una sola volta
     const styleEl = doc.querySelector("style");
     if (styleEl && !document.getElementById("grisu-style-injected")) {
       const s = document.createElement("style");
@@ -55,7 +54,6 @@
       document.head.appendChild(s);
     }
 
-    // Inietta solo i nodi utili
     const grisuNode = doc.getElementById("grisu");
     const overlayNode = doc.getElementById("overlay");
 
@@ -76,6 +74,8 @@
     const chkLavorare = document.getElementById("chkLavorare");
     const dateWrap = document.getElementById("dateWrap");
     const dataScadenza = document.getElementById("dataScadenza");
+    const boxTipoDocumento = document.getElementById("boxTipoDocumento");
+    const tipoDocumento = document.getElementById("tipoDocumento");
 
     const acquisisciBtn = overlay.querySelector(".btn");
     const chiudiBtn = overlay.querySelector(".close-btn");
@@ -157,10 +157,68 @@
       }
     }
 
+    function getTitoloPaginaFolium() {
+      const el = document.querySelector(".titolo-pagina");
+      return el ? el.textContent.trim() : document.title;
+    }
+
+    async function caricaTipologiaDocumento() {
+      console.log("CHIAMO FLASK PER LISTA TIPO DOCUMENTO");
+
+      if (!boxTipoDocumento || !tipoDocumento) {
+        console.error("Elementi tipo documento non trovati nel popup.");
+        return;
+      }
+
+      const titoloPagina = getTitoloPaginaFolium();
+      console.log("TitoloPagina Folium:", titoloPagina);
+
+      boxTipoDocumento.style.display = "none";
+      tipoDocumento.innerHTML = '<option value="">Tipo documento</option>';
+
+      try {
+        const response = await fetch(
+          "http://127.0.0.1:5000/liste/tipologia-documento",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              titoloPagina: titoloPagina
+            })
+          }
+        );
+
+        console.log("Status risposta Flask:", response.status);
+
+        const data = await response.json();
+        console.log("Risposta lista tipologia documento:", data);
+
+        if (!data.success || !data.valori || data.valori.length === 0) {
+          return;
+        }
+
+        data.valori.forEach(v => {
+          const op = document.createElement("option");
+          op.value = v.idValore;
+          op.textContent = v.descrizioneValore;
+          tipoDocumento.appendChild(op);
+        });
+
+        boxTipoDocumento.style.display = "block";
+
+      } catch (err) {
+        console.error("Errore caricamento tipologie documento:", err);
+      }
+    }
+
     function openPopup() {
       isOpen = true;
       overlay.classList.add("show");
       overlay.setAttribute("aria-hidden", "false");
+
+      caricaTipologiaDocumento();
     }
 
     function closePopup() {
@@ -178,25 +236,31 @@
     }
 
     async function acquisisciDati() {
-      const payload = {
-        daLavorare: chkLavorare.checked,
-        scadenza: chkScadenza.checked,
-        data: chkScadenza.checked ? (dataScadenza.value || null) : null
-      };
+  const tipoDocumentoTesto =
+    tipoDocumento && tipoDocumento.value
+      ? tipoDocumento.options[tipoDocumento.selectedIndex].text.trim()
+      : null;
 
-      const htmlCorrente = document.documentElement.outerHTML;
+    const payload = {
+      daLavorare: chkLavorare.checked,
+      scadenza: chkScadenza.checked,
+      data: chkScadenza.checked ? (dataScadenza.value || null) : null,
+      tipoDocumento: tipoDocumentoTesto
+    };
 
-      closePopup();
+  const htmlCorrente = document.documentElement.outerHTML;
 
-      await inviaMessaggioRuntime({
-        type: "INVIA_HTML_A_FLASK",
-        url: window.location.href,
-        html: htmlCorrente,
-        flags: payload
-      });
+  closePopup();
 
-      await chiudiFinestraAssistente();
-    }
+  await inviaMessaggioRuntime({
+    type: "INVIA_HTML_A_FLASK",
+    url: window.location.href,
+    html: htmlCorrente,
+    flags: payload
+  });
+
+  await chiudiFinestraAssistente();
+}
 
     setPeekImage();
     aggiornaDataWrap();
@@ -247,6 +311,7 @@
 
     console.log("Assistente Grisù iniettato correttamente");
     console.log("Finestra richiesta a schermo intero. Lo scraping parte solo al click su 'Acquisisci'.");
+
   } catch (err) {
     console.error("Errore iniezione assistente:", err);
   }

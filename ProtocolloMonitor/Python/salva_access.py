@@ -41,6 +41,7 @@ def inserisci_padre(cursor, dati: dict) -> int:
     chiave = crea_chiave_univoca(dati)
     da_lavorare = -1 if bool(dati.get("daLavorare", False)) else 0
     data_scadenza_raw = dati.get("dataScadenza")
+    nz(dati.get("tipologia_documento"))
 
     if data_scadenza_raw:
         data_scadenza = datetime.strptime(data_scadenza_raw, "%Y-%m-%d")
@@ -74,9 +75,10 @@ def inserisci_padre(cursor, dati: dict) -> int:
         DataAcquisizione,
         ChiaveUnivoca,
         DaLavorare,
-        dataScadenza
+        dataScadenza,
+        TipologiaDocumento
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """
 
     cursor.execute(
@@ -99,7 +101,8 @@ def inserisci_padre(cursor, dati: dict) -> int:
         datetime.now(),
         chiave,
         da_lavorare,
-        data_scadenza
+        data_scadenza,
+        nz(dati.get("tipologia_documento"))
     )
 
     row = cursor.execute("SELECT @@IDENTITY").fetchone()
