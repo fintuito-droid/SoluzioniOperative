@@ -20,7 +20,7 @@ FILE_HTML = DATI_DIR / "pagina_protocollo.html"
 FILE_JSON = DATI_DIR / "ultimo_protocollo.json"
 FILE_LOG = DATI_DIR / "errore_server.txt"
 
-DB_ACCESS = r"D:\OneDrive\FunTecVVF\Sviluppo\SoluzioniOperative\BackEnd_Access\ProtocolloMonitor.accdb"
+DB_ACCESS = r"G:\ProtocolloMonitor.accdb"
 
 
 def get_connessione_access():

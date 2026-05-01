@@ -2,7 +2,7 @@ import pyodbc
 from datetime import datetime
 
 
-DB_PATH = r"D:\OneDrive\FunTecVVF\Sviluppo\SoluzioniOperative\BackEnd_Access\ProtocolloMonitor.accdb"
+DB_PATH = r"G:\ProtocolloMonitor.accdb"
 
 
 def connessione_access():
@@ -69,16 +69,13 @@ def inserisci_padre(cursor, dati: dict) -> int:
         Operatore,
         LivelloRiservatezza,
         UrlSorgente,
-        TokenDocOriginale,
-        TokenDocProtocollato,
-        IframeDocumentoSrc,
         DataAcquisizione,
         ChiaveUnivoca,
         DaLavorare,
         dataScadenza,
         TipologiaDocumento
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """
 
     cursor.execute(
@@ -95,9 +92,6 @@ def inserisci_padre(cursor, dati: dict) -> int:
         nz(dati.get("operatore")),
         nz(dati.get("livello_riservatezza")),
         nz(dati.get("url_sorgente")),
-        nz(dati.get("documento_originale_token")),
-        nz(dati.get("documento_protocollato_token")),
-        nz(dati.get("iframe_documento_src")),
         datetime.now(),
         chiave,
         da_lavorare,

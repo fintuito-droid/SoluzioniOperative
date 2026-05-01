@@ -33,7 +33,7 @@ chrome.webNavigation.onCompleted.addListener(async (details) => {
       } catch (err) {
         console.error("Errore inject script:", err);
       }
-    }, 2000);
+    }, 50);
 
     tabTimers.set(details.tabId, timer);
   } catch (err) {

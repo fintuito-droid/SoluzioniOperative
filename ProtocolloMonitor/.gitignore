@@ -19,6 +19,7 @@ Desktop.ini
 
 # VS Code
 .vscode/
+*.code-workspace
 
 # Backup
 *.bak

@@ -4,6 +4,18 @@
 
   if (document.getElementById("grisu")) return;
 
+  const VALORI_TIPO_DOCUMENTO_UFFICIO_GARE = [
+    "Preventivo",
+    "POA",
+    "VdC",
+    "Ispezione",
+    "Rendiconto",
+    "Determina",
+    "Contratto",
+    "Consuntivo",
+    "Richiesta preventivo"
+  ];
+
   function inviaMessaggioRuntime(payload) {
     return new Promise((resolve) => {
       try {
@@ -34,6 +46,41 @@
         console.error("Impossibile chiudere la finestra con window.close():", err);
       }
     }
+  }
+
+  function normalizzaTesto(testo) {
+    return (testo || "")
+      .toString()
+      .replace(/\s+/g, " ")
+      .trim()
+      .toUpperCase();
+  }
+
+  function paginaContieneUfficioGare() {
+    const divAssegnazioni = document.getElementById("divAssegnazioni");
+
+    if (!divAssegnazioni) {
+      console.log("divAssegnazioni non trovato.");
+      return false;
+    }
+
+    const righe = divAssegnazioni.querySelectorAll("table.griglia tr");
+
+    for (const riga of righe) {
+      const celle = riga.querySelectorAll("td.cella-griglia");
+
+      if (celle.length === 0) continue;
+
+      const assegnatario = normalizzaTesto(celle[0].innerText);
+
+      console.log("Assegnatario controllato:", assegnatario);
+
+      if (assegnatario === "UFFICIO GARE") {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   try {
@@ -157,60 +204,29 @@
       }
     }
 
-    function getTitoloPaginaFolium() {
-      const el = document.querySelector(".titolo-pagina");
-      return el ? el.textContent.trim() : document.title;
-    }
-
-    async function caricaTipologiaDocumento() {
-      console.log("CHIAMO FLASK PER LISTA TIPO DOCUMENTO");
-
+    function caricaTipologiaDocumento() {
       if (!boxTipoDocumento || !tipoDocumento) {
         console.error("Elementi tipo documento non trovati nel popup.");
         return;
       }
 
-      const titoloPagina = getTitoloPaginaFolium();
-      console.log("TitoloPagina Folium:", titoloPagina);
-
       boxTipoDocumento.style.display = "none";
       tipoDocumento.innerHTML = '<option value="">Tipo documento</option>';
 
-      try {
-        const response = await fetch(
-          "http://127.0.0.1:5000/liste/tipologia-documento",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              titoloPagina: titoloPagina
-            })
-          }
-        );
-
-        console.log("Status risposta Flask:", response.status);
-
-        const data = await response.json();
-        console.log("Risposta lista tipologia documento:", data);
-
-        if (!data.success || !data.valori || data.valori.length === 0) {
-          return;
-        }
-
-        data.valori.forEach(v => {
-          const op = document.createElement("option");
-          op.value = v.idValore;
-          op.textContent = v.descrizioneValore;
-          tipoDocumento.appendChild(op);
-        });
-
-        boxTipoDocumento.style.display = "block";
-
-      } catch (err) {
-        console.error("Errore caricamento tipologie documento:", err);
+      if (!paginaContieneUfficioGare()) {
+        console.log("UFFICIO GARE non trovato: tendina tipo documento nascosta.");
+        return;
       }
+
+      VALORI_TIPO_DOCUMENTO_UFFICIO_GARE.forEach(v => {
+        const op = document.createElement("option");
+        op.value = v;
+        op.textContent = v;
+        tipoDocumento.appendChild(op);
+      });
+
+      boxTipoDocumento.style.display = "block";
+      console.log("UFFICIO GARE trovato: tendina tipo documento mostrata.");
     }
 
     function openPopup() {
@@ -236,31 +252,31 @@
     }
 
     async function acquisisciDati() {
-  const tipoDocumentoTesto =
-    tipoDocumento && tipoDocumento.value
-      ? tipoDocumento.options[tipoDocumento.selectedIndex].text.trim()
-      : null;
+      const tipoDocumentoTesto =
+        tipoDocumento && tipoDocumento.value
+          ? tipoDocumento.options[tipoDocumento.selectedIndex].text.trim()
+          : null;
 
-    const payload = {
-      daLavorare: chkLavorare.checked,
-      scadenza: chkScadenza.checked,
-      data: chkScadenza.checked ? (dataScadenza.value || null) : null,
-      tipoDocumento: tipoDocumentoTesto
-    };
+      const payload = {
+        daLavorare: chkLavorare.checked,
+        scadenza: chkScadenza.checked,
+        data: chkScadenza.checked ? (dataScadenza.value || null) : null,
+        tipoDocumento: tipoDocumentoTesto
+      };
 
-  const htmlCorrente = document.documentElement.outerHTML;
+      const htmlCorrente = document.documentElement.outerHTML;
 
-  closePopup();
+      closePopup();
 
-  await inviaMessaggioRuntime({
-    type: "INVIA_HTML_A_FLASK",
-    url: window.location.href,
-    html: htmlCorrente,
-    flags: payload
-  });
+      await inviaMessaggioRuntime({
+        type: "INVIA_HTML_A_FLASK",
+        url: window.location.href,
+        html: htmlCorrente,
+        flags: payload
+      });
 
-  await chiudiFinestraAssistente();
-}
+      await chiudiFinestraAssistente();
+    }
 
     setPeekImage();
     aggiornaDataWrap();
@@ -310,7 +326,7 @@
     peekInterval = setInterval(peek, 10000);
 
     console.log("Assistente Grisù iniettato correttamente");
-    console.log("Finestra richiesta a schermo intero. Lo scraping parte solo al click su 'Acquisisci'.");
+    console.log("Tendina tipo documento gestita lato frontend su divAssegnazioni.");
 
   } catch (err) {
     console.error("Errore iniezione assistente:", err);
