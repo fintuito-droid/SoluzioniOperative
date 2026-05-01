@@ -44,13 +44,13 @@ def ricevi_html():
         scrivi_log("Richiesta ricevuta")
 
         data = request.get_json(force=True)
+
         html = data.get("html", "")
         url = data.get("url", "")
-        flags = data.get("flags", {}) if data else {}
 
-        da_lavorare = bool(flags.get("daLavorare", False))
-        data_scadenza = flags.get("data")
-        tipologia_documento = flags.get("tipoDocumento")
+        da_lavorare = bool(data.get("daLavorare", False))
+        data_scadenza = data.get("dataScadenza")
+        tipologia_documento = data.get("tipoDocumento")
 
         scrivi_log(f"URL: {url}")
         scrivi_log(f"Lunghezza HTML: {len(html)}")

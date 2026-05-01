@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Protocollo VVF Monitor",
-  "version": "1.0",
-  "description": "Monitora le schede del protocollo, mostra Grisù e avvia lo scraping automatico",
+  "version": "2.0",
+  "description": "Monitora le schede del protocollo e mostra Grisù v2",
   "permissions": [
     "tabs",
     "webNavigation",
@@ -17,12 +17,23 @@
   "background": {
     "service_worker": "background.js"
   },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://protocollo.dipvvf.it/*"
+      ],
+      "js": [
+        "content-script.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
   "web_accessible_resources": [
     {
       "resources": [
-        "grisu_assistente_menu_operativo.html",
-        "grisu_piccolo.png",
-        "grisu_fly.png"
+        "grisu-v2/dist/index.html",
+        "grisu-v2/dist/assets/*",
+        "grisu-v2/dist/img/*"
       ],
       "matches": [
         "https://protocollo.dipvvf.it/*"

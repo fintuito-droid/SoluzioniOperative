@@ -6,6 +6,20 @@ const URL_PREFIX_2 =
 
 const tabTimers = new Map();
 
+async function massimizzaFinestraDaTab(tabId) {
+  try {
+    const tab = await chrome.tabs.get(tabId);
+    if (!tab || typeof tab.windowId !== "number") return;
+
+    await chrome.windows.update(tab.windowId, {
+      state: "maximized",
+      focused: true
+    });
+  } catch (err) {
+    console.error("Errore massimizzazione finestra:", err);
+  }
+}
+
 chrome.webNavigation.onCompleted.addListener(async (details) => {
   if (details.frameId !== 0) return;
 
@@ -26,21 +40,32 @@ chrome.webNavigation.onCompleted.addListener(async (details) => {
 
     const timer = setTimeout(async () => {
       try {
+        await massimizzaFinestraDaTab(details.tabId);
+
+        await new Promise(resolve => setTimeout(resolve, 900));
+
         await chrome.scripting.executeScript({
           target: { tabId: details.tabId },
           files: ["content-script.js"]
         });
+
       } catch (err) {
-        console.error("Errore inject script:", err);
+        console.error("Errore massimizzazione/inject script:", err);
       }
     }, 50);
 
     tabTimers.set(details.tabId, timer);
+
   } catch (err) {
     console.error("Errore monitoraggio tab:", err);
   }
 }, {
-  url: [{ hostEquals: "protocollo.dipvvf.it", pathPrefix: "/folium/visualizzaDocumento.do" }]
+  url: [
+    {
+      hostEquals: "protocollo.dipvvf.it",
+      pathPrefix: "/folium/visualizzaDocumento.do"
+    }
+  ]
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => {
@@ -49,20 +74,6 @@ chrome.tabs.onRemoved.addListener((tabId) => {
     tabTimers.delete(tabId);
   }
 });
-
-async function massimizzaFinestraDaTab(tabId) {
-  try {
-    const tab = await chrome.tabs.get(tabId);
-    if (!tab || typeof tab.windowId !== "number") return;
-
-    await chrome.windows.update(tab.windowId, {
-      state: "maximized",
-      focused: true
-    });
-  } catch (err) {
-    console.error("Errore massimizzazione finestra:", err);
-  }
-}
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "INVIA_HTML_A_FLASK") {
@@ -95,7 +106,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
-    if (message.type === "MASSIMIZZA_FINESTRA") {
+  if (message.type === "MASSIMIZZA_FINESTRA") {
     const tabId = sender?.tab?.id;
 
     if (typeof tabId !== "number") {
@@ -109,6 +120,4 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     return true;
   }
-
-
 });
