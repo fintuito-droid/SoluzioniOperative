@@ -72,7 +72,10 @@ if (window.__protocolloMonitorLoaded) {
     return false;
   }
 
-  function caricaGrisuV2() {
+function caricaGrisuV2() {
+
+  setTimeout(() => {
+
     const iframe = document.createElement("iframe");
 
     iframe.id = "grisu-v2-frame";
@@ -98,15 +101,17 @@ if (window.__protocolloMonitorLoaded) {
     document.body.appendChild(iframe);
 
     iframe.onload = function () {
-  iframe.contentWindow.postMessage({
-    source: "protocollo-monitor",
-    type: "CONFIG_GRISU",
-    mostraTipoDocumento: paginaContieneUfficioGare(),
-    valoriTipoDocumento: VALORI_TIPO_DOCUMENTO_UFFICIO_GARE
-  }, "*");
+      iframe.contentWindow.postMessage({
+        source: "protocollo-monitor",
+        type: "CONFIG_GRISU",
+        mostraTipoDocumento: paginaContieneUfficioGare(),
+        valoriTipoDocumento: VALORI_TIPO_DOCUMENTO_UFFICIO_GARE
+      }, "*");
+    };
 
-};
-  }
+  }, 500);
+
+}
 
   if (!window.__grisuV2Iniettato) {
     window.__grisuV2Iniettato = true;
@@ -129,8 +134,6 @@ if (window.__protocolloMonitorLoaded) {
       tipoDocumento: event.data.dati.tipoDocumento
     };
 
-    console.log("Payload Grisù v2:", payload);
-
     try {
       const response = await fetch("http://127.0.0.1:5000/ricevi-html", {
         method: "POST",
@@ -142,6 +145,11 @@ if (window.__protocolloMonitorLoaded) {
 
       const testo = await response.text();
       console.log("Risposta Flask:", testo);
+
+      chrome.runtime.sendMessage({
+        type: "CHIUDI_SCHEDA_CORRENTE"
+      });
+
     } catch (errore) {
       console.error("Errore invio Flask:", errore);
     }

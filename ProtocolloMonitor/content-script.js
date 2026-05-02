@@ -51,19 +51,20 @@ if (!window.__grisuV2Iniettato) {
   const iframe = document.createElement("iframe");
   iframe.id = "grisu-v2-frame";
   iframe.src = chrome.runtime.getURL("grisu-v2/dist/index.html");
-
+  console.log("SRC IFRAME GRISU:", iframe.src);
   iframe.style.position = "fixed";
   iframe.style.top = "0";
   iframe.style.left = "0";
   iframe.style.width = "900px";
-  iframe.style.height = "260px";
+  iframe.style.height = "360px";
   iframe.style.border = "none";
   iframe.style.background = "transparent";
   iframe.style.zIndex = "2147483647";
-  iframe.style.overflow = "hidden";
+  iframe.style.overflow = "visible";
   iframe.style.pointerEvents = "auto";
 
   document.body.appendChild(iframe);
+  console.log("SRC IFRAME GRISU:", iframe.src);
 
   iframe.onload = () => {
     iframe.contentWindow.postMessage({

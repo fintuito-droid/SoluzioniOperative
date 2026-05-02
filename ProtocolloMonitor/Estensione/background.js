@@ -120,4 +120,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     return true;
   }
+
+  if (message.type === "CHIUDI_SCHEDA_CORRENTE") {
+    const tabId = sender?.tab?.id;
+
+    if (typeof tabId !== "number") {
+      sendResponse({ ok: false, errore: "Tab ID non disponibile" });
+      return;
+    }
+
+    chrome.tabs.remove(tabId)
+      .then(() => sendResponse({ ok: true }))
+      .catch((err) => sendResponse({ ok: false, errore: String(err) }));
+
+    return true;
+  }
 });

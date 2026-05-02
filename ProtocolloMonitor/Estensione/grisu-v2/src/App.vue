@@ -141,7 +141,6 @@ async function acquisisci() {
 </script>
 
 <style scoped>
-
 :global(html),
 :global(body),
 :global(#app),
@@ -151,52 +150,62 @@ async function acquisisci() {
   background: transparent !important;
   background-color: transparent !important;
 }
+
 .stage {
-  --grisu-size-idle: clamp(80px, 6vw, 105px);
-  --grisu-size-active: clamp(105px, 8vw, 140px);
+  /* DIMENSIONI */
+  --grisu-size-idle: clamp(102px, 6.6vw, 144px);
+  --grisu-size-active: clamp(114px, 7.2vw, 162px);;
 
-  --zona-alta: 6vh;
-
-  --zona-sinistra-nascosta: 10px;
-  --zona-sinistra-visibile: 30px;
-
+  /* POSIZIONI */
+  --zona-alta: 1vh;
+  --zona-sinistra-nascosta: -40px;
+  --zona-sinistra-visibile: 0px;
   --zona-centro: 34vw;
   --zona-pannello: calc(var(--zona-centro) + var(--grisu-size-active) + 1.5vw);
+  --zona-uscita-destra: 108vw;
 
-  --zona-uscita-destra: 125vw;
+  /* TEMPI */
+  --tempo-peek: 6s;
+  --tempo-volo: 0.85s;
+  --tempo-uscita: 1.15s;
 
   min-height: 100vh;
-  background: transparent !important;
-  background-color: transparent !important;
   position: relative;
   overflow: visible;
-
+  background: transparent !important;
+  background-color: transparent !important;
   pointer-events: auto;
 }
 
+/* =========================
+   GRISÙ
+   ========================= */
+
 .grisu-zone {
   position: fixed;
+  top: var(--zona-alta);
+  left: var(--zona-sinistra-nascosta);
+  width: var(--grisu-size-idle);
+  height: var(--grisu-size-idle);
   z-index: 1000;
   cursor: pointer;
   pointer-events: auto;
 }
 
 .grisu-img {
-  width: 100%;
-  height: auto;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+  display: block;
   filter: drop-shadow(0 6px 10px rgba(0,0,0,0.25));
 }
 
 .grisu-zone.idle {
-  top: var(--zona-alta);
-  left: var(--zona-sinistra-nascosta);
-  width: var(--grisu-size-idle);
-  height: var(--grisu-size-idle);
-  animation: peek 5s ease-in-out infinite;
+  animation: peek var(--tempo-peek) ease-in-out infinite;
 }
 
 .grisu-zone.flying {
-  animation: flyToCenter 0.85s ease-out forwards;
+  animation: flyToCenter var(--tempo-volo) ease-out forwards;
 }
 
 .grisu-zone.arrived {
@@ -215,17 +224,21 @@ async function acquisisci() {
   left: var(--zona-centro);
   width: var(--grisu-size-active);
   height: var(--grisu-size-active);
-  animation: pushOut 1.15s cubic-bezier(0.45, 0, 0.55, 1) forwards;
+  animation: pushOut var(--tempo-uscita) cubic-bezier(0.45, 0, 0.55, 1) forwards;
 }
+
+/* =========================
+   PANNELLO
+   ========================= */
 
 .panel {
   position: fixed;
-  top: var(--zona-alta);
+  top: calc(var(--zona-alta) + 10vh);
   left: var(--zona-pannello);
 
   width: auto;
   min-width: 520px;
-  max-width: 720px;
+  max-width: 760px;
 
   border-radius: 18px;
   z-index: 999;
@@ -266,24 +279,27 @@ async function acquisisci() {
 }
 
 .type-field {
-  width: 180px;
+  width: 185px;
 }
 
 .acquisisci-btn {
   white-space: nowrap;
 }
 
-
 .panel.exiting {
-  animation: panelPushOut 1.15s cubic-bezier(0.45, 0, 0.55, 1) forwards;
+  animation: panelPushOut var(--tempo-uscita) cubic-bezier(0.45, 0, 0.55, 1) forwards;
 }
 
+/* =========================
+   ANIMAZIONI
+   ========================= */
+
 @keyframes peek {
-  0%,72%,100% {
+  0%, 60%, 100% {
     left: var(--zona-sinistra-nascosta);
   }
 
-  80%,100% {
+  72%, 88% {
     left: var(--zona-sinistra-visibile);
   }
 }
