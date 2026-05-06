@@ -141,9 +141,31 @@ def estrai_destinatari(soup):
         if len(tds) < 4:
             continue
 
-        destinatario = testo_cella(tds[0])
+        onmouseover = tds[0].get("onmouseover", "")
+
+        parametri = []
+        match = re.search(r"showTlpMittDest\((.*)\)", onmouseover)
+
+        if match:
+            contenuto = match.group(1)
+            parametri = re.findall(r"'([^']*)'", contenuto)
+
+        destinatario_visibile = testo_cella(tds[0])
+        email_visibile = testo_cella(tds[2])
+
+        destinatario = (
+            parametri[0].strip()
+            if len(parametri) > 0 and parametri[0].strip()
+            else destinatario_visibile
+        )
+
+        email = (
+            parametri[1].strip()
+            if len(parametri) > 1 and parametri[1].strip()
+            else email_visibile
+        )
+
         mezzo = testo_cella(tds[1])
-        email = testo_cella(tds[2])
 
         if not riga_destinatario_valida(destinatario, mezzo, email):
             continue

@@ -30,7 +30,20 @@ const routes = [
       title: 'Protocolli acquisiti',
       modulo: 'ProtocolloMonitor'
     }
+  },
+
+  {
+  path: '/protocollo-monitor/protocolli/:idProtocollo',
+  name: 'ProtocolloMonitorDettaglio',
+  component: () =>
+    import('../views/protocollo-monitor/ProtocolloDettaglioView.vue'),
+  meta: {
+    title: 'Dettaglio protocollo',
+    modulo: 'ProtocolloMonitor'
   }
+}
+
+  
 
 ]
 
@@ -54,6 +67,8 @@ const router = createRouter({
 router.afterEach((to) => {
   document.title = to.meta.title || 'SoluzioniOperative'
 })
+
+
 
 
 

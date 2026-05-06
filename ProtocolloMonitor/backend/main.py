@@ -179,3 +179,86 @@ def get_protocolli():
     conn.close()
 
     return records
+
+@app.get("/protocollo-monitor/protocolli/{id_protocollo}")
+def get_protocollo_dettaglio(id_protocollo: int):
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    # -----------------------------
+    # PROTOCOLLO PRINCIPALE
+    # -----------------------------
+    cursor.execute("""
+        SELECT *
+        FROM T_Protocolli
+        WHERE IDProtocollo = ?
+    """, id_protocollo)
+
+    row = cursor.fetchone()
+
+    if not row:
+        conn.close()
+        return {
+            "protocollo": None,
+            "assegnazioni": [],
+            "destinatari": [],
+            "firmatari": []
+        }
+
+    colonne = [column[0] for column in cursor.description]
+    protocollo = dict(zip(colonne, row))
+
+    # -----------------------------
+    # ASSEGNAZIONI
+    # -----------------------------
+    cursor.execute("""
+        SELECT *
+        FROM T_ProtocolloAssegnazioni
+        WHERE IDProtocollo = ?
+    """, id_protocollo)
+
+    colonne = [column[0] for column in cursor.description]
+    assegnazioni = [
+        dict(zip(colonne, r))
+        for r in cursor.fetchall()
+    ]
+
+    # -----------------------------
+    # DESTINATARI / MITTENTI
+    # -----------------------------
+    cursor.execute("""
+        SELECT *
+        FROM T_ProtocolloDestinatari
+        WHERE IDProtocollo = ?
+    """, id_protocollo)
+
+    colonne = [column[0] for column in cursor.description]
+    destinatari = [
+        dict(zip(colonne, r))
+        for r in cursor.fetchall()
+    ]
+
+    # -----------------------------
+    # FIRMATARI
+    # -----------------------------
+    cursor.execute("""
+        SELECT *
+        FROM T_ProtocolloFirmatari
+        WHERE IDProtocollo = ?
+    """, id_protocollo)
+
+    colonne = [column[0] for column in cursor.description]
+    firmatari = [
+        dict(zip(colonne, r))
+        for r in cursor.fetchall()
+    ]
+
+    conn.close()
+
+    return {
+        "protocollo": protocollo,
+        "assegnazioni": assegnazioni,
+        "destinatari": destinatari,
+        "firmatari": firmatari
+    }

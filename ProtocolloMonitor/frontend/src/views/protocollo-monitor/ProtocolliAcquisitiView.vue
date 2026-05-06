@@ -144,6 +144,17 @@
           {{ item.stato_pratica || 'NUOVA' }}
         </v-chip>
       </td>
+
+      <td>
+        <v-btn
+          size="small"
+          color="primary"
+          variant="tonal"
+          @click.stop="visualizzaProtocollo(item)"
+        >
+          Visualizza
+        </v-btn>
+      </td>
     </tr>
 
       <tr
@@ -158,6 +169,9 @@
       </tr>
 
   </template>
+
+  
+
 </v-data-table>
 
         </v-card>
@@ -358,7 +372,8 @@ const headers = [
   { title: 'modalità', key: 'modalita' },
   { title: 'da lavorare', key: 'da_lavorare' },
   { title: 'priorità', key: 'priorita' },
-  { title: 'stato', key: 'stato_pratica' }
+  { title: 'stato', key: 'stato_pratica' },
+  { title: 'Azioni', key: 'azioni', sortable: false}
 ]
 
 
@@ -463,6 +478,23 @@ function colorePriorita(valore) {
       return 'green'
   }
 }
+
+
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
+
+function visualizzaProtocollo(item) {
+
+  const id =
+    item.id_protocollo ||
+    item.IDProtocollo ||
+    item.idProtocollo
+
+  router.push(`/protocollo-monitor/protocolli/${id}`)
+}
+
+
 
 
 // ==========================================================================================
