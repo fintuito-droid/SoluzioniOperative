@@ -82,7 +82,7 @@ def ricevi_html():
 
         percorso_protocollato = salva_documento_protocollato_base64(
             data,
-            dati.get("numero_protocollo", "SENZA_PROTOCOLLO")
+            dati
         )
 
         dati["percorsoDocumentoProtocollato"] = percorso_protocollato
@@ -282,17 +282,74 @@ def pulisci_nome_file(testo):
 
 import base64
 
-def salva_documento_protocollato_base64(data, numero_protocollo):
+def salva_documento_protocollato_base64(data, dati_protocollo):
+    """
+    Salva il PDF protocollato una sola volta.
+    Se il file esiste già, restituisce il percorso esistente.
+    """
+
     base64_file = data.get("DocumentoProtocollatoBase64")
 
     if not base64_file:
         print("Nessun DocumentoProtocollatoBase64 ricevuto")
         return None
 
-    oggi = datetime.now()
-    anno = oggi.strftime("%Y")
-    mese = oggi.strftime("%m")
-    data_file = oggi.strftime("%Y%m%d")
+    # ========================================================
+    # DATI DOCUMENTO
+    # ========================================================
+
+    modalita = str(dati_protocollo.get("modalita", "")).upper()
+
+    if "ENTRATA" in modalita:
+        tipo = "E"
+    elif "USCITA" in modalita:
+        tipo = "U"
+    else:
+        tipo = "N"
+
+    comando = "DIR-SIC"
+    numero_protocollo = pulisci_nome_file(
+        dati_protocollo.get("numero_protocollo", "SENZA_PROTOCOLLO")
+    )
+
+    data_protocollo = dati_protocollo.get("data_protocollo")
+
+    # ========================================================
+    # DATA ISO YYYYMMDD
+    # ========================================================
+
+    data_iso = datetime.now().strftime("%Y%m%d")
+
+    if data_protocollo:
+        testo_data = str(data_protocollo)
+
+        for formato in ("%d/%m/%Y", "%Y-%m-%d", "%d-%m-%Y"):
+            try:
+                data_iso = datetime.strptime(
+                    testo_data,
+                    formato
+                ).strftime("%Y%m%d")
+                break
+            except:
+                pass
+
+    # ========================================================
+    # NOME FILE STANDARD DMS
+    # ========================================================
+
+    nome_file = (
+        f"{tipo}_"
+        f"{comando}_"
+        f"{numero_protocollo}_"
+        f"{data_iso}.pdf"
+    )
+
+    # ========================================================
+    # CARTELLA DESTINAZIONE
+    # ========================================================
+
+    anno = data_iso[:4]
+    mese = data_iso[4:6]
 
     cartella_destinazione = os.path.join(
         r"C:\Users\fintu\Documents\GitHub\SoluzioniOperative\ProtocolloMonitor\backend\FileServer",
@@ -302,15 +359,33 @@ def salva_documento_protocollato_base64(data, numero_protocollo):
 
     os.makedirs(cartella_destinazione, exist_ok=True)
 
-    nome_file = f"{pulisci_nome_file(numero_protocollo)}_{data_file}_PROTOCOLLATO.pdf"
-    percorso_file = os.path.join(cartella_destinazione, nome_file)
+    percorso_file = os.path.join(
+        cartella_destinazione,
+        nome_file
+    )
+
+    # ========================================================
+    # SE FILE GIÀ PRESENTE → RIUSO
+    # ========================================================
+
+    if os.path.exists(percorso_file):
+
+        print("Documento già esistente:")
+        print(percorso_file)
+
+        return percorso_file
+
+    # ========================================================
+    # SALVATAGGIO NUOVO FILE
+    # ========================================================
 
     contenuto = base64.b64decode(base64_file)
 
     with open(percorso_file, "wb") as f:
         f.write(contenuto)
 
-    print("Documento protocollato salvato in:", percorso_file)
+    print("Nuovo documento salvato:")
+    print(percorso_file)
 
     return percorso_file
 

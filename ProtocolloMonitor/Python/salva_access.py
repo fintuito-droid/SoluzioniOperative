@@ -2,8 +2,20 @@ import pyodbc
 from datetime import datetime
 
 
+# ============================================================
+# CONFIGURAZIONE DATABASE
+# ============================================================
+
 DB_PATH = r"G:\ProtocolloMonitor.accdb"
 
+# Per ora usiamo un utente fisso.
+# In futuro questo valore arriverà dal login della piattaforma.
+ID_UTENTE_CORRENTE = 1
+
+
+# ============================================================
+# CONNESSIONE ACCESS
+# ============================================================
 
 def connessione_access():
     conn_str = (
@@ -12,6 +24,10 @@ def connessione_access():
     )
     return pyodbc.connect(conn_str)
 
+
+# ============================================================
+# FUNZIONI DI UTILITÀ
+# ============================================================
 
 def nz(v, default=None):
     if v is None:
@@ -25,11 +41,78 @@ def nz(v, default=None):
     return v
 
 
+def normalizza_tipo_documento(dati: dict) -> str:
+    """
+    Converte la modalità del protocollo in:
+    E = Entrata
+    U = Uscita
+    """
+
+    modalita = str(nz(dati.get("modalita"), "")).upper()
+
+    if "ENTRATA" in modalita:
+        return "E"
+
+    if "USCITA" in modalita:
+        return "U"
+
+    return "N"
+
+
+def formatta_data_nome_file(data_protocollo) -> str:
+    """
+    Restituisce la data in formato ISO compatto YYYYMMDD.
+    """
+
+    if data_protocollo is None:
+        return datetime.now().strftime("%Y%m%d")
+
+    if isinstance(data_protocollo, datetime):
+        return data_protocollo.strftime("%Y%m%d")
+
+    testo = str(data_protocollo).strip()
+
+    for formato in ("%d/%m/%Y", "%Y-%m-%d", "%d-%m-%Y"):
+        try:
+            return datetime.strptime(testo, formato).strftime("%Y%m%d")
+        except ValueError:
+            pass
+
+    return testo.replace("/", "").replace("-", "")
+
+
 def crea_chiave_univoca(dati: dict) -> str:
+    """
+    Chiave storica usata da T_Protocolli.
+    Manteniamo questa logica per non rompere il sistema esistente.
+    """
+
     numero = nz(dati.get("numero_protocollo"))
     data = nz(dati.get("data_protocollo"))
     return f"{numero}|{data}"
 
+
+def crea_chiave_documento(dati: dict) -> str:
+    """
+    Chiave nuova per T_Documenti.
+    Deve identificare in modo stabile il documento protocollato.
+    """
+
+    tipo = normalizza_tipo_documento(dati)
+    comando = nz(dati.get("registro_sigla"), "ND")
+    numero = nz(dati.get("numero_protocollo"), "SENZA-PROT")
+    data = formatta_data_nome_file(nz(dati.get("data_protocollo")))
+
+    return f"{tipo}_{comando}_{numero}_{data}"
+
+
+def crea_nome_file_documento(dati: dict) -> str:
+    return crea_chiave_documento(dati) + ".pdf"
+
+
+# ============================================================
+# GESTIONE T_PROTOCOLLI - LOGICA ESISTENTE
+# ============================================================
 
 def cerca_id_protocollo(cursor, chiave_univoca: str):
     sql = "SELECT IDProtocollo FROM T_Protocolli WHERE ChiaveUnivoca = ?"
@@ -39,16 +122,14 @@ def cerca_id_protocollo(cursor, chiave_univoca: str):
 
 def inserisci_padre(cursor, dati: dict) -> int:
     chiave = crea_chiave_univoca(dati)
-    da_lavorare = -1 if bool(dati.get("daLavorare", False)) else 0
-    data_scadenza_raw = dati.get("dataScadenza")
-    nz(dati.get("tipologia_documento"))
 
+    da_lavorare = -1 if bool(dati.get("daLavorare", False)) else 0
+
+    data_scadenza_raw = dati.get("dataScadenza")
     if data_scadenza_raw:
         data_scadenza = datetime.strptime(data_scadenza_raw, "%Y-%m-%d")
     else:
         data_scadenza = None
-
-  
 
     id_esistente = cerca_id_protocollo(cursor, chiave)
     if id_esistente:
@@ -104,6 +185,118 @@ def inserisci_padre(cursor, dati: dict) -> int:
     row = cursor.execute("SELECT @@IDENTITY").fetchone()
     return int(row[0])
 
+
+# ============================================================
+# NUOVA GESTIONE T_DOCUMENTI
+# ============================================================
+
+def cerca_id_documento(cursor, chiave_documento: str):
+    sql = "SELECT id_documento FROM T_Documenti WHERE chiave_univoca = ?"
+    row = cursor.execute(sql, chiave_documento).fetchone()
+    return int(row[0]) if row else None
+
+
+def inserisci_o_recupera_documento(cursor, dati: dict) -> int:
+    """
+    Crea il record in T_Documenti solo se il documento non esiste.
+    Se esiste già, restituisce l'id_documento esistente.
+    """
+
+    chiave_documento = crea_chiave_documento(dati)
+
+    id_esistente = cerca_id_documento(cursor, chiave_documento)
+    if id_esistente:
+        return id_esistente
+
+    tipo = normalizza_tipo_documento(dati)
+    nome_file = crea_nome_file_documento(dati)
+
+    sql = """
+    INSERT INTO T_Documenti
+    (
+        tipo,
+        comando_vigilia,
+        numero_protocollo,
+        data_protocollo,
+        nome_file,
+        percorso_file,
+        chiave_univoca,
+        data_acquisizione
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """
+
+    cursor.execute(
+        sql,
+        tipo,
+        nz(dati.get("registro_sigla")),
+        nz(dati.get("numero_protocollo")),
+        nz(dati.get("data_protocollo")),
+        nome_file,
+        nz(dati.get("percorsoDocumentoProtocollato")),
+        chiave_documento,
+        datetime.now()
+    )
+
+    row = cursor.execute("SELECT @@IDENTITY").fetchone()
+    return int(row[0])
+
+
+# ============================================================
+# NUOVA GESTIONE T_DOCUMENTIACCESSI
+# ============================================================
+
+def accesso_documento_esiste(cursor, id_documento: int, id_utente: int) -> bool:
+    sql = """
+    SELECT id_accesso
+    FROM T_DocumentiAccessi
+    WHERE id_documento = ?
+      AND id_utente = ?
+      AND attivo = True
+    """
+
+    row = cursor.execute(sql, id_documento, id_utente).fetchone()
+    return row is not None
+
+
+def inserisci_accesso_documento_da_vigilia(cursor, id_documento: int, id_utente: int):
+    """
+    Crea il diritto di accesso al documento per l'utente corrente.
+    Se l'accesso esiste già, non fa nulla.
+    """
+
+    if accesso_documento_esiste(cursor, id_documento, id_utente):
+        return
+
+    sql = """
+    INSERT INTO T_DocumentiAccessi
+    (
+        id_documento,
+        id_utente,
+        fonte_accesso,
+        id_utente_condivisione,
+        data_accesso,
+        permesso,
+        attivo
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+    """
+
+    cursor.execute(
+        sql,
+        id_documento,
+        id_utente,
+        "VIGILIA",
+        None,
+        datetime.now(),
+        "LETTURA",
+        True
+    )
+
+
+# ============================================================
+# TABELLE FIGLIE ESISTENTI
+# ============================================================
 
 def elimina_figli_esistenti(cursor, id_protocollo: int):
     cursor.execute("DELETE FROM T_ProtocolloDestinatari WHERE IDProtocollo = ?", id_protocollo)
@@ -195,20 +388,37 @@ def inserisci_assegnazioni(cursor, id_protocollo: int, assegnazioni: list):
         )
 
 
+# ============================================================
+# FUNZIONE PRINCIPALE
+# ============================================================
+
 def salva_protocollo_access(dati: dict) -> int:
     conn = connessione_access()
     cursor = conn.cursor()
 
     try:
+        # 1. Salvataggio logica storica
         id_protocollo = inserisci_padre(cursor, dati)
 
+        # 2. Aggiornamento tabelle figlie storiche
         elimina_figli_esistenti(cursor, id_protocollo)
 
         inserisci_destinatari(cursor, id_protocollo, dati.get("destinatari", []))
         inserisci_firmatari(cursor, id_protocollo, dati.get("firmatari", []))
         inserisci_assegnazioni(cursor, id_protocollo, dati.get("assegnazioni", []))
 
+        # 3. Nuova logica documentale
+        id_documento = inserisci_o_recupera_documento(cursor, dati)
+
+        # 4. Nuova logica accessi utente-documento
+        inserisci_accesso_documento_da_vigilia(
+            cursor,
+            id_documento,
+            ID_UTENTE_CORRENTE
+        )
+
         conn.commit()
+
         return id_protocollo
 
     except Exception:
