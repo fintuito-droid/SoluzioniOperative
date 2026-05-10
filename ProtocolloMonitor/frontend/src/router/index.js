@@ -34,14 +34,15 @@ const routes = [
 
   {
   path: '/protocollo-monitor/protocolli/:idProtocollo',
-  name: 'ProtocolloMonitorDettaglio',
+  name: 'ProtocolloMonitorNota',
   component: () =>
-    import('../views/protocollo-monitor/ProtocolloDettaglioView.vue'),
+    import('../views/protocollo-monitor/NotaProtocolloView.vue'),
   meta: {
-    title: 'Dettaglio protocollo',
+    title: 'Nota protocollata',
     modulo: 'ProtocolloMonitor'
   }
 }
+
 
   
 

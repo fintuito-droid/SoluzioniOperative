@@ -73,9 +73,10 @@ def inserisci_padre(cursor, dati: dict) -> int:
         ChiaveUnivoca,
         DaLavorare,
         dataScadenza,
-        TipologiaDocumento
+        TipologiaDocumento,
+        PercorsoDocumentoProtocollato
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """
 
     cursor.execute(
@@ -96,7 +97,8 @@ def inserisci_padre(cursor, dati: dict) -> int:
         chiave,
         da_lavorare,
         data_scadenza,
-        nz(dati.get("tipologia_documento"))
+        nz(dati.get("tipologia_documento")),
+        nz(dati.get("percorsoDocumentoProtocollato"))
     )
 
     row = cursor.execute("SELECT @@IDENTITY").fetchone()

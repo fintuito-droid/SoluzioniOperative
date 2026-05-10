@@ -113,6 +113,24 @@ function caricaGrisuV2() {
 
 }
 
+function estraiTokenDocumentoProtocollato() {
+  const links = [...document.querySelectorAll("a")];
+
+  const linkProtocollato = links.find(a =>
+    (a.innerText || "").trim().toLowerCase() === "download documento protocollato"
+  );
+
+  if (!linkProtocollato) {
+    return null;
+  }
+
+  const onclick = linkProtocollato.getAttribute("onclick") || "";
+
+  const match = onclick.match(/downloadDoc\('([^']+)'\)/);
+
+  return match ? match[1] : null;
+}
+
   if (!window.__grisuV2Iniettato) {
     window.__grisuV2Iniettato = true;
 
@@ -126,13 +144,68 @@ function caricaGrisuV2() {
     if (event.data.source !== "grisu-v2") return;
     if (event.data.type !== "ACQUISISCI_PROTOCOLLO") return;
 
+    const tokenDocumentoProtocollato = estraiTokenDocumentoProtocollato();
+    const sqiDownload = estraiSqiDownload();
+
+    const documentoProtocollatoBase64 =
+      await scaricaDocumentoProtocollatoBase64(
+        tokenDocumentoProtocollato,
+        sqiDownload
+      );
+
     const payload = {
+      TokenDocumentoProtocollato: tokenDocumentoProtocollato,
+      SqiDownload: sqiDownload,
+      DocumentoProtocollatoBase64: documentoProtocollatoBase64,
+      NomeFileDocumentoProtocollato: "documento_protocollato.pdf",
+
       html: document.documentElement.outerHTML,
       url: window.location.href,
+
       daLavorare: event.data.dati.daLavorare,
       dataScadenza: event.data.dati.dataScadenza,
       tipoDocumento: event.data.dati.tipoDocumento
     };
+
+    async function scaricaDocumentoProtocollatoBase64(tokenDocumentoProtocollato, sqiDownload) {
+  if (!tokenDocumentoProtocollato || !sqiDownload) {
+    return null;
+  }
+
+  const urlDownload =
+    `/folium/docviewer?id=${tokenDocumentoProtocollato}&sqi=${sqiDownload}&download=true`;
+
+  const response = await fetch(urlDownload, {
+    credentials: "include"
+  });
+
+  if (!response.ok) {
+    console.error("Errore download documento protocollato:", response.status);
+    return null;
+  }
+
+  const blob = await response.blob();
+
+  return await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onloadend = () => {
+      const base64 = reader.result.split(",")[1];
+      resolve(base64);
+    };
+
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+function estraiSqiDownload() {
+  const html = document.documentElement.innerHTML;
+
+  const match = html.match(/docviewer\?id='\s*\+\s*id\s*\+\s*'&sqi=([^&']+)&download=true/);
+
+  return match ? match[1] : null;
+}
 
     try {
       const response = await fetch("http://127.0.0.1:5000/ricevi-html", {

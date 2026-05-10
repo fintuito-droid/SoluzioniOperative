@@ -18,6 +18,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import pyodbc
 from datetime import datetime, date
+from fastapi.responses import FileResponse
+import os
 
 
 # ======================================================================================
@@ -262,3 +264,39 @@ def get_protocollo_dettaglio(id_protocollo: int):
         "destinatari": destinatari,
         "firmatari": firmatari
     }
+
+@app.get("/protocollo-monitor/protocolli/{id_protocollo}/pdf")
+def apri_pdf_protocollo(id_protocollo: int):
+
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT PercorsoDocumentoProtocollato
+        FROM T_Protocolli
+        WHERE IDProtocollo = ?
+    """, (id_protocollo,))
+
+    row = cur.fetchone()
+
+    cur.close()
+    conn.close()
+
+    if not row:
+        return {"errore": "Protocollo non trovato"}
+
+    percorso_pdf = row.PercorsoDocumentoProtocollato
+
+    if not percorso_pdf:
+        return {"errore": "PDF non disponibile"}
+
+    if not os.path.exists(percorso_pdf):
+        return {"errore": "File PDF non trovato"}
+
+    return FileResponse(
+    percorso_pdf,
+    media_type="application/pdf",
+    headers={
+        "Content-Disposition": f'inline; filename="{os.path.basename(percorso_pdf)}"'
+    }
+)

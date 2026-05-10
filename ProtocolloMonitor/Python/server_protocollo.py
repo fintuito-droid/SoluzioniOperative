@@ -5,6 +5,11 @@ import json
 import traceback
 from datetime import datetime
 import pyodbc
+import os
+import re
+import requests
+from datetime import datetime
+import base64
 
 from estrai_protocollo import estrai_dati_nodo
 from salva_access import salva_protocollo_access
@@ -45,6 +50,17 @@ def ricevi_html():
 
         data = request.get_json(force=True)
 
+        print("TokenDocumentoProtocollato:", data.get("TokenDocumentoProtocollato"))
+        print("SqiDownload:", data.get("SqiDownload"))
+        print("DocumentoProtocollatoBase64 presente:", bool(data.get("DocumentoProtocollatoBase64")))
+        print("NomeFileDocumentoProtocollato:", data.get("NomeFileDocumentoProtocollato"))
+
+        print("TokenDocumentoOriginale:", data.get("TokenDocumentoOriginale"))
+        print("TokenDocumentoProtocollato:", data.get("TokenDocumentoProtocollato"))
+        print("SqiDownload:", data.get("SqiDownload"))
+# Download lato Python disattivato:
+# il documento verrà ricevuto da Chrome in Base64.
+
         html = data.get("html", "")
         url = data.get("url", "")
 
@@ -63,6 +79,13 @@ def ricevi_html():
         scrivi_log(f"HTML salvato in: {FILE_HTML}")
 
         dati = estrai_dati_nodo(html)
+
+        percorso_protocollato = salva_documento_protocollato_base64(
+            data,
+            dati.get("numero_protocollo", "SENZA_PROTOCOLLO")
+        )
+
+        dati["percorsoDocumentoProtocollato"] = percorso_protocollato
         dati["url_sorgente"] = url
         dati["daLavorare"] = da_lavorare
         dati["dataScadenza"] = data_scadenza
@@ -251,6 +274,109 @@ def liste_tipologia_documento():
             "errore": str(e),
             "valori": []
         }), 500
+    
+def pulisci_nome_file(testo):
+    testo = str(testo)
+    testo = re.sub(r'[\\/:*?"<>|]', "_", testo)
+    return testo.strip()
+
+import base64
+
+def salva_documento_protocollato_base64(data, numero_protocollo):
+    base64_file = data.get("DocumentoProtocollatoBase64")
+
+    if not base64_file:
+        print("Nessun DocumentoProtocollatoBase64 ricevuto")
+        return None
+
+    oggi = datetime.now()
+    anno = oggi.strftime("%Y")
+    mese = oggi.strftime("%m")
+    data_file = oggi.strftime("%Y%m%d")
+
+    cartella_destinazione = os.path.join(
+        r"C:\Users\fintu\Documents\GitHub\SoluzioniOperative\ProtocolloMonitor\backend\FileServer",
+        anno,
+        mese
+    )
+
+    os.makedirs(cartella_destinazione, exist_ok=True)
+
+    nome_file = f"{pulisci_nome_file(numero_protocollo)}_{data_file}_PROTOCOLLATO.pdf"
+    percorso_file = os.path.join(cartella_destinazione, nome_file)
+
+    contenuto = base64.b64decode(base64_file)
+
+    with open(percorso_file, "wb") as f:
+        f.write(contenuto)
+
+    print("Documento protocollato salvato in:", percorso_file)
+
+    return percorso_file
+
+
+def scarica_documenti_protocollo(data):
+    token_originale = data.get("TokenDocumentoOriginale")
+    token_protocollato = data.get("TokenDocumentoProtocollato")
+    sqi = data.get("SqiDownload")
+
+    numero_protocollo = data.get("NumeroProtocollo") or "SENZA_PROTOCOLLO"
+
+    oggi = datetime.now()
+    anno = oggi.strftime("%Y")
+    mese = oggi.strftime("%m")
+    data_file = oggi.strftime("%Y%m%d")
+
+    cartella_destinazione = os.path.join(
+        r"C:\Users\fintu\Documents\GitHub\SoluzioniOperative\ProtocolloMonitor\backend\FileServer",
+        anno,
+        mese
+    )
+
+    os.makedirs(cartella_destinazione, exist_ok=True)
+
+    risultati = {
+        "PercorsoDocumentoOriginale": None,
+        "PercorsoDocumentoProtocollato": None
+    }
+
+    def scarica_singolo(token, tipo):
+        if not token or not sqi:
+            return None
+
+        url_download = (
+            "https://protocollo.dipvvf.it/folium/docviewer"
+            f"?id={token}&sqi={sqi}&download=true"
+        )
+
+        nome_file = f"{pulisci_nome_file(numero_protocollo)}_{data_file}_{tipo}.pdf"
+        percorso_file = os.path.join(cartella_destinazione, nome_file)
+
+        response = requests.get(url_download, timeout=30)
+
+        if response.status_code != 200:
+            print(f"Errore download {tipo}: HTTP {response.status_code}")
+            return None
+
+        with open(percorso_file, "wb") as f:
+            f.write(response.content)
+
+        print(f"Documento {tipo} salvato in:", percorso_file)
+
+        return percorso_file
+
+    
+    risultati["PercorsoDocumentoOriginale"] = scarica_singolo(
+        token_originale,
+        "ORIGINALE"
+    )
+
+    risultati["PercorsoDocumentoProtocollato"] = scarica_singolo(
+        token_protocollato,
+        "PROTOCOLLATO"
+    )
+
+    return risultati
 
 
 @app.route("/ping", methods=["GET"])
