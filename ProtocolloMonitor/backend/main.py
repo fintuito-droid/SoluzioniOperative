@@ -1,25 +1,14 @@
 # ======================================================================================
 # ProtocolloMonitor - Backend FastAPI
-# STEP 9.5
-#
-# SCOPO:
-# Esporre tramite API web i protocolli già acquisiti da Vigilia/Grisù
-# e salvati nella tabella Access T_Protocolli.
-#
-# ARCHITETTURA:
-# Vue.js + Vuetify
-#        ↓
-# FastAPI
-#        ↓
-# Access ora / PostgreSQL domani
 # ======================================================================================
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-import pyodbc
-from datetime import datetime, date
 from fastapi.responses import FileResponse
+
+import pyodbc
 import os
+from datetime import datetime, date
 
 
 # ======================================================================================
@@ -34,9 +23,6 @@ app = FastAPI(
 
 # ======================================================================================
 # CORS
-#
-# Serve per permettere al frontend Vue, che gira su localhost:5173,
-# di chiamare il backend FastAPI, che gira su localhost:8000.
 # ======================================================================================
 
 app.add_middleware(
@@ -53,33 +39,16 @@ app.add_middleware(
 
 # ======================================================================================
 # PERCORSO DATABASE ACCESS
-#
-# ATTENZIONE:
-# Qui devi mettere il percorso reale del tuo ProtocolloMonitor.accdb.
-#
-# Se stai usando il percorso che avevamo memorizzato:
-# D:\OneDrive\FunTecVVF\Sviluppo\SoluzioniOperative\BackEnd_Access\ProtocolloMonitor.accdb
-#
-# lascia così.
 # ======================================================================================
 
 DB_PATH = r"G:\ProtocolloMonitor.accdb"
 
 
 # ======================================================================================
-# FUNZIONE DI CONNESSIONE ACCESS
+# CONNESSIONE ACCESS
 # ======================================================================================
 
 def get_connection():
-    """
-    Apre una connessione ODBC verso il database Access.
-
-    Nota:
-    - Su Windows deve essere installato il driver Microsoft Access ODBC.
-    - Il driver normalmente si chiama:
-      Microsoft Access Driver (*.mdb, *.accdb)
-    """
-
     conn_str = (
         r"DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};"
         rf"DBQ={DB_PATH};"
@@ -89,17 +58,10 @@ def get_connection():
 
 
 # ======================================================================================
-# FUNZIONE DI CONVERSIONE DATE
+# NORMALIZZAZIONE VALORI JSON
 # ======================================================================================
 
 def normalizza_valore(value):
-    """
-    Converte i valori letti da Access in valori compatibili JSON.
-
-    FastAPI restituisce JSON al frontend.
-    Alcuni tipi Python, come datetime/date, vanno convertiti in stringhe.
-    """
-
     if isinstance(value, datetime):
         return value.strftime("%d/%m/%Y %H:%M")
 
@@ -127,12 +89,6 @@ def home():
 
 @app.get("/protocollo-monitor/protocolli")
 def get_protocolli():
-    """
-    Restituisce l'elenco dei protocolli acquisiti da Vigilia.
-
-    Questa rotta sarà chiamata da Vue nella pagina:
-    ProtocolliAcquisitiView.vue
-    """
 
     conn = get_connection()
     cursor = conn.cursor()
@@ -144,6 +100,7 @@ def get_protocolli():
             DataProtocollo,
             Oggetto,
             Modalita,
+            ComandoMittente,
             DaLavorare,
             dataScadenza,
             TipologiaDocumento,
@@ -167,6 +124,7 @@ def get_protocolli():
             "data_protocollo": normalizza_valore(row.DataProtocollo),
             "oggetto": normalizza_valore(row.Oggetto),
             "modalita": normalizza_valore(row.Modalita),
+            "comando_mittente": normalizza_valore(row.ComandoMittente),
             "da_lavorare": bool(row.DaLavorare) if row.DaLavorare is not None else False,
             "data_scadenza": normalizza_valore(row.dataScadenza),
             "tipologia_documento": normalizza_valore(row.TipologiaDocumento),
@@ -182,15 +140,51 @@ def get_protocolli():
 
     return records
 
+
+# ======================================================================================
+# APERTURA PDF CON PROGRAMMA PREDEFINITO DI WINDOWS
+# ======================================================================================
+
+@app.get("/protocollo-monitor/protocolli/{id_protocollo}/apri-pdf")
+def apri_pdf(id_protocollo: int):
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    query = """
+        SELECT PercorsoDocumentoProtocollato
+        FROM T_Protocolli
+        WHERE IDProtocollo = ?
+    """
+
+    row = cursor.execute(query, (id_protocollo,)).fetchone()
+
+    cursor.close()
+    conn.close()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="Protocollo non trovato")
+
+    percorso_pdf = row[0]
+
+    if not percorso_pdf or not os.path.exists(percorso_pdf):
+        raise HTTPException(status_code=404, detail="PDF non trovato")
+
+    os.startfile(percorso_pdf)
+
+    return {"success": True}
+
+
+# ======================================================================================
+# DETTAGLIO PROTOCOLLO
+# ======================================================================================
+
 @app.get("/protocollo-monitor/protocolli/{id_protocollo}")
 def get_protocollo_dettaglio(id_protocollo: int):
 
     conn = get_connection()
     cursor = conn.cursor()
 
-    # -----------------------------
-    # PROTOCOLLO PRINCIPALE
-    # -----------------------------
     cursor.execute("""
         SELECT *
         FROM T_Protocolli
@@ -200,7 +194,9 @@ def get_protocollo_dettaglio(id_protocollo: int):
     row = cursor.fetchone()
 
     if not row:
+        cursor.close()
         conn.close()
+
         return {
             "protocollo": None,
             "assegnazioni": [],
@@ -211,9 +207,6 @@ def get_protocollo_dettaglio(id_protocollo: int):
     colonne = [column[0] for column in cursor.description]
     protocollo = dict(zip(colonne, row))
 
-    # -----------------------------
-    # ASSEGNAZIONI
-    # -----------------------------
     cursor.execute("""
         SELECT *
         FROM T_ProtocolloAssegnazioni
@@ -226,9 +219,6 @@ def get_protocollo_dettaglio(id_protocollo: int):
         for r in cursor.fetchall()
     ]
 
-    # -----------------------------
-    # DESTINATARI / MITTENTI
-    # -----------------------------
     cursor.execute("""
         SELECT *
         FROM T_ProtocolloDestinatari
@@ -241,9 +231,6 @@ def get_protocollo_dettaglio(id_protocollo: int):
         for r in cursor.fetchall()
     ]
 
-    # -----------------------------
-    # FIRMATARI
-    # -----------------------------
     cursor.execute("""
         SELECT *
         FROM T_ProtocolloFirmatari
@@ -256,6 +243,7 @@ def get_protocollo_dettaglio(id_protocollo: int):
         for r in cursor.fetchall()
     ]
 
+    cursor.close()
     conn.close()
 
     return {
@@ -264,6 +252,11 @@ def get_protocollo_dettaglio(id_protocollo: int):
         "destinatari": destinatari,
         "firmatari": firmatari
     }
+
+
+# ======================================================================================
+# VISUALIZZAZIONE PDF INLINE NEL BROWSER
+# ======================================================================================
 
 @app.get("/protocollo-monitor/protocolli/{id_protocollo}/pdf")
 def apri_pdf_protocollo(id_protocollo: int):
@@ -294,9 +287,9 @@ def apri_pdf_protocollo(id_protocollo: int):
         return {"errore": "File PDF non trovato"}
 
     return FileResponse(
-    percorso_pdf,
-    media_type="application/pdf",
-    headers={
-        "Content-Disposition": f'inline; filename="{os.path.basename(percorso_pdf)}"'
-    }
-)
+        percorso_pdf,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'inline; filename="{os.path.basename(percorso_pdf)}"'
+        }
+    )

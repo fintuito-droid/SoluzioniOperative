@@ -1,5 +1,30 @@
 import pyodbc
 from datetime import datetime
+import re
+
+
+def estrai_comando_mittente(oggetto):
+    """
+    Estrae la sigla del comando mittente dall'oggetto.
+
+    Esempio:
+    Protocollo nr: 6629 - del 09/05/2026 - COM-AG - testo restante
+
+    Risultato:
+    COM-AG
+    """
+
+    if not oggetto:
+        return None
+
+    pattern = r"Protocollo\s+nr:\s*.*?\s*-\s*del\s+.*?\s*-\s*([A-Z]{2,5}-[A-Z]{2,5})\s*-"
+
+    match = re.search(pattern, oggetto, re.IGNORECASE)
+
+    if match:
+        return match.group(1).upper().strip()
+
+    return None
 
 
 # ============================================================
@@ -8,8 +33,6 @@ from datetime import datetime
 
 DB_PATH = r"G:\ProtocolloMonitor.accdb"
 
-# Per ora usiamo un utente fisso.
-# In futuro questo valore arriverà dal login della piattaforma.
 ID_UTENTE_CORRENTE = 1
 
 
@@ -42,12 +65,6 @@ def nz(v, default=None):
 
 
 def normalizza_tipo_documento(dati: dict) -> str:
-    """
-    Converte la modalità del protocollo in:
-    E = Entrata
-    U = Uscita
-    """
-
     modalita = str(nz(dati.get("modalita"), "")).upper()
 
     if "ENTRATA" in modalita:
@@ -60,10 +77,6 @@ def normalizza_tipo_documento(dati: dict) -> str:
 
 
 def formatta_data_nome_file(data_protocollo) -> str:
-    """
-    Restituisce la data in formato ISO compatto YYYYMMDD.
-    """
-
     if data_protocollo is None:
         return datetime.now().strftime("%Y%m%d")
 
@@ -82,22 +95,12 @@ def formatta_data_nome_file(data_protocollo) -> str:
 
 
 def crea_chiave_univoca(dati: dict) -> str:
-    """
-    Chiave storica usata da T_Protocolli.
-    Manteniamo questa logica per non rompere il sistema esistente.
-    """
-
     numero = nz(dati.get("numero_protocollo"))
     data = nz(dati.get("data_protocollo"))
     return f"{numero}|{data}"
 
 
 def crea_chiave_documento(dati: dict) -> str:
-    """
-    Chiave nuova per T_Documenti.
-    Deve identificare in modo stabile il documento protocollato.
-    """
-
     tipo = normalizza_tipo_documento(dati)
     comando = nz(dati.get("registro_sigla"), "ND")
     numero = nz(dati.get("numero_protocollo"), "SENZA-PROT")
@@ -111,7 +114,7 @@ def crea_nome_file_documento(dati: dict) -> str:
 
 
 # ============================================================
-# GESTIONE T_PROTOCOLLI - LOGICA ESISTENTE
+# GESTIONE T_PROTOCOLLI
 # ============================================================
 
 def cerca_id_protocollo(cursor, chiave_univoca: str):
@@ -131,6 +134,9 @@ def inserisci_padre(cursor, dati: dict) -> int:
     else:
         data_scadenza = None
 
+    oggetto = nz(dati.get("oggetto"))
+    comando_mittente = estrai_comando_mittente(oggetto)
+
     id_esistente = cerca_id_protocollo(cursor, chiave)
     if id_esistente:
         return int(id_esistente)
@@ -145,6 +151,7 @@ def inserisci_padre(cursor, dati: dict) -> int:
         TitoloPagina,
         DataSpedizione,
         Oggetto,
+        ComandoMittente,
         Modalita,
         DataDocumento,
         Operatore,
@@ -157,7 +164,7 @@ def inserisci_padre(cursor, dati: dict) -> int:
         TipologiaDocumento,
         PercorsoDocumentoProtocollato
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """
 
     cursor.execute(
@@ -168,7 +175,8 @@ def inserisci_padre(cursor, dati: dict) -> int:
         nz(dati.get("registro_sigla")),
         nz(dati.get("titolo_pagina")),
         nz(dati.get("data_spedizione")),
-        nz(dati.get("oggetto")),
+        oggetto,
+        comando_mittente,
         nz(dati.get("modalita")),
         nz(dati.get("data_documento")),
         nz(dati.get("operatore")),
@@ -187,7 +195,7 @@ def inserisci_padre(cursor, dati: dict) -> int:
 
 
 # ============================================================
-# NUOVA GESTIONE T_DOCUMENTI
+# GESTIONE T_DOCUMENTI
 # ============================================================
 
 def cerca_id_documento(cursor, chiave_documento: str):
@@ -197,11 +205,6 @@ def cerca_id_documento(cursor, chiave_documento: str):
 
 
 def inserisci_o_recupera_documento(cursor, dati: dict) -> int:
-    """
-    Crea il record in T_Documenti solo se il documento non esiste.
-    Se esiste già, restituisce l'id_documento esistente.
-    """
-
     chiave_documento = crea_chiave_documento(dati)
 
     id_esistente = cerca_id_documento(cursor, chiave_documento)
@@ -243,7 +246,7 @@ def inserisci_o_recupera_documento(cursor, dati: dict) -> int:
 
 
 # ============================================================
-# NUOVA GESTIONE T_DOCUMENTIACCESSI
+# GESTIONE T_DOCUMENTIACCESSI
 # ============================================================
 
 def accesso_documento_esiste(cursor, id_documento: int, id_utente: int) -> bool:
@@ -260,11 +263,6 @@ def accesso_documento_esiste(cursor, id_documento: int, id_utente: int) -> bool:
 
 
 def inserisci_accesso_documento_da_vigilia(cursor, id_documento: int, id_utente: int):
-    """
-    Crea il diritto di accesso al documento per l'utente corrente.
-    Se l'accesso esiste già, non fa nulla.
-    """
-
     if accesso_documento_esiste(cursor, id_documento, id_utente):
         return
 
@@ -295,7 +293,7 @@ def inserisci_accesso_documento_da_vigilia(cursor, id_documento: int, id_utente:
 
 
 # ============================================================
-# TABELLE FIGLIE ESISTENTI
+# TABELLE FIGLIE
 # ============================================================
 
 def elimina_figli_esistenti(cursor, id_protocollo: int):
@@ -397,20 +395,16 @@ def salva_protocollo_access(dati: dict) -> int:
     cursor = conn.cursor()
 
     try:
-        # 1. Salvataggio logica storica
         id_protocollo = inserisci_padre(cursor, dati)
 
-        # 2. Aggiornamento tabelle figlie storiche
         elimina_figli_esistenti(cursor, id_protocollo)
 
         inserisci_destinatari(cursor, id_protocollo, dati.get("destinatari", []))
         inserisci_firmatari(cursor, id_protocollo, dati.get("firmatari", []))
         inserisci_assegnazioni(cursor, id_protocollo, dati.get("assegnazioni", []))
 
-        # 3. Nuova logica documentale
         id_documento = inserisci_o_recupera_documento(cursor, dati)
 
-        # 4. Nuova logica accessi utente-documento
         inserisci_accesso_documento_da_vigilia(
             cursor,
             id_documento,
