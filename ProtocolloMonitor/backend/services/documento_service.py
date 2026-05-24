@@ -69,6 +69,35 @@ class DocumentoService:
             )
         )
 
+    def get_pdf_path(self, protocollo_id: int) -> str | None:
+        """Restituisce il percorso PDF del protocollo tramite repository.
+
+        Questo metodo serve alla futura integrazione controllata dell'endpoint
+        PDF. Il service non esegue query dirette, non verifica il filesystem e
+        non modifica dati: delega soltanto al repository documentale quando il
+        metodo `get_pdf_path_by_protocollo_id` e disponibile.
+
+        Se il repository non e configurato, se non espone il metodo atteso, o
+        se la delega solleva errore, il fallback sicuro e `None`.
+        """
+
+        if self.documento_repository is None:
+            return None
+
+        get_pdf_path_by_protocollo_id = getattr(
+            self.documento_repository,
+            "get_pdf_path_by_protocollo_id",
+            None,
+        )
+
+        if get_pdf_path_by_protocollo_id is None:
+            return None
+
+        try:
+            return get_pdf_path_by_protocollo_id(protocollo_id)
+        except Exception:
+            return None
+
     def get_document_metadata(self, protocollo_id: int) -> list[dict[str, Any]]:
         """Restituisce metadati documento futuri con fallback sicuro.
 

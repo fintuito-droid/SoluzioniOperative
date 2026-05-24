@@ -271,24 +271,15 @@ def get_protocollo_dettaglio(id_protocollo: int):
 @app.get("/protocollo-monitor/protocolli/{id_protocollo}/pdf")
 def apri_pdf_protocollo(id_protocollo: int):
 
-    conn = get_connection()
-    cur = conn.cursor()
+    from backend.core.dependency_container import DependencyContainer
 
-    cur.execute("""
-        SELECT PercorsoDocumentoProtocollato
-        FROM T_Protocolli
-        WHERE IDProtocollo = ?
-    """, (id_protocollo,))
+    container = DependencyContainer()
+    documento_service = container.get_documento_service()
 
-    row = cur.fetchone()
+    percorso_pdf = documento_service.get_pdf_path(id_protocollo)
 
-    cur.close()
-    conn.close()
-
-    if not row:
+    if percorso_pdf is None:
         return {"errore": "Protocollo non trovato"}
-
-    percorso_pdf = row.PercorsoDocumentoProtocollato
 
     if not percorso_pdf:
         return {"errore": "PDF non disponibile"}
