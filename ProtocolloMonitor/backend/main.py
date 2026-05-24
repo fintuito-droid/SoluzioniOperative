@@ -148,24 +148,14 @@ def get_protocolli():
 @app.get("/protocollo-monitor/protocolli/{id_protocollo}/apri-pdf")
 def apri_pdf(id_protocollo: int):
 
-    conn = get_connection()
-    cursor = conn.cursor()
+    from backend.core.dependency_container import DependencyContainer
 
-    query = """
-        SELECT PercorsoDocumentoProtocollato
-        FROM T_Protocolli
-        WHERE IDProtocollo = ?
-    """
+    container = DependencyContainer()
+    documento_service = container.get_documento_service()
+    percorso_pdf = documento_service.get_pdf_path(id_protocollo)
 
-    row = cursor.execute(query, (id_protocollo,)).fetchone()
-
-    cursor.close()
-    conn.close()
-
-    if not row:
-        raise HTTPException(status_code=404, detail="Protocollo non trovato")
-
-    percorso_pdf = row[0]
+    if percorso_pdf is None:
+        return {"errore": "Protocollo non trovato"}
 
     if not percorso_pdf or not os.path.exists(percorso_pdf):
         raise HTTPException(status_code=404, detail="PDF non trovato")
