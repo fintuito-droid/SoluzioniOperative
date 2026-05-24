@@ -5,7 +5,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-
+import subprocess
 import pyodbc
 import os
 from datetime import datetime, date
@@ -170,7 +170,17 @@ def apri_pdf(id_protocollo: int):
     if not percorso_pdf or not os.path.exists(percorso_pdf):
         raise HTTPException(status_code=404, detail="PDF non trovato")
 
-    os.startfile(percorso_pdf)
+    subprocess.Popen(
+        [
+            "cmd",
+            "/c",
+            "start",
+            "/max",
+            "",
+            percorso_pdf
+        ],
+        shell=True
+    )
 
     return {"success": True}
 
