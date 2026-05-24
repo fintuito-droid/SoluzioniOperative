@@ -6,9 +6,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 import subprocess
-import pyodbc
 import os
-from datetime import datetime, date
 
 
 # ======================================================================================
@@ -35,40 +33,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-# ======================================================================================
-# PERCORSO DATABASE ACCESS
-# ======================================================================================
-
-DB_PATH = r"G:\ProtocolloMonitor.accdb"
-
-
-# ======================================================================================
-# CONNESSIONE ACCESS
-# ======================================================================================
-
-def get_connection():
-    conn_str = (
-        r"DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};"
-        rf"DBQ={DB_PATH};"
-    )
-
-    return pyodbc.connect(conn_str)
-
-
-# ======================================================================================
-# NORMALIZZAZIONE VALORI JSON
-# ======================================================================================
-
-def normalizza_valore(value):
-    if isinstance(value, datetime):
-        return value.strftime("%d/%m/%Y %H:%M")
-
-    if isinstance(value, date):
-        return value.strftime("%d/%m/%Y")
-
-    return value
 
 
 # ======================================================================================
