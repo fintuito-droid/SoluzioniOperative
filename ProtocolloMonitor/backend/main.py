@@ -139,76 +139,12 @@ def apri_pdf(id_protocollo: int):
 @app.get("/protocollo-monitor/protocolli/{id_protocollo}")
 def get_protocollo_dettaglio(id_protocollo: int):
 
-    conn = get_connection()
-    cursor = conn.cursor()
+    from backend.core.dependency_container import DependencyContainer
 
-    cursor.execute("""
-        SELECT *
-        FROM T_Protocolli
-        WHERE IDProtocollo = ?
-    """, id_protocollo)
+    container = DependencyContainer()
+    protocollo_service = container.get_protocollo_service()
 
-    row = cursor.fetchone()
-
-    if not row:
-        cursor.close()
-        conn.close()
-
-        return {
-            "protocollo": None,
-            "assegnazioni": [],
-            "destinatari": [],
-            "firmatari": []
-        }
-
-    colonne = [column[0] for column in cursor.description]
-    protocollo = dict(zip(colonne, row))
-
-    cursor.execute("""
-        SELECT *
-        FROM T_ProtocolloAssegnazioni
-        WHERE IDProtocollo = ?
-    """, id_protocollo)
-
-    colonne = [column[0] for column in cursor.description]
-    assegnazioni = [
-        dict(zip(colonne, r))
-        for r in cursor.fetchall()
-    ]
-
-    cursor.execute("""
-        SELECT *
-        FROM T_ProtocolloDestinatari
-        WHERE IDProtocollo = ?
-    """, id_protocollo)
-
-    colonne = [column[0] for column in cursor.description]
-    destinatari = [
-        dict(zip(colonne, r))
-        for r in cursor.fetchall()
-    ]
-
-    cursor.execute("""
-        SELECT *
-        FROM T_ProtocolloFirmatari
-        WHERE IDProtocollo = ?
-    """, id_protocollo)
-
-    colonne = [column[0] for column in cursor.description]
-    firmatari = [
-        dict(zip(colonne, r))
-        for r in cursor.fetchall()
-    ]
-
-    cursor.close()
-    conn.close()
-
-    return {
-        "protocollo": protocollo,
-        "assegnazioni": assegnazioni,
-        "destinatari": destinatari,
-        "firmatari": firmatari
-    }
+    return protocollo_service.get_protocollo_detail(id_protocollo)
 
 
 # ======================================================================================
