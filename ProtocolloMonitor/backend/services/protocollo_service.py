@@ -68,6 +68,35 @@ class ProtocolloService:
 
         return self.protocollo_repository.get_protocollo_detail(id_protocollo)
 
+    def list_protocolli(self) -> list[dict[str, Any]]:
+        """Restituisce l'elenco protocolli tramite repository.
+
+        Questo metodo serve alla futura migrazione controllata dell'endpoint
+        `GET /protocollo-monitor/protocolli`. Il service non esegue query
+        dirette, non modifica dati e non cambia il formato restituito: delega
+        soltanto a `protocollo_repository.list_protocolli()` quando disponibile.
+
+        Se il repository non e configurato, se non espone il metodo atteso, o
+        se la delega solleva errore, il fallback sicuro e una lista vuota.
+        """
+
+        if self.protocollo_repository is None:
+            return []
+
+        list_protocolli = getattr(
+            self.protocollo_repository,
+            "list_protocolli",
+            None,
+        )
+
+        if list_protocolli is None:
+            return []
+
+        try:
+            return list_protocolli()
+        except Exception:
+            return []
+
     def get_pdf_path(self, id_protocollo: int) -> str | None:
         """Restituisce il percorso PDF delegando ai repository disponibili.
 

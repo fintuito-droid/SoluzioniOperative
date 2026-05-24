@@ -90,55 +90,12 @@ def home():
 @app.get("/protocollo-monitor/protocolli")
 def get_protocolli():
 
-    conn = get_connection()
-    cursor = conn.cursor()
+    from backend.core.dependency_container import DependencyContainer
 
-    sql = """
-        SELECT
-            IDProtocollo,
-            NumeroProtocollo,
-            DataProtocollo,
-            Oggetto,
-            Modalita,
-            ComandoMittente,
-            DaLavorare,
-            dataScadenza,
-            TipologiaDocumento,
-            priorita,
-            note_interne
-        FROM
-            T_Protocolli
-        ORDER BY
-            IDProtocollo DESC
-    """
+    container = DependencyContainer()
+    protocollo_service = container.get_protocollo_service()
 
-    cursor.execute(sql)
-
-    records = []
-
-    for row in cursor.fetchall():
-
-        record = {
-            "id_protocollo": normalizza_valore(row.IDProtocollo),
-            "numero_protocollo": normalizza_valore(row.NumeroProtocollo),
-            "data_protocollo": normalizza_valore(row.DataProtocollo),
-            "oggetto": normalizza_valore(row.Oggetto),
-            "modalita": normalizza_valore(row.Modalita),
-            "comando_mittente": normalizza_valore(row.ComandoMittente),
-            "da_lavorare": bool(row.DaLavorare) if row.DaLavorare is not None else False,
-            "data_scadenza": normalizza_valore(row.dataScadenza),
-            "tipologia_documento": normalizza_valore(row.TipologiaDocumento),
-            "priorita": normalizza_valore(row.priorita) or "Normale",
-            "stato_pratica": "NUOVA",
-            "note_interne": normalizza_valore(row.note_interne) or ""
-        }
-
-        records.append(record)
-
-    cursor.close()
-    conn.close()
-
-    return records
+    return protocollo_service.list_protocolli()
 
 
 # ======================================================================================
