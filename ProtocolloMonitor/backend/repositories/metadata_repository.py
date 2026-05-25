@@ -1,19 +1,18 @@
-"""Repository minimale per futura gestione metadati e tag.
+"""Repository read-only per metadati di protocollo e tag futuri.
 
 SCOPO DEL FILE
 ==============
-Questo file introduce `MetadataRepository`, una predisposizione prudente per
-la futura gestione di metadati e tag nella piattaforma Soluzioni Operative.
+Questo file introduce `MetadataRepository`, una lettura prudente dei metadati
+gia disponibili su `T_Protocolli` e una predisposizione per tag futuri.
 
-Il repository non modifica il database, non crea tabelle, non esegue scritture
-e non viene collegato al runtime. Serve solo a stabilire il punto architetturale
-in cui, in futuro, vivranno le letture di tag e metadati.
+Il repository non modifica il database, non crea tabelle e non esegue scritture.
+Legge solo campi gia presenti nella tabella Access `T_Protocolli`.
 
 RESPONSABILITA
 ==============
-- Esporre metodi read-only sicuri per metadati e tag.
-- Restituire strutture vuote controllate finche la feature non e disponibile.
-- Evitare assunzioni su tabelle Access non ancora create.
+- Esporre metodi read-only sicuri per metadati protocollo.
+- Continuare a restituire strutture vuote controllate per tag futuri.
+- Evitare assunzioni su tabelle Access non ancora create per tag/metadati estesi.
 - Documentare il confine tra predisposizione architetturale e funzionalita
   reale.
 - Preparare un modello PostgreSQL-friendly senza implementare PostgreSQL.
@@ -45,12 +44,8 @@ VINCOLI
 COMPATIBILITA ACCESS
 ====================
 La base Access attuale non espone, nel codice analizzato, tabelle dedicate a
-tag o metadati applicativi. Per questo motivo il repository non interroga
-tabelle ipotetiche come `T_Tags`, `T_Metadata` o simili.
-
-I metodi restituiscono liste vuote controllate e uno stato feature disattivato.
-Questo comportamento e intenzionale: permette ai futuri Service di dipendere
-da un contratto stabile senza forzare migrazioni premature su Access.
+tag o metadati applicativi estesi. I metadati richiesti in questo step vengono
+letti direttamente da `T_Protocolli`, perche sono campi gia esistenti.
 
 PREPARAZIONE POSTGRESQL
 =======================
@@ -85,18 +80,18 @@ NOTE FUTURA EVOLUZIONE
 
 from __future__ import annotations
 
+from datetime import date, datetime
 from typing import Any
 
 from .base import BaseRepository
 
 
 class MetadataRepository(BaseRepository):
-    """Repository read-only minimale per tag e metadati futuri.
+    """Repository read-only per metadati protocollo.
 
     Cosa fa:
-    espone un contratto prudente per leggere metadati e tag associati a una
-    generica entita applicativa, ma oggi restituisce strutture vuote perche lo
-    schema Access dedicato non risulta presente.
+    espone una lettura dei metadati protocollo da `T_Protocolli` e mantiene
+    placeholder sicuri per tag/metadati estesi futuri.
 
     Perche esiste:
     prepara il punto corretto dove implementare la feature quando il modello
@@ -106,10 +101,11 @@ class MetadataRepository(BaseRepository):
     eredita `config` e `logger` da `BaseRepository`.
 
     Valori restituiti:
-    liste vuote controllate e stato feature non disponibile.
+    dizionario metadati o `None` per il protocollo; liste vuote controllate per
+    tag/metadati generici futuri.
 
     Rischi evitati:
-    - creare query verso tabelle non esistenti;
+    - creare query verso tabelle tag/metadati non esistenti;
     - modificare Access prematuramente;
     - spargere logica tag/metadati nei componenti o nelle route.
 
@@ -126,11 +122,63 @@ class MetadataRepository(BaseRepository):
         }
     )
 
+    @staticmethod
+    def _to_iso_date(value: Any) -> str | None:
+        """Converte date Access in stringhe ISO JSON-friendly.
+
+        Cosa fa:
+        normalizza valori `date`, `datetime` e stringhe semplici in una forma
+        adatta a JSON e al frontend: `YYYY-MM-DD`.
+
+        Perche esiste:
+        Access puo restituire date come oggetti Python oppure come testo, in
+        base a driver, query e configurazione locale di Windows. Centralizzare
+        qui la conversione evita che endpoint e service debbano conoscere
+        dettagli del driver ODBC.
+
+        Parametri:
+        - `value`: valore data letto dal database o ricevuto da un fake nei
+          test.
+
+        Valori restituiti:
+        - stringa ISO `YYYY-MM-DD` quando la conversione e possibile;
+        - testo originale non vuoto se il formato non e riconosciuto;
+        - `None` se il valore e assente o vuoto.
+
+        Rischi evitati:
+        - errori di serializzazione JSON su `datetime`;
+        - formati data incoerenti tra Access oggi e PostgreSQL domani;
+        - logica di conversione duplicata negli endpoint FastAPI.
+        """
+
+        if value is None:
+            return None
+
+        if isinstance(value, datetime):
+            return value.date().isoformat()
+
+        if isinstance(value, date):
+            return value.isoformat()
+
+        text = str(value).strip()
+
+        if not text:
+            return None
+
+        for date_format in ("%d/%m/%Y", "%Y-%m-%d", "%Y-%m-%d %H:%M:%S"):
+            try:
+                return datetime.strptime(text[:19], date_format).date().isoformat()
+            except ValueError:
+                continue
+
+        return text
+
     def metadata_feature_available(self) -> bool:
         """Indica se la feature metadati/tag e disponibile nel runtime attuale.
 
         Cosa fa:
-        restituisce `False` in modo esplicito e conservativo.
+        restituisce `True` per indicare che i metadati base di protocollo sono
+        disponibili tramite campi gia presenti in `T_Protocolli`.
 
         Perche esiste:
         il repository viene introdotto prima delle tabelle e prima del Service
@@ -141,8 +189,7 @@ class MetadataRepository(BaseRepository):
         nessuno.
 
         Valori restituiti:
-        - `False`, finche non saranno presenti schema dati e integrazione
-          applicativa dedicata.
+        - `True` per metadati base protocollo.
 
         Rischi evitati:
         - query verso tabelle non create;
@@ -154,7 +201,60 @@ class MetadataRepository(BaseRepository):
         PostgreSQL potra diventare `True` quando le migrazioni saranno applicate.
         """
 
-        return False
+        return True
+
+    def get_metadata_by_protocollo_id(self, id_protocollo: int) -> dict[str, Any] | None:
+        """Legge i metadati base di un protocollo da `T_Protocolli`.
+
+        Il metodo e read-only, non modifica il database e non accede al
+        filesystem. Restituisce `None` quando il protocollo non esiste.
+        """
+
+        query = """
+            SELECT
+                IDProtocollo,
+                NumeroProtocollo,
+                DataProtocollo,
+                Modalita,
+                ComandoMittente,
+                DaLavorare,
+                dataScadenza AS DataScadenza,
+                TipologiaDocumento,
+                PercorsoDocumentoProtocollato
+            FROM T_Protocolli
+            WHERE IDProtocollo = ?
+        """
+
+        conn = self._open_access_connection()
+        cursor = conn.cursor()
+
+        try:
+            row = cursor.execute(query, (id_protocollo,)).fetchone()
+
+            if not row:
+                return None
+
+            data_scadenza = getattr(row, "DataScadenza", None)
+
+            return {
+                "id_protocollo": row.IDProtocollo,
+                "numero_protocollo": row.NumeroProtocollo,
+                "data_protocollo": self._to_iso_date(row.DataProtocollo),
+                "modalita": row.Modalita,
+                "comando_mittente": row.ComandoMittente,
+                "da_lavorare": (
+                    bool(row.DaLavorare)
+                    if row.DaLavorare is not None
+                    else False
+                ),
+                "data_scadenza": self._to_iso_date(data_scadenza),
+                "tipologia_documento": row.TipologiaDocumento,
+                "percorso_documento_protocollato": row.PercorsoDocumentoProtocollato,
+            }
+
+        finally:
+            cursor.close()
+            conn.close()
 
     def list_metadata_for_entity(
         self,

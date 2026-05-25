@@ -1,19 +1,22 @@
-"""Repository read-only Access-compatible per documenti e PDF.
+"""Repository Access-compatible per documenti e PDF.
 
 SCOPO DEL FILE
 ==============
-Questo file introduce `DocumentoRepository`, un repository concreto read-only
-dedicato alla parte documentale/PDF di ProtocolloMonitor.
+Questo file introduce `DocumentoRepository`, un repository concreto dedicato
+alla parte documentale/PDF di ProtocolloMonitor.
 
-Il repository NON viene collegato agli endpoint esistenti. Serve a preparare la
-separazione tra route FastAPI, Service Layer futuro, accesso dati Access e
-storage documentale, mantenendo invariato il comportamento runtime.
+Il repository contiene letture conservative e un unico aggiornamento isolato
+per registrare il path PDF in `T_Protocolli.PercorsoDocumentoProtocollato`.
+La scrittura e volutamente piccola, parametrica e separata dal salvataggio
+fisico del file.
 
 RESPONSABILITA
 ==============
 - Leggere il percorso PDF protocollato associato a un protocollo.
 - Verificare, lato dato, se per un protocollo esiste un percorso PDF valorizzato.
 - Leggere, quando disponibile, il record documentale da `T_Documenti`.
+- Aggiornare solo `T_Protocolli.PercorsoDocumentoProtocollato` quando un PDF
+  e stato salvato da un Service applicativo dedicato.
 - Conservare compatibilita con Access e con la struttura attuale.
 - Documentare il rapporto tra `T_Protocolli.PercorsoDocumentoProtocollato` e
   `T_Documenti.percorso_file`.
@@ -35,12 +38,11 @@ VINCOLI
 - Non modificare `backend/main.py`.
 - Non modificare endpoint.
 - Non modificare query originali.
-- Non modificare salvataggio PDF.
+- Non salvare fisicamente PDF.
 - Non modificare FileServer.
 - Non modificare Flask legacy.
 - Non modificare frontend Vue 3 + Vuetify 4.
 - Non modificare estensione Grisu.
-- Non implementare Service Layer.
 - Non implementare PostgreSQL operativo.
 
 COMPATIBILITA ACCESS
@@ -48,9 +50,10 @@ COMPATIBILITA ACCESS
 Il repository usa `BaseRepository` e quindi apre connessioni Access tramite il
 modulo centralizzato `backend/core/access_connection.py`.
 
-I metodi sono read-only: nessun INSERT, UPDATE o DELETE. Questo e importante
-per non interferire con il flusso esistente di acquisizione e salvataggio PDF,
-che resta in `Python/server_protocollo.py` e `Python/salva_access.py`.
+La maggior parte dei metodi e read-only. L'unica scrittura introdotta e
+`update_protocollo_pdf_path`, che aggiorna esclusivamente il campo
+`PercorsoDocumentoProtocollato` con query parametrica e commit esplicito.
+Il repository non salva file e non effettua download.
 
 PREPARAZIONE POSTGRESQL
 =======================
@@ -92,23 +95,22 @@ from .base import BaseRepository
 
 
 class DocumentoRepository(BaseRepository):
-    """Repository read-only per informazioni documentali.
+    """Repository per informazioni documentali e registrazione path PDF.
 
     Cosa fa:
-    espone letture conservative sui dati documento oggi disponibili in Access.
-    La priorita e preservare il comportamento esistente: gli endpoint FastAPI
-    oggi usano `T_Protocolli.PercorsoDocumentoProtocollato`.
+    espone letture conservative sui dati documento oggi disponibili in Access e
+    una scrittura isolata per aggiornare il solo path PDF protocollato.
 
     Perche esiste:
     prepara una separazione pulita tra protocollo, documento e storage, senza
-    spostare ancora query dentro il runtime.
+    mescolare salvataggio file e aggiornamento database.
 
     Parametri:
     eredita `config` e `logger` da `BaseRepository`.
 
     Valori restituiti:
-    metodi read-only restituiscono dizionari o valori semplici, senza cambiare
-    path e senza verificare il filesystem.
+    letture restituiscono dizionari o valori semplici; l'aggiornamento path
+    restituisce `True` quando Access segnala almeno un record modificato.
 
     Rischi evitati:
     - cambiare il flusso PDF attuale;
@@ -298,6 +300,69 @@ class DocumentoRepository(BaseRepository):
                 return None
 
             return self._row_to_dict(cursor, row)
+
+        finally:
+            cursor.close()
+            conn.close()
+
+    def update_protocollo_pdf_path(
+        self,
+        id_protocollo: int,
+        percorso_documento_protocollato: str,
+    ) -> bool:
+        """Aggiorna il path PDF protocollato su `T_Protocolli`.
+
+        Cosa fa:
+        esegue un `UPDATE` parametrico sul solo campo
+        `PercorsoDocumentoProtocollato`, filtrando per `IDProtocollo`.
+
+        Perche esiste:
+        Step 18 collega in modo controllato lo storage fisico del PDF alla
+        registrazione del path nel database, ma mantiene separate le
+        responsabilita: il Service salva il file, il Repository aggiorna Access.
+
+        Parametri:
+        - `id_protocollo`: identificativo reale Access del protocollo;
+        - `percorso_documento_protocollato`: path da registrare nel campo gia
+          esistente `T_Protocolli.PercorsoDocumentoProtocollato`.
+
+        Valori restituiti:
+        - `True` se Access segnala almeno un record aggiornato;
+        - `False` se nessun record corrisponde all'ID indicato.
+
+        Rischi evitati:
+        - aggiornare campi diversi dal path PDF;
+        - concatenare SQL manualmente;
+        - mescolare logica di filesystem, download o parsing HTML nel repository;
+        - introdurre modifiche allo schema Access.
+
+        Uso futuro nei Service:
+        `PdfDocumentService.save_and_register_protocollo_pdf` usera questo
+        metodo dopo `DocumentStorageService.save_pdf`, e un repository
+        PostgreSQL futuro potra offrire lo stesso contratto.
+        """
+
+        query = """
+            UPDATE T_Protocolli
+            SET PercorsoDocumentoProtocollato = ?
+            WHERE IDProtocollo = ?
+        """
+
+        conn = self._open_access_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute(
+                query,
+                (
+                    percorso_documento_protocollato,
+                    id_protocollo,
+                ),
+            )
+            updated_rows = cursor.rowcount
+            conn.commit()
+
+            return bool(updated_rows and updated_rows > 0)
 
         finally:
             cursor.close()

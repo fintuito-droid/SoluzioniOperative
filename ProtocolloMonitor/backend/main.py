@@ -112,6 +112,26 @@ def get_protocollo_dettaglio(id_protocollo: int):
 
 
 # ======================================================================================
+# METADATI PROTOCOLLO
+# ======================================================================================
+
+@app.get("/protocollo-monitor/protocolli/{id_protocollo}/metadata")
+def get_protocollo_metadata(id_protocollo: int):
+
+    from backend.core.dependency_container import DependencyContainer
+
+    container = DependencyContainer()
+    metadata_service = container.get_metadata_service()
+
+    metadata = metadata_service.get_metadata(id_protocollo)
+
+    if metadata is None:
+        raise HTTPException(status_code=404, detail="Protocollo non trovato")
+
+    return metadata
+
+
+# ======================================================================================
 # VISUALIZZAZIONE PDF INLINE NEL BROWSER
 # ======================================================================================
 
@@ -131,13 +151,20 @@ def apri_pdf_protocollo(id_protocollo: int):
     if not percorso_pdf:
         return {"errore": "PDF non disponibile"}
 
-    if not os.path.exists(percorso_pdf):
-        return {"errore": "File PDF non trovato"}
+    from backend.services.document_path_service import resolve_document_path
+
+    resolved_pdf_path = resolve_document_path(percorso_pdf)
+
+    if resolved_pdf_path is None:
+        raise HTTPException(
+            status_code=404,
+            detail="File PDF non trovato",
+        )
 
     return FileResponse(
-        percorso_pdf,
+        str(resolved_pdf_path),
         media_type="application/pdf",
         headers={
-            "Content-Disposition": f'inline; filename="{os.path.basename(percorso_pdf)}"'
+            "Content-Disposition": f'inline; filename="{resolved_pdf_path.name}"'
         }
     )

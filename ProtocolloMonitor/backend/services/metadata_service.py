@@ -45,25 +45,86 @@ class MetadataService:
 
     def get_metadata(
         self,
-        entity_type: str,
-        entity_id: int | str,
-    ) -> list[dict[str, Any]]:
-        """Restituisce i metadati associati a un'entita.
+        id_protocollo_or_entity_type: int | str,
+        entity_id: int | str | None = None,
+    ) -> dict[str, Any] | list[dict[str, Any]] | None:
+        """Restituisce metadati protocollo o metadati generici futuri.
 
-        Valida prudentemente il riferimento entita. Se la feature non e attiva
-        restituisce lista vuota. Non esegue query dirette: la lettura reale,
-        quando esistera, restera responsabilita del repository.
+        Uso nuovo:
+        `get_metadata(id_protocollo)` restituisce un dizionario con i metadati
+        del protocollo oppure `None` se non trovato.
+
+        Uso legacy/preparatorio:
+        `get_metadata(entity_type, entity_id)` mantiene il comportamento
+        placeholder per metadati generici futuri e restituisce una lista.
         """
 
-        self.validate_entity(entity_type, entity_id)
+        if entity_id is not None:
+            self.validate_entity(id_protocollo_or_entity_type, entity_id)
 
-        if not self.feature_enabled():
-            return []
+            if not self.feature_enabled():
+                return []
 
-        return self.metadata_repository.list_metadata_for_entity(
-            entity_type,
-            entity_id,
+            return self.metadata_repository.list_metadata_for_entity(
+                id_protocollo_or_entity_type,
+                entity_id,
+            )
+
+        if self.metadata_repository is None:
+            return None
+
+        get_metadata_by_protocollo_id = getattr(
+            self.metadata_repository,
+            "get_metadata_by_protocollo_id",
+            None,
         )
+
+        if get_metadata_by_protocollo_id is None:
+            return None
+
+        metadata = get_metadata_by_protocollo_id(id_protocollo_or_entity_type)
+
+        if metadata is None:
+            return None
+
+        return self._add_pdf_availability(metadata)
+
+    def _add_pdf_availability(self, metadata: dict[str, Any]) -> dict[str, Any]:
+        """Aggiunge `pdf_disponibile` ai metadati protocollo.
+
+        Cosa fa:
+        legge il path `percorso_documento_protocollato`, lo passa al resolver
+        centralizzato dei documenti e aggiunge un booleano al dizionario.
+
+        Perche esiste:
+        il repository deve restare limitato alla lettura dei dati Access. La
+        disponibilita fisica del PDF e invece una regola applicativa: dipende
+        dal filesystem e dalla normalizzazione sicura introdotta con
+        `DocumentPathService`.
+
+        Parametri:
+        - `metadata`: dizionario restituito dal repository.
+
+        Valori restituiti:
+        lo stesso contenuto logico dei metadati, arricchito con
+        `pdf_disponibile`.
+
+        Rischi evitati:
+        - accesso filesystem nel repository;
+        - duplicazione della risoluzione path nell'endpoint;
+        - esposizione al frontend di uno stato ambiguo quando il path esiste in
+          Access ma il file non e raggiungibile.
+        """
+
+        from backend.services import document_path_service
+
+        enriched_metadata = dict(metadata)
+        pdf_path = enriched_metadata.get("percorso_documento_protocollato")
+        enriched_metadata["pdf_disponibile"] = (
+            document_path_service.resolve_document_path(pdf_path) is not None
+        )
+
+        return enriched_metadata
 
     def get_tags(
         self,

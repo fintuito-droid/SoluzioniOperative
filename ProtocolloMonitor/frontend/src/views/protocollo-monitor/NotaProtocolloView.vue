@@ -82,22 +82,77 @@
     </v-card>
 
     <v-card rounded="xl" elevation="2" class="pa-4">
-      <v-card-title class="font-weight-bold">
-        Documento protocollato
+      <v-card-title class="d-flex justify-space-between align-center">
+        <span class="font-weight-bold">
+          Documento protocollato
+        </span>
+
+        <v-btn
+          v-if="!metadataLoading && pdfDisponibile"
+          color="deep-purple"
+          variant="flat"
+          prepend-icon="mdi-file-pdf-box"
+          :loading="pdfLoading"
+          @click="visualizzaPdf"
+        >
+          Visualizza PDF
+        </v-btn>
+
+        <v-chip
+          v-else-if="!metadataLoading"
+          color="grey"
+          variant="tonal"
+        >
+          PDF non disponibile
+        </v-chip>
       </v-card-title>
 
       <v-divider class="mb-4" />
 
+      <v-alert
+        v-if="metadataLoading"
+        type="info"
+        variant="tonal"
+        class="mb-4"
+      >
+        Verifica disponibilita PDF in corso...
+      </v-alert>
+
+      <v-alert
+        v-else-if="pdfErrore"
+        type="warning"
+        variant="tonal"
+        class="mb-4"
+      >
+        {{ pdfErrore }}
+      </v-alert>
+
       <iframe
-        v-if="protocollo"
-        :src="urlPdf"
+        v-if="pdfViewerUrl"
+        :src="pdfViewerUrl"
         width="100%"
         height="750"
         class="pdf-viewer"
       ></iframe>
 
+      <v-alert
+        v-else-if="protocollo && !metadataLoading && !pdfDisponibile"
+        type="info"
+        variant="tonal"
+      >
+        Il PDF non e disponibile o non e stato ancora acquisito.
+      </v-alert>
+
+      <v-alert
+        v-else-if="protocollo && pdfDisponibile"
+        type="info"
+        variant="tonal"
+      >
+        PDF disponibile.
+      </v-alert>
+
       <v-alert v-else type="info" variant="tonal">
-        Caricamento PDF in corso...
+        Caricamento informazioni documento in corso...
       </v-alert>
     </v-card>
 
@@ -105,11 +160,16 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from "vue"
+import { ref, onMounted, onBeforeUnmount, computed } from "vue"
 import { useRoute } from "vue-router"
 
 const route = useRoute()
 const protocollo = ref(null)
+const metadata = ref(null)
+const metadataLoading = ref(false)
+const pdfLoading = ref(false)
+const pdfErrore = ref("")
+const pdfViewerUrl = ref("")
 
 const urlSorgente = computed(() => {
   return protocollo.value?.UrlSorgente || ""
@@ -117,6 +177,10 @@ const urlSorgente = computed(() => {
 
 const urlPdf = computed(() => {
   return `http://127.0.0.1:8000/protocollo-monitor/protocolli/${route.params.idProtocollo}/pdf`
+})
+
+const pdfDisponibile = computed(() => {
+  return metadata.value?.pdf_disponibile === true
 })
 
 async function caricaProtocollo() {
@@ -135,6 +199,77 @@ async function caricaProtocollo() {
   protocollo.value = dati.protocollo
 }
 
+async function caricaMetadata() {
+  const idProtocollo = route.params.idProtocollo
+  metadataLoading.value = true
+  pdfErrore.value = ""
+
+  try {
+    const response = await fetch(
+      `http://127.0.0.1:8000/protocollo-monitor/protocolli/${idProtocollo}/metadata`
+    )
+
+    if (response.status === 404) {
+      metadata.value = { pdf_disponibile: false }
+      return
+    }
+
+    if (!response.ok) {
+      throw new Error("Errore HTTP " + response.status)
+    }
+
+    metadata.value = await response.json()
+  } catch (error) {
+    console.error("Errore nel caricamento dei metadata:", error)
+    metadata.value = { pdf_disponibile: false }
+    pdfErrore.value = "Impossibile verificare la disponibilita del PDF."
+  } finally {
+    metadataLoading.value = false
+  }
+}
+
+async function visualizzaPdf() {
+  if (!pdfDisponibile.value) return
+
+  pdfLoading.value = true
+  pdfErrore.value = ""
+
+  try {
+    const response = await fetch(urlPdf.value)
+
+    if (response.status === 404) {
+      revocaPdfViewerUrl()
+      pdfErrore.value = "Il PDF non e disponibile o non e stato ancora acquisito."
+      metadata.value = {
+        ...(metadata.value || {}),
+        pdf_disponibile: false
+      }
+      return
+    }
+
+    if (!response.ok) {
+      throw new Error("Errore HTTP " + response.status)
+    }
+
+    const pdfBlob = await response.blob()
+    revocaPdfViewerUrl()
+    pdfViewerUrl.value = URL.createObjectURL(pdfBlob)
+  } catch (error) {
+    console.error("Errore apertura PDF:", error)
+    revocaPdfViewerUrl()
+    pdfErrore.value = "Il PDF non e disponibile o non e stato ancora acquisito."
+  } finally {
+    pdfLoading.value = false
+  }
+}
+
+function revocaPdfViewerUrl() {
+  if (pdfViewerUrl.value) {
+    URL.revokeObjectURL(pdfViewerUrl.value)
+    pdfViewerUrl.value = ""
+  }
+}
+
 function apriDocumentoOriginale() {
   if (!urlSorgente.value) return
   window.open(urlSorgente.value, "_blank")
@@ -142,6 +277,11 @@ function apriDocumentoOriginale() {
 
 onMounted(() => {
   caricaProtocollo()
+  caricaMetadata()
+})
+
+onBeforeUnmount(() => {
+  revocaPdfViewerUrl()
 })
 </script>
 
