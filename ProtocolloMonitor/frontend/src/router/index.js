@@ -33,6 +33,28 @@ const routes = [
   },
 
   {
+    path: '/protocollo-monitor/procedimenti',
+    name: 'ProtocolloMonitorProcedimenti',
+    component: () =>
+      import('../views/ProcedimentiView.vue'),
+    meta: {
+      title: 'Procedimenti',
+      modulo: 'ProtocolloMonitor'
+    }
+  },
+
+  {
+    path: '/protocollo-monitor/procedimenti/:idProcedimento',
+    name: 'ProtocolloMonitorProcedimentoDettaglio',
+    component: () =>
+      import('../views/ProcedimentoDettaglioView.vue'),
+    meta: {
+      title: 'Dettaglio procedimento',
+      modulo: 'ProtocolloMonitor'
+    }
+  },
+
+  {
   path: '/protocollo-monitor/protocolli/:idProtocollo',
   name: 'ProtocolloMonitorNota',
   component: () =>

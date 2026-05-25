@@ -70,6 +70,13 @@
         />
 
         <v-list-item
+          title="Procedimenti"
+          subtitle="Fascicoli operativi"
+          prepend-icon="mdi-folder-table-outline"
+          to="/protocollo-monitor/procedimenti"
+        />
+
+        <v-list-item
           title="Assegnazioni"
           subtitle="Smistamento pratiche"
           prepend-icon="mdi-account-arrow-right-outline"
