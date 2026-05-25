@@ -1,8 +1,7 @@
 import pytest
 from fastapi import HTTPException
 
-import backend.core.dependency_container as dependency_container
-from backend.main import get_protocollo_metadata
+from backend.api.routes.protocollo_monitor import get_protocollo_metadata
 
 
 class FakeMetadataService:
@@ -34,26 +33,20 @@ def test_metadata_endpoint_returns_200(monkeypatch):
         "percorso_documento_protocollato": "FileServer/2026/05/E_DIR-SIC_18177_20260510.pdf",
         "pdf_disponibile": True,
     }
-    monkeypatch.setattr(
-        dependency_container,
-        "DependencyContainer",
-        lambda: FakeContainer(metadata),
+    response = get_protocollo_metadata(
+        123,
+        metadata_service=FakeMetadataService(metadata),
     )
-
-    response = get_protocollo_metadata(123)
 
     assert response == metadata
 
 
-def test_metadata_endpoint_returns_404(monkeypatch):
-    monkeypatch.setattr(
-        dependency_container,
-        "DependencyContainer",
-        lambda: FakeContainer(None),
-    )
-
+def test_metadata_endpoint_returns_404():
     with pytest.raises(HTTPException) as exc_info:
-        get_protocollo_metadata(999)
+        get_protocollo_metadata(
+            999,
+            metadata_service=FakeMetadataService(None),
+        )
 
     assert exc_info.value.status_code == 404
     assert exc_info.value.detail == "Protocollo non trovato"
