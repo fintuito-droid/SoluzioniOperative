@@ -120,3 +120,15 @@ class DependencyContainer:
             )
 
         return self._metadata_service
+
+
+def create_container() -> DependencyContainer:
+    """Crea un nuovo container applicativo.
+
+    La factory mantiene esplicito il ciclo di vita del container senza
+    introdurre singleton globali. Le route FastAPI possono dipendere da questa
+    funzione e, in futuro, sostituirla con una gestione request-scoped piu
+    ricca senza cambiare gli endpoint.
+    """
+
+    return DependencyContainer()

@@ -8,32 +8,40 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 
+from backend.core.dependency_container import DependencyContainer, create_container
+
 
 router = APIRouter()
 
 
-def get_protocollo_service() -> Any:
+def get_container() -> DependencyContainer:
+    """Dipendenza FastAPI per creare il container della richiesta."""
+
+    return create_container()
+
+
+def get_protocollo_service(
+    container: DependencyContainer = Depends(get_container),
+) -> Any:
     """Dipendenza FastAPI per ottenere `ProtocolloService`."""
 
-    from backend.core.dependency_container import DependencyContainer
-
-    return DependencyContainer().get_protocollo_service()
+    return container.get_protocollo_service()
 
 
-def get_documento_service() -> Any:
+def get_documento_service(
+    container: DependencyContainer = Depends(get_container),
+) -> Any:
     """Dipendenza FastAPI per ottenere `DocumentoService`."""
 
-    from backend.core.dependency_container import DependencyContainer
-
-    return DependencyContainer().get_documento_service()
+    return container.get_documento_service()
 
 
-def get_metadata_service() -> Any:
+def get_metadata_service(
+    container: DependencyContainer = Depends(get_container),
+) -> Any:
     """Dipendenza FastAPI per ottenere `MetadataService`."""
 
-    from backend.core.dependency_container import DependencyContainer
-
-    return DependencyContainer().get_metadata_service()
+    return container.get_metadata_service()
 
 
 def _resolve_pdf_path_or_404(id_protocollo: int, documento_service: Any):
