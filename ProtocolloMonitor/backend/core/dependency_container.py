@@ -37,10 +37,12 @@ class DependencyContainer:
         self._protocollo_repository: Any | None = None
         self._documento_repository: Any | None = None
         self._metadata_repository: Any | None = None
+        self._procedimento_repository: Any | None = None
 
         self._protocollo_service: Any | None = None
         self._documento_service: Any | None = None
         self._metadata_service: Any | None = None
+        self._procedimento_service: Any | None = None
 
     def _get_protocollo_repository(self) -> Any:
         """Restituisce il repository protocolli, creandolo lazy.
@@ -76,6 +78,16 @@ class DependencyContainer:
             self._metadata_repository = MetadataRepository()
 
         return self._metadata_repository
+
+    def _get_procedimento_repository(self) -> Any:
+        """Restituisce il repository procedimenti, creandolo lazy."""
+
+        if self._procedimento_repository is None:
+            from ..repositories.procedimento_repository import ProcedimentoRepository
+
+            self._procedimento_repository = ProcedimentoRepository()
+
+        return self._procedimento_repository
 
     def get_protocollo_service(self) -> Any:
         """Restituisce `ProtocolloService` con repository opzionali collegati.
@@ -120,6 +132,18 @@ class DependencyContainer:
             )
 
         return self._metadata_service
+
+    def get_procedimento_service(self) -> Any:
+        """Restituisce `ProcedimentoService` con repository read-only collegato."""
+
+        if self._procedimento_service is None:
+            from ..services.procedimento_service import ProcedimentoService
+
+            self._procedimento_service = ProcedimentoService(
+                procedimento_repository=self._get_procedimento_repository(),
+            )
+
+        return self._procedimento_service
 
 
 def create_container() -> DependencyContainer:

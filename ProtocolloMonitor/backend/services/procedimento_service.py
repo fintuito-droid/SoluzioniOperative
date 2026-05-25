@@ -1,0 +1,118 @@
+"""Service Layer read-only per l'entita Procedimento.
+
+Il service introduce un punto applicativo sopra `ProcedimentoRepository`, senza
+creare route FastAPI e senza modificare dati.
+
+Responsabilita:
+- esporre metodi read-only per procedimenti;
+- delegare al repository quando disponibile;
+- restituire fallback sicuri quando la dipendenza non e configurata;
+- mantenere il backend pronto a PostgreSQL senza cambiare il runtime attuale.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+
+class ProcedimentoService:
+    """Service minimale per procedimenti.
+
+    Il service non apre connessioni, non esegue SQL e non modifica il database.
+    Tutto l'accesso dati resta nel repository, cosi in futuro sara possibile
+    sostituire Access con PostgreSQL mantenendo stabile il contratto.
+    """
+
+    def __init__(self, *, procedimento_repository: Any | None = None) -> None:
+        self.procedimento_repository = procedimento_repository
+
+    def list_procedimenti(self) -> list[dict[str, Any]]:
+        """Restituisce l'elenco procedimenti.
+
+        Fallback sicuro: lista vuota se il repository manca, non espone il
+        metodo atteso o solleva errore.
+        """
+
+        if self.procedimento_repository is None:
+            return []
+
+        list_procedimenti = getattr(
+            self.procedimento_repository,
+            "list_procedimenti",
+            None,
+        )
+
+        if list_procedimenti is None:
+            return []
+
+        try:
+            return list_procedimenti()
+        except Exception:
+            return []
+
+    def get_procedimento_detail(self, id_procedimento: int) -> dict[str, Any] | None:
+        """Restituisce il dettaglio procedimento oppure `None`.
+
+        `None` rappresenta il caso "procedimento non trovato" finche non verra
+        introdotta una route FastAPI che potra trasformarlo in HTTP 404.
+        """
+
+        if self.procedimento_repository is None:
+            return None
+
+        get_detail = getattr(
+            self.procedimento_repository,
+            "get_procedimento_detail",
+            None,
+        )
+
+        if get_detail is None:
+            return None
+
+        try:
+            return get_detail(id_procedimento)
+        except Exception:
+            return None
+
+    def list_protocolli_collegati(
+        self,
+        id_procedimento: int,
+    ) -> list[dict[str, Any]]:
+        """Restituisce i protocolli collegati al procedimento."""
+
+        if self.procedimento_repository is None:
+            return []
+
+        list_linked = getattr(
+            self.procedimento_repository,
+            "list_protocolli_collegati",
+            None,
+        )
+
+        if list_linked is None:
+            return []
+
+        try:
+            return list_linked(id_procedimento)
+        except Exception:
+            return []
+
+    def count_protocolli_collegati(self, id_procedimento: int) -> int:
+        """Conta i protocolli collegati al procedimento."""
+
+        if self.procedimento_repository is None:
+            return 0
+
+        count_linked = getattr(
+            self.procedimento_repository,
+            "count_protocolli_collegati",
+            None,
+        )
+
+        if count_linked is None:
+            return 0
+
+        try:
+            return int(count_linked(id_procedimento) or 0)
+        except Exception:
+            return 0
