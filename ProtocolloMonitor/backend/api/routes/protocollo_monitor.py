@@ -44,6 +44,14 @@ def get_metadata_service(
     return container.get_metadata_service()
 
 
+def get_procedimento_service(
+    container: DependencyContainer = Depends(get_container),
+) -> Any:
+    """Dipendenza FastAPI per ottenere `ProcedimentoService`."""
+
+    return container.get_procedimento_service()
+
+
 def _resolve_pdf_path_or_404(id_protocollo: int, documento_service: Any):
     """Recupera e risolve il path PDF, sollevando 404 coerenti.
 
@@ -158,3 +166,58 @@ def apri_pdf_protocollo(
             "Content-Disposition": f'inline; filename="{resolved_pdf_path.name}"'
         }
     )
+
+
+# ======================================================================================
+# PROCEDIMENTI - ENDPOINT READ-ONLY
+# ======================================================================================
+
+@router.get("/protocollo-monitor/procedimenti")
+def get_procedimenti(
+    procedimento_service: Any = Depends(get_procedimento_service),
+):
+    return procedimento_service.list_procedimenti()
+
+
+@router.get("/protocollo-monitor/procedimenti/{id_procedimento}")
+def get_procedimento_dettaglio(
+    id_procedimento: int,
+    procedimento_service: Any = Depends(get_procedimento_service),
+):
+    procedimento = procedimento_service.get_procedimento_detail(id_procedimento)
+
+    if procedimento is None:
+        raise HTTPException(status_code=404, detail="Procedimento non trovato")
+
+    return procedimento
+
+
+@router.get("/protocollo-monitor/procedimenti/{id_procedimento}/protocolli")
+def get_procedimento_protocolli(
+    id_procedimento: int,
+    procedimento_service: Any = Depends(get_procedimento_service),
+):
+    procedimento = procedimento_service.get_procedimento_detail(id_procedimento)
+
+    if procedimento is None:
+        raise HTTPException(status_code=404, detail="Procedimento non trovato")
+
+    return procedimento_service.list_protocolli_collegati(id_procedimento)
+
+
+@router.get("/protocollo-monitor/procedimenti/{id_procedimento}/protocolli/count")
+def get_procedimento_protocolli_count(
+    id_procedimento: int,
+    procedimento_service: Any = Depends(get_procedimento_service),
+):
+    procedimento = procedimento_service.get_procedimento_detail(id_procedimento)
+
+    if procedimento is None:
+        raise HTTPException(status_code=404, detail="Procedimento non trovato")
+
+    return {
+        "id_procedimento": id_procedimento,
+        "protocolli_collegati": procedimento_service.count_protocolli_collegati(
+            id_procedimento
+        ),
+    }
