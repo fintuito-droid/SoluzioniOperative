@@ -8,6 +8,8 @@ Lo script e pensato per essere copiato manualmente in un modulo VBA di Microsoft
 
 Questo documento non esegue alcuna modifica al database.
 
+Lo script deve essere eseguito inizialmente solo su una copia del database `.accdb`.
+
 Tabelle previste:
 
 - `T_Procedimenti`
@@ -37,6 +39,13 @@ Non procedere mai alla creazione di tabelle o indici se:
 - la cartella `Backup` non puo essere creata;
 - la copia del file `.accdb` non riesce;
 - il file copiato non esiste dopo la copia.
+
+Rischi operativi specifici da verificare prima dell'esecuzione reale:
+
+- database sincronizzato con OneDrive o altri sistemi cloud che possono bloccare temporaneamente il file;
+- presenza del file di lock `.laccdb`;
+- antivirus o sistemi di protezione endpoint che intercettano la copia del file;
+- database aperto in modalita esclusiva da Access o da un altro utente.
 
 ## 3. Script VBA completo
 
@@ -155,10 +164,7 @@ Private Function CreaBackupDatabaseCorrente(ByVal percorsoDatabase As String) As
     End If
 
     timestamp = Format(Now, "yyyymmdd_hhnnss")
-    percorsoBackup = fso.BuildPath(
-        cartellaBackup,
-        nomeSenzaEstensione & "_" & timestamp & "." & estensione
-    )
+    percorsoBackup = fso.BuildPath(cartellaBackup, nomeSenzaEstensione & "_" & timestamp & "." & estensione)
 
     fso.CopyFile percorsoDatabase, percorsoBackup, False
 
@@ -242,13 +248,12 @@ Private Sub CreaIndiciProcedimentoProtocolli(ByVal db As DAO.Database)
 End Sub
 
 
-Private Sub CreaIndiceSeAssente(
-    ByVal db As DAO.Database,
-    ByVal nomeTabella As String,
-    ByVal nomeIndice As String,
-    ByVal campiIndice As String,
-    ByVal univoco As Boolean
-)
+Private Sub CreaIndiceSeAssente( _
+    ByVal db As DAO.Database, _
+    ByVal nomeTabella As String, _
+    ByVal nomeIndice As String, _
+    ByVal campiIndice As String, _
+    ByVal univoco As Boolean)
     Dim sql As String
 
     If Not TabellaEsiste(db, nomeTabella) Then
@@ -283,11 +288,10 @@ NonEsiste:
 End Function
 
 
-Private Function IndiceEsiste(
-    ByVal db As DAO.Database,
-    ByVal nomeTabella As String,
-    ByVal nomeIndice As String
-) As Boolean
+Private Function IndiceEsiste( _
+    ByVal db As DAO.Database, _
+    ByVal nomeTabella As String, _
+    ByVal nomeIndice As String) As Boolean
     On Error GoTo NonEsiste
 
     Dim idx As DAO.Index
@@ -325,6 +329,16 @@ Procedura consigliata:
 6. eseguire manualmente `CreaSchemaProcedimenti_MVP`;
 7. controllare tabelle, indici e messaggi.
 
+Compatibilita DAO VBA:
+
+- lo script usa `DAO.Database`, `DAO.TableDef` e `DAO.Index`;
+- in Access deve essere disponibile il riferimento DAO/Access Database Engine Object Library;
+- se l'editor VBA segnala un errore di compilazione sui tipi `DAO.*`, verificare i riferimenti del progetto VBA prima di eseguire lo script.
+
+Nota Access DDL:
+
+DDL Access non e transazionale come PostgreSQL. Se la creazione fallisce dopo una modifica parziale, usare il backup creato prima dell'esecuzione oppure applicare il rollback manuale descritto sotto.
+
 ## 6. Controlli anti-duplicazione
 
 Lo script contiene:
@@ -336,6 +350,8 @@ Lo script contiene:
 Questi controlli evitano errori in caso di riesecuzione parziale.
 
 Nota: se una tabella esiste gia ma con struttura diversa, lo script non la modifica. In quel caso serve analisi manuale.
+
+Se una tabella esiste gia, verificare manualmente i campi prima di considerare completata la procedura. Lo script evita duplicazioni operative, ma non valida automaticamente la struttura di tabelle preesistenti.
 
 ## 7. Rollback manuale
 
@@ -378,4 +394,3 @@ Dopo l'esecuzione reale, verificare:
 - [ ] Gli endpoint FastAPI esistenti continuano a funzionare.
 - [ ] Il flusso Flask/Grisù continua ad acquisire protocolli.
 - [ ] Il frontend continua a visualizzare elenco, dettaglio e PDF.
-
