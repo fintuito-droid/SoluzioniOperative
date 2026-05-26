@@ -54,3 +54,23 @@ export function linkProtocolloToProcedimento(idProtocollo, idProcedimento, paylo
     }
   )
 }
+
+export function listFasiProcedimento(idProcedimento) {
+  return fetchJson(`/protocollo-monitor/procedimenti/${idProcedimento}/fasi`)
+}
+
+export function getFaseWorkflow(idFase) {
+  return fetchJson(`/protocollo-monitor/procedimenti/fasi/${idFase}`)
+}
+
+export function listSottofasiFase(idFase) {
+  return fetchJson(`/protocollo-monitor/procedimenti/fasi/${idFase}/sottofasi`)
+}
+
+export function listCatalogoSottofasi(attivoOnly = true) {
+  const params = new URLSearchParams({
+    attivo_only: String(attivoOnly)
+  })
+
+  return fetchJson(`/protocollo-monitor/catalogo-sottofasi?${params.toString()}`)
+}

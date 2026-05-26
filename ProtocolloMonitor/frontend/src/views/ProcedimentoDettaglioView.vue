@@ -169,11 +169,32 @@
                 </div>
 
                 <v-chip color="primary" variant="tonal" size="small">
-                  Mock locale
+                  Dati reali
                 </v-chip>
               </div>
 
-              <div class="timeline-scroll">
+              <v-alert
+                v-if="loadingWorkflow"
+                type="info"
+                variant="tonal"
+                class="mb-4"
+              >
+                Caricamento workflow in corso...
+              </v-alert>
+
+              <v-alert
+                v-else-if="erroreWorkflow"
+                type="warning"
+                variant="tonal"
+                class="mb-4"
+              >
+                {{ erroreWorkflow }}
+              </v-alert>
+
+              <div
+                v-else-if="fasiWorkflow.length"
+                class="timeline-scroll"
+              >
                 <div
                   v-for="fase in fasiWorkflow"
                   :key="fase.id"
@@ -221,6 +242,14 @@
                   </v-card>
                 </div>
               </div>
+
+              <v-alert
+                v-else
+                type="info"
+                variant="tonal"
+              >
+                Nessuna fase workflow configurata per questo procedimento.
+              </v-alert>
             </div>
           </v-col>
 
@@ -305,6 +334,15 @@
                 </div>
               </v-card-text>
             </v-card>
+
+            <v-alert
+              v-else
+              type="info"
+              variant="tonal"
+              class="ma-4"
+            >
+              Seleziona una fase del workflow.
+            </v-alert>
           </v-col>
         </template>
 
@@ -337,6 +375,8 @@
                   density="comfortable"
                   hide-details
                   class="combo-sottofase"
+                  :loading="loadingCatalogo"
+                  :disabled="!catalogoSottofasi.length"
                   @update:model-value="aggiungiSottofaseDaCatalogo"
                 >
                   <template #item="{ props, item }">
@@ -437,7 +477,7 @@
                   variant="tonal"
                   class="mt-2"
                 >
-                  Nessuna sottofase presente. Aggiungine una dal catalogo mock.
+                  Nessuna sottofase presente. Aggiungine una dal catalogo.
                 </v-alert>
 
                 <v-divider class="my-4" />
@@ -511,13 +551,12 @@ import { useRoute, useRouter } from 'vue-router'
 import {
   countProtocolliProcedimento,
   getProcedimento,
-  listProtocolliProcedimento
+  listCatalogoSottofasi,
+  listFasiProcedimento,
+  listProtocolliProcedimento,
+  listSottofasiFase
 } from '../services/procedimentoApi'
-import {
-  catalogoSottofasiMock,
-  procedimentoFasiMock,
-  statiWorkflow
-} from '../mock/procedimentoWorkflowMock'
+import { statiWorkflow } from '../mock/procedimentoWorkflowMock'
 
 const route = useRoute()
 const router = useRouter()
@@ -527,11 +566,14 @@ const protocolli = ref([])
 const numeroProtocolliApi = ref(null)
 const loading = ref(false)
 const loadingProtocolli = ref(false)
+const loadingWorkflow = ref(false)
+const loadingCatalogo = ref(false)
 const errore = ref('')
+const erroreWorkflow = ref('')
 
-const fasiWorkflow = ref(clonaFasiMock())
-const catalogoSottofasi = ref([...catalogoSottofasiMock])
-const faseSelezionataId = ref(2)
+const fasiWorkflow = ref([])
+const catalogoSottofasi = ref([])
+const faseSelezionataId = ref(null)
 const sottofaseSelezionataId = ref(null)
 const sottofaseDaAggiungere = ref(null)
 const modalitaLavorazione = ref(false)
@@ -624,6 +666,50 @@ async function caricaDettaglio() {
   }
 }
 
+async function caricaWorkflow() {
+  loadingWorkflow.value = true
+  loadingCatalogo.value = true
+  erroreWorkflow.value = ''
+
+  try {
+    const [fasiApi, catalogoApi] = await Promise.all([
+      listFasiProcedimento(idProcedimento.value),
+      listCatalogoSottofasi(true)
+    ])
+
+    catalogoSottofasi.value = catalogoApi.map(normalizzaCatalogoSottofase)
+
+    const fasiNormalizzate = await Promise.all(
+      fasiApi.map(async (fase) => {
+        const faseNormalizzata = normalizzaFaseWorkflow(fase)
+
+        try {
+          const sottofasi = await listSottofasiFase(faseNormalizzata.id)
+          faseNormalizzata.sottofasi = sottofasi.map(normalizzaSottofaseWorkflow)
+        } catch {
+          faseNormalizzata.sottofasi = []
+        }
+
+        return faseNormalizzata
+      })
+    )
+
+    fasiWorkflow.value = fasiNormalizzate
+    faseSelezionataId.value = fasiNormalizzate[0]?.id ?? null
+    sottofaseSelezionataId.value = null
+    modalitaLavorazione.value = false
+  } catch (error) {
+    erroreWorkflow.value = 'Impossibile caricare il workflow da FastAPI.'
+    fasiWorkflow.value = []
+    catalogoSottofasi.value = []
+    faseSelezionataId.value = null
+    sottofaseSelezionataId.value = null
+  } finally {
+    loadingWorkflow.value = false
+    loadingCatalogo.value = false
+  }
+}
+
 function normalizzaProcedimento(dato) {
   if (!dato) return null
 
@@ -671,11 +757,44 @@ function normalizzaProcedimento(dato) {
   }
 }
 
-function clonaFasiMock() {
-  return procedimentoFasiMock.map((fase) => ({
-    ...fase,
-    sottofasi: fase.sottofasi.map((sottofase) => ({ ...sottofase }))
-  }))
+function normalizzaFaseWorkflow(dato) {
+  return {
+    id: dato.id_fase ?? dato.IDFase,
+    idProcedimento: dato.id_procedimento ?? dato.IDProcedimento,
+    ordine: dato.ordine ?? dato.Ordine ?? 0,
+    titolo: dato.titolo ?? dato.Titolo ?? 'Fase senza titolo',
+    descrizione: dato.descrizione ?? dato.Descrizione ?? '',
+    stato: dato.stato_fase ?? dato.StatoFase ?? 'NON_AVVIATA',
+    obbligatoria: Boolean(dato.obbligatoria ?? dato.Obbligatoria),
+    bloccante: Boolean(dato.bloccante ?? dato.Bloccante),
+    responsabile: dato.responsabile ?? dato.Responsabile ?? '-',
+    dataScadenza: dato.data_scadenza ?? dato.DataScadenza ?? '-',
+    sottofasi: []
+  }
+}
+
+function normalizzaSottofaseWorkflow(dato) {
+  return {
+    id: dato.id_sottofase ?? dato.IDSottofase,
+    ordine: dato.ordine ?? dato.Ordine ?? 0,
+    titolo: dato.titolo ?? dato.Titolo ?? 'Sottofase',
+    descrizione: dato.descrizione ?? dato.Descrizione ?? '',
+    stato: dato.stato_sottofase ?? dato.StatoSottofase ?? 'NON_AVVIATA',
+    icona: dato.icona ?? dato.Icona ?? 'mdi-checkbox-blank-circle-outline'
+  }
+}
+
+function normalizzaCatalogoSottofase(dato) {
+  return {
+    id: dato.id_catalogo_sottofase ?? dato.IDCatalogoSottofase,
+    codice: dato.codice_sottofase ?? dato.CodiceSottofase ?? '',
+    titolo: dato.titolo ?? dato.Titolo ?? 'Sottofase',
+    descrizione: dato.descrizione ?? dato.Descrizione ?? '',
+    icona: dato.icona ?? dato.Icona ?? 'mdi-checkbox-blank-circle-outline',
+    colore: dato.colore ?? dato.Colore ?? 'grey',
+    categoria: dato.categoria ?? dato.Categoria ?? '',
+    ordineDefault: dato.ordine_default ?? dato.OrdineDefault ?? 0
+  }
 }
 
 function tornaAElenco() {
@@ -776,6 +895,7 @@ function coloreProcedimento(valore) {
 
 onMounted(() => {
   caricaDettaglio()
+  caricaWorkflow()
 })
 </script>
 
