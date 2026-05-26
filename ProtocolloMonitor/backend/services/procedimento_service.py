@@ -15,6 +15,18 @@ from __future__ import annotations
 from typing import Any
 
 
+class ProtocolloNotFoundError(Exception):
+    """Errore applicativo per protocollo inesistente."""
+
+
+class ProcedimentoNotFoundError(Exception):
+    """Errore applicativo per procedimento inesistente."""
+
+
+class ProcedimentoProtocolloLinkAlreadyExistsError(Exception):
+    """Errore applicativo per collegamento gia presente."""
+
+
 class ProcedimentoService:
     """Service minimale per procedimenti.
 
@@ -116,3 +128,69 @@ class ProcedimentoService:
             return int(count_linked(id_procedimento) or 0)
         except Exception:
             return 0
+
+    def list_procedimenti_by_protocollo_id(
+        self,
+        id_protocollo: int,
+    ) -> list[dict[str, Any]]:
+        """Restituisce i procedimenti collegati a un protocollo.
+
+        Se il protocollo non esiste, solleva `ProtocolloNotFoundError` cosi la
+        route FastAPI puo restituire un HTTP 404 esplicito.
+        """
+
+        if self.procedimento_repository is None:
+            raise ProtocolloNotFoundError()
+
+        if not self.procedimento_repository.protocollo_exists(id_protocollo):
+            raise ProtocolloNotFoundError()
+
+        return self.procedimento_repository.list_procedimenti_by_protocollo_id(
+            id_protocollo
+        )
+
+    def link_protocollo_to_procedimento(
+        self,
+        *,
+        id_protocollo: int,
+        id_procedimento: int,
+        ruolo_protocollo: str | None = None,
+        principale: bool = False,
+        note_collegamento: str | None = None,
+    ) -> dict[str, Any]:
+        """Collega un protocollo a un procedimento.
+
+        Il service valida esistenza protocollo/procedimento e blocca duplicati
+        prima dell'insert. Il vincolo univoco DB resta comunque la protezione
+        finale contro race condition o chiamate concorrenti.
+        """
+
+        if self.procedimento_repository is None:
+            raise ProtocolloNotFoundError()
+
+        if not self.procedimento_repository.protocollo_exists(id_protocollo):
+            raise ProtocolloNotFoundError()
+
+        if not self.procedimento_repository.procedimento_exists(id_procedimento):
+            raise ProcedimentoNotFoundError()
+
+        if self.procedimento_repository.procedimento_protocollo_link_exists(
+            id_protocollo,
+            id_procedimento,
+        ):
+            raise ProcedimentoProtocolloLinkAlreadyExistsError()
+
+        normalized_role = (ruolo_protocollo or "COLLEGATO").strip() or "COLLEGATO"
+
+        created_link = self.procedimento_repository.link_protocollo_to_procedimento(
+            id_protocollo=id_protocollo,
+            id_procedimento=id_procedimento,
+            ruolo_protocollo=normalized_role,
+            principale=bool(principale),
+            note_collegamento=note_collegamento,
+        )
+
+        if created_link is None:
+            raise ProcedimentoProtocolloLinkAlreadyExistsError()
+
+        return created_link

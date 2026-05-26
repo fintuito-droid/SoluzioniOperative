@@ -58,6 +58,8 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any
 
+import pyodbc
+
 from .base import BaseRepository
 
 
@@ -178,6 +180,60 @@ class ProcedimentoRepository(BaseRepository):
             ),
             "percorso_documento_protocollato": self._normalize_value(
                 self._get(row, "PercorsoDocumentoProtocollato")
+            ),
+        }
+
+    def _procedimento_collegato_row_to_dict(self, row: Any) -> dict[str, Any]:
+        """Converte una riga procedimento collegata a un protocollo."""
+
+        procedimento = self._procedimento_row_to_dict(row)
+        procedimento.update(
+            {
+                "id_procedimento_protocollo": self._normalize_value(
+                    self._get(row, "IDProcedimentoProtocollo")
+                ),
+                "id_protocollo": self._normalize_value(
+                    self._get(row, "IDProtocollo")
+                ),
+                "ruolo_protocollo": self._normalize_value(
+                    self._get(row, "RuoloProtocollo")
+                ),
+                "principale": bool(self._get(row, "Principale"))
+                if self._get(row, "Principale") is not None
+                else False,
+                "data_collegamento": self._normalize_value(
+                    self._get(row, "DataCollegamento")
+                ),
+                "note_collegamento": self._normalize_value(
+                    self._get(row, "NoteCollegamento")
+                ),
+            }
+        )
+
+        return procedimento
+
+    def _link_row_to_dict(self, row: Any) -> dict[str, Any]:
+        """Converte una riga della tabella ponte in dizionario."""
+
+        return {
+            "id_procedimento_protocollo": self._normalize_value(
+                self._get(row, "IDProcedimentoProtocollo")
+            ),
+            "id_procedimento": self._normalize_value(
+                self._get(row, "IDProcedimento")
+            ),
+            "id_protocollo": self._normalize_value(self._get(row, "IDProtocollo")),
+            "ruolo_protocollo": self._normalize_value(
+                self._get(row, "RuoloProtocollo")
+            ),
+            "principale": bool(self._get(row, "Principale"))
+            if self._get(row, "Principale") is not None
+            else False,
+            "data_collegamento": self._normalize_value(
+                self._get(row, "DataCollegamento")
+            ),
+            "note_collegamento": self._normalize_value(
+                self._get(row, "NoteCollegamento")
             ),
         }
 
@@ -344,6 +400,205 @@ class ProcedimentoRepository(BaseRepository):
                 return 0
 
             return int(self._get(row, "Totale", 0) or 0)
+        finally:
+            cursor.close()
+            conn.close()
+
+    def list_procedimenti_by_protocollo_id(
+        self,
+        id_protocollo: int,
+    ) -> list[dict[str, Any]]:
+        """Legge i procedimenti collegati a un protocollo."""
+
+        query = """
+            SELECT
+                pp.IDProcedimentoProtocollo,
+                pp.IDProcedimento,
+                pp.IDProtocollo,
+                pp.RuoloProtocollo,
+                pp.Principale,
+                pp.DataCollegamento,
+                pp.NoteCollegamento,
+                p.CodiceProcedimento,
+                p.Titolo,
+                p.Descrizione,
+                p.AziendaSoggetto,
+                p.ComandoCompetenza,
+                p.SettoreCompetenza,
+                p.TipologiaProcedimento,
+                p.StatoProcedimento,
+                p.Priorita,
+                p.DataApertura,
+                p.DataUltimoAggiornamento,
+                p.DataScadenza,
+                p.DataChiusura,
+                p.NoteInterne,
+                p.Attivo,
+                p.DataCreazione,
+                p.DataModifica,
+                (
+                    SELECT COUNT(*)
+                    FROM T_ProcedimentoProtocolli AS pp_count
+                    WHERE pp_count.IDProcedimento = p.IDProcedimento
+                ) AS ProtocolliCollegati
+            FROM
+                T_ProcedimentoProtocolli AS pp
+                INNER JOIN T_Procedimenti AS p
+                    ON pp.IDProcedimento = p.IDProcedimento
+            WHERE
+                pp.IDProtocollo = ?
+            ORDER BY
+                pp.Principale DESC,
+                pp.DataCollegamento DESC,
+                pp.IDProcedimentoProtocollo DESC
+        """
+
+        conn = self._open_access_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute(query, (id_protocollo,))
+            return [
+                self._procedimento_collegato_row_to_dict(row)
+                for row in cursor.fetchall()
+            ]
+        finally:
+            cursor.close()
+            conn.close()
+
+    def protocollo_exists(self, id_protocollo: int) -> bool:
+        """Verifica se un protocollo esiste in `T_Protocolli`."""
+
+        query = """
+            SELECT COUNT(*) AS Totale
+            FROM T_Protocolli
+            WHERE IDProtocollo = ?
+        """
+
+        conn = self._open_access_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute(query, (id_protocollo,))
+            row = cursor.fetchone()
+            return int(self._get(row, "Totale", 0) or 0) > 0
+        finally:
+            cursor.close()
+            conn.close()
+
+    def procedimento_exists(self, id_procedimento: int) -> bool:
+        """Verifica se un procedimento esiste in `T_Procedimenti`."""
+
+        query = """
+            SELECT COUNT(*) AS Totale
+            FROM T_Procedimenti
+            WHERE IDProcedimento = ?
+        """
+
+        conn = self._open_access_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute(query, (id_procedimento,))
+            row = cursor.fetchone()
+            return int(self._get(row, "Totale", 0) or 0) > 0
+        finally:
+            cursor.close()
+            conn.close()
+
+    def procedimento_protocollo_link_exists(
+        self,
+        id_protocollo: int,
+        id_procedimento: int,
+    ) -> bool:
+        """Verifica se il collegamento procedimento/protocollo esiste gia."""
+
+        query = """
+            SELECT COUNT(*) AS Totale
+            FROM T_ProcedimentoProtocolli
+            WHERE IDProcedimento = ? AND IDProtocollo = ?
+        """
+
+        conn = self._open_access_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute(query, (id_procedimento, id_protocollo))
+            row = cursor.fetchone()
+            return int(self._get(row, "Totale", 0) or 0) > 0
+        finally:
+            cursor.close()
+            conn.close()
+
+    def link_protocollo_to_procedimento(
+        self,
+        *,
+        id_protocollo: int,
+        id_procedimento: int,
+        ruolo_protocollo: str,
+        principale: bool,
+        note_collegamento: str | None,
+    ) -> dict[str, Any] | None:
+        """Crea il collegamento nella tabella ponte.
+
+        Il metodo aggiorna solo `T_ProcedimentoProtocolli`. Non modifica
+        `T_Protocolli` e non modifica `T_Procedimenti`. Se il vincolo univoco
+        del database intercetta un duplicato, restituisce `None` lasciando al
+        service la traduzione in `409 Conflict`.
+        """
+
+        insert_query = """
+            INSERT INTO T_ProcedimentoProtocolli (
+                IDProcedimento,
+                IDProtocollo,
+                RuoloProtocollo,
+                Principale,
+                DataCollegamento,
+                NoteCollegamento
+            ) VALUES (?, ?, ?, ?, ?, ?)
+        """
+
+        select_query = """
+            SELECT TOP 1
+                IDProcedimentoProtocollo,
+                IDProcedimento,
+                IDProtocollo,
+                RuoloProtocollo,
+                Principale,
+                DataCollegamento,
+                NoteCollegamento
+            FROM T_ProcedimentoProtocolli
+            WHERE IDProcedimento = ? AND IDProtocollo = ?
+            ORDER BY IDProcedimentoProtocollo DESC
+        """
+
+        conn = self._open_access_connection()
+        cursor = conn.cursor()
+
+        try:
+            try:
+                cursor.execute(
+                    insert_query,
+                    (
+                        id_procedimento,
+                        id_protocollo,
+                        ruolo_protocollo,
+                        bool(principale),
+                        datetime.now(),
+                        note_collegamento,
+                    ),
+                )
+                conn.commit()
+            except pyodbc.IntegrityError:
+                return None
+
+            cursor.execute(select_query, (id_procedimento, id_protocollo))
+            row = cursor.fetchone()
+
+            if not row:
+                return None
+
+            return self._link_row_to_dict(row)
         finally:
             cursor.close()
             conn.close()

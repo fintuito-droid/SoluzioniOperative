@@ -7,11 +7,25 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
+from pydantic import BaseModel
 
 from backend.core.dependency_container import DependencyContainer, create_container
+from backend.services.procedimento_service import (
+    ProcedimentoNotFoundError,
+    ProcedimentoProtocolloLinkAlreadyExistsError,
+    ProtocolloNotFoundError,
+)
 
 
 router = APIRouter()
+
+
+class ProtocolloProcedimentoLinkPayload(BaseModel):
+    """Payload opzionale per collegare protocollo e procedimento."""
+
+    RuoloProtocollo: str | None = "COLLEGATO"
+    Principale: bool = False
+    NoteCollegamento: str | None = None
 
 
 def get_container() -> DependencyContainer:
@@ -145,6 +159,52 @@ def get_protocollo_metadata(
         raise HTTPException(status_code=404, detail="Protocollo non trovato")
 
     return metadata
+
+
+# ======================================================================================
+# PROCEDIMENTI COLLEGATI AL PROTOCOLLO
+# ======================================================================================
+
+@router.get("/protocollo-monitor/protocolli/{id_protocollo}/procedimenti")
+def get_procedimenti_by_protocollo(
+    id_protocollo: int,
+    procedimento_service: Any = Depends(get_procedimento_service),
+):
+    try:
+        return procedimento_service.list_procedimenti_by_protocollo_id(id_protocollo)
+    except ProtocolloNotFoundError:
+        raise HTTPException(status_code=404, detail="Protocollo non trovato")
+
+
+@router.post(
+    "/protocollo-monitor/protocolli/{id_protocollo}/procedimenti/{id_procedimento}",
+    status_code=201,
+)
+def collega_protocollo_a_procedimento(
+    id_protocollo: int,
+    id_procedimento: int,
+    payload: ProtocolloProcedimentoLinkPayload | None = None,
+    procedimento_service: Any = Depends(get_procedimento_service),
+):
+    payload = payload or ProtocolloProcedimentoLinkPayload()
+
+    try:
+        return procedimento_service.link_protocollo_to_procedimento(
+            id_protocollo=id_protocollo,
+            id_procedimento=id_procedimento,
+            ruolo_protocollo=payload.RuoloProtocollo,
+            principale=payload.Principale,
+            note_collegamento=payload.NoteCollegamento,
+        )
+    except ProtocolloNotFoundError:
+        raise HTTPException(status_code=404, detail="Protocollo non trovato")
+    except ProcedimentoNotFoundError:
+        raise HTTPException(status_code=404, detail="Procedimento non trovato")
+    except ProcedimentoProtocolloLinkAlreadyExistsError:
+        raise HTTPException(
+            status_code=409,
+            detail="Protocollo gia collegato al procedimento",
+        )
 
 
 # ======================================================================================

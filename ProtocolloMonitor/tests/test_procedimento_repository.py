@@ -32,10 +32,14 @@ class FakeCursor:
 class FakeConnection:
     def __init__(self, cursor):
         self.cursor_instance = cursor
+        self.committed = False
         self.closed = False
 
     def cursor(self):
         return self.cursor_instance
+
+    def commit(self):
+        self.committed = True
 
     def close(self):
         self.closed = True
@@ -168,3 +172,103 @@ def test_count_protocolli_collegati_returns_total():
     assert total == 3
     assert "COUNT(*)" in cursor.executed_queries[0]
     assert cursor.executed_params == [(1,)]
+
+
+def test_list_procedimenti_by_protocollo_id_returns_linked_procedimenti():
+    cursor = FakeCursor(
+        [
+            [
+                SimpleNamespace(
+                    IDProcedimentoProtocollo=7,
+                    IDProcedimento=1,
+                    IDProtocollo=123,
+                    RuoloProtocollo="COLLEGATO",
+                    Principale=False,
+                    DataCollegamento=None,
+                    NoteCollegamento=None,
+                    CodiceProcedimento="PROC-1",
+                    Titolo="Procedimento collegato",
+                    Descrizione=None,
+                    AziendaSoggetto="TEST",
+                    ComandoCompetenza="DIR-SIC",
+                    SettoreCompetenza="UFFICIO",
+                    TipologiaProcedimento="TEST",
+                    StatoProcedimento="APERTO",
+                    Priorita="MEDIA",
+                    DataApertura=None,
+                    DataUltimoAggiornamento=None,
+                    DataScadenza=None,
+                    DataChiusura=None,
+                    NoteInterne=None,
+                    Attivo=True,
+                    DataCreazione=None,
+                    DataModifica=None,
+                    ProtocolliCollegati=1,
+                )
+            ]
+        ]
+    )
+    connection = FakeConnection(cursor)
+    repository = ProcedimentoRepositoryForTest(connection)
+
+    records = repository.list_procedimenti_by_protocollo_id(123)
+
+    assert records[0]["id_procedimento"] == 1
+    assert records[0]["id_protocollo"] == 123
+    assert records[0]["codice_procedimento"] == "PROC-1"
+    assert records[0]["ruolo_protocollo"] == "COLLEGATO"
+    assert "WHERE" in cursor.executed_queries[0]
+    assert cursor.executed_params == [(123,)]
+
+
+def test_protocollo_exists_returns_true_when_count_positive():
+    cursor = FakeCursor([[SimpleNamespace(Totale=1)]])
+    connection = FakeConnection(cursor)
+    repository = ProcedimentoRepositoryForTest(connection)
+
+    assert repository.protocollo_exists(123) is True
+    assert "FROM T_Protocolli" in cursor.executed_queries[0]
+
+
+def test_procedimento_protocollo_link_exists_returns_false_when_count_zero():
+    cursor = FakeCursor([[SimpleNamespace(Totale=0)]])
+    connection = FakeConnection(cursor)
+    repository = ProcedimentoRepositoryForTest(connection)
+
+    assert repository.procedimento_protocollo_link_exists(123, 1) is False
+    assert cursor.executed_params == [(1, 123)]
+
+
+def test_link_protocollo_to_procedimento_inserts_and_returns_link():
+    cursor = FakeCursor(
+        [
+            [],
+            [
+                SimpleNamespace(
+                    IDProcedimentoProtocollo=9,
+                    IDProcedimento=1,
+                    IDProtocollo=123,
+                    RuoloProtocollo="COLLEGATO",
+                    Principale=False,
+                    DataCollegamento=None,
+                    NoteCollegamento="nota",
+                )
+            ],
+        ]
+    )
+    connection = FakeConnection(cursor)
+    repository = ProcedimentoRepositoryForTest(connection)
+
+    link = repository.link_protocollo_to_procedimento(
+        id_protocollo=123,
+        id_procedimento=1,
+        ruolo_protocollo="COLLEGATO",
+        principale=False,
+        note_collegamento="nota",
+    )
+
+    assert link["id_procedimento_protocollo"] == 9
+    assert link["id_protocollo"] == 123
+    assert link["id_procedimento"] == 1
+    assert "INSERT INTO T_ProcedimentoProtocolli" in cursor.executed_queries[0]
+    assert connection.committed is True
