@@ -25,6 +25,25 @@ async function fetchJson(path, options = {}) {
   return response.json()
 }
 
+async function fetchBlob(path) {
+  const response = await fetch(`${API_BASE_URL}${path}`)
+
+  if (!response.ok) {
+    const error = new Error(`Errore HTTP ${response.status}`)
+    error.status = response.status
+
+    try {
+      error.payload = await response.json()
+    } catch {
+      error.payload = null
+    }
+
+    throw error
+  }
+
+  return response.blob()
+}
+
 export function listProcedimenti() {
   return fetchJson('/protocollo-monitor/procedimenti')
 }
@@ -85,4 +104,8 @@ export function listDocumentiSottofase(idSottofase) {
 
 export function listStepOperativiSottofase(idSottofase) {
   return fetchJson(`/protocollo-monitor/sottofasi/${idSottofase}/step-operativi`)
+}
+
+export function apriDocumentoSottofase(idDocumento) {
+  return fetchBlob(`/protocollo-monitor/sottofase-documenti/${idDocumento}/apri`)
 }

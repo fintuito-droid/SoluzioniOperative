@@ -124,7 +124,8 @@
                   variant="tonal"
                   size="small"
                   prepend-icon="mdi-eye-outline"
-                  @click="visualizzaDocumento"
+                  :loading="aperturaInCorsoId === quadro.documentoCorrente.idDocumentoSottofase"
+                  @click="apriDocumento(quadro.documentoCorrente)"
                 >
                   Visualizza
                 </v-btn>
@@ -142,13 +143,13 @@
           </v-alert>
 
           <v-alert
-            v-if="messaggioVisualizza"
-            type="info"
+            v-if="erroreApertura"
+            type="warning"
             variant="tonal"
             density="compact"
             class="mt-3"
           >
-            {{ messaggioVisualizza }}
+            {{ erroreApertura }}
           </v-alert>
         </section>
 
@@ -184,6 +185,19 @@
                 {{ documento.tipoDocumento || 'Documento' }}
                 · {{ formattaDataOra(documento.dataCollegamento) }}
               </v-list-item-subtitle>
+
+              <template #append>
+                <v-btn
+                  color="primary"
+                  variant="text"
+                  size="small"
+                  prepend-icon="mdi-open-in-new"
+                  :loading="aperturaInCorsoId === documento.idDocumentoSottofase"
+                  @click="apriDocumento(documento)"
+                >
+                  Apri
+                </v-btn>
+              </template>
             </v-list-item>
           </v-list>
 
@@ -262,7 +276,10 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 
-import { getSottofaseDocumentale } from '../../services/procedimentoApi'
+import {
+  apriDocumentoSottofase,
+  getSottofaseDocumentale
+} from '../../services/procedimentoApi'
 
 const props = defineProps({
   idSottofase: {
@@ -274,7 +291,8 @@ const props = defineProps({
 const loading = ref(false)
 const errore = ref('')
 const quadro = ref(null)
-const messaggioVisualizza = ref('')
+const erroreApertura = ref('')
+const aperturaInCorsoId = ref(null)
 
 const documentoPresente = computed(() => {
   return Boolean(
@@ -300,7 +318,7 @@ watch(
 )
 
 async function caricaSottofaseDocumentale() {
-  messaggioVisualizza.value = ''
+  erroreApertura.value = ''
 
   if (!props.idSottofase) {
     quadro.value = null
@@ -550,9 +568,46 @@ function iconaDocumento(documento) {
   return 'mdi-file-document-outline'
 }
 
-function visualizzaDocumento() {
-  messaggioVisualizza.value =
-    'La visualizzazione del file richiede un endpoint backend sicuro dedicato. In questo step la UI resta solo in lettura.'
+async function apriDocumento(documento) {
+  erroreApertura.value = ''
+
+  const idDocumento = documento?.idDocumentoSottofase
+
+  if (!idDocumento) {
+    erroreApertura.value = 'Documento non apribile: identificativo mancante.'
+    return
+  }
+
+  aperturaInCorsoId.value = idDocumento
+
+  try {
+    const blob = await apriDocumentoSottofase(idDocumento)
+    const blobUrl = URL.createObjectURL(blob)
+    const openedWindow = window.open(blobUrl, '_blank')
+
+    if (!openedWindow) {
+      URL.revokeObjectURL(blobUrl)
+      erroreApertura.value =
+        'Il browser ha bloccato l apertura del documento in una nuova scheda.'
+      return
+    }
+
+    openedWindow.opener = null
+
+    setTimeout(() => {
+      URL.revokeObjectURL(blobUrl)
+    }, 60000)
+  } catch (error) {
+    if (error.status === 404) {
+      erroreApertura.value =
+        'Documento non disponibile o file fisico non trovato.'
+    } else {
+      erroreApertura.value =
+        'Impossibile aprire il documento collegato alla sottofase.'
+    }
+  } finally {
+    aperturaInCorsoId.value = null
+  }
 }
 </script>
 

@@ -50,6 +50,7 @@ def test_service_delegates_to_repository():
     )
 
     assert service.get_sottofase_documentale(1)["step_corrente"] == "REDIGI"
+    assert service.get_documento_by_id(10) == {"id_documento_sottofase": 10}
     assert service.list_documenti_by_sottofase(1) == [
         {"id_sottofase": 1, "id_documento_sottofase": 10}
     ]

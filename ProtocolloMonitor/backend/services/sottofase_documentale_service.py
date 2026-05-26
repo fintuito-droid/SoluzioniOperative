@@ -116,6 +116,33 @@ class SottofaseDocumentaleService:
         except Exception:
             return None
 
+    def get_documento_by_id(
+        self,
+        id_documento_sottofase: int,
+    ) -> dict[str, Any] | None:
+        """Restituisce un documento collegato alla sottofase per ID.
+
+        Il metodo resta read-only: delega al repository e non modifica file,
+        database o stato applicativo.
+        """
+
+        if self.sottofase_documentale_repository is None:
+            return None
+
+        get_documento = getattr(
+            self.sottofase_documentale_repository,
+            "get_documento_by_id",
+            None,
+        )
+
+        if get_documento is None:
+            return None
+
+        try:
+            return get_documento(id_documento_sottofase)
+        except Exception:
+            return None
+
     def get_quadro_documentale(
         self,
         id_sottofase: int,

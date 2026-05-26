@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import mimetypes
 import subprocess
 from typing import Any
 
@@ -110,6 +111,51 @@ def _resolve_pdf_path_or_404(id_protocollo: int, documento_service: Any):
         )
 
     return resolved_pdf_path
+
+
+def _resolve_sottofase_documento_path_or_404(
+    id_documento: int,
+    sottofase_service: Any,
+):
+    """Recupera un documento sottofase e risolve il path fisico.
+
+    La funzione resta read-only: legge il record documentale, controlla il path
+    e restituisce un file esistente. Non apre programmi locali, non scrive su
+    Access e non modifica il filesystem.
+    """
+
+    try:
+        documento = sottofase_service.get_documento_by_id(id_documento)
+
+        if documento is None:
+            raise HTTPException(status_code=404, detail="Documento non trovato")
+
+        percorso_documento = documento.get("percorso_documento")
+
+        if not percorso_documento:
+            raise HTTPException(
+                status_code=404,
+                detail="Documento non disponibile",
+            )
+
+        from backend.services.document_path_service import resolve_document_path
+
+        resolved_document_path = resolve_document_path(percorso_documento)
+
+        if resolved_document_path is None:
+            raise HTTPException(
+                status_code=404,
+                detail="File documento non trovato",
+            )
+
+        return documento, resolved_document_path
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(
+            status_code=500,
+            detail="Errore durante apertura documento",
+        )
 
 
 # ======================================================================================
@@ -386,3 +432,30 @@ def get_sottofase_step_operativi(
         raise HTTPException(status_code=404, detail="Sottofase non trovata")
 
     return sottofase_service.list_step_operativi_by_sottofase(id_sottofase)
+
+
+@router.get("/protocollo-monitor/sottofase-documenti/{id_documento}/apri")
+def apri_sottofase_documento(
+    id_documento: int,
+    sottofase_service: Any = Depends(get_sottofase_documentale_service),
+):
+    documento, resolved_document_path = _resolve_sottofase_documento_path_or_404(
+        id_documento,
+        sottofase_service,
+    )
+
+    media_type = (
+        documento.get("mime_type")
+        or mimetypes.guess_type(str(resolved_document_path))[0]
+        or "application/octet-stream"
+    )
+
+    return FileResponse(
+        str(resolved_document_path),
+        media_type=media_type,
+        headers={
+            "Content-Disposition": (
+                f'inline; filename="{resolved_document_path.name}"'
+            )
+        },
+    )
