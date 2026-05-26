@@ -38,11 +38,13 @@ class DependencyContainer:
         self._documento_repository: Any | None = None
         self._metadata_repository: Any | None = None
         self._procedimento_repository: Any | None = None
+        self._workflow_procedimento_repository: Any | None = None
 
         self._protocollo_service: Any | None = None
         self._documento_service: Any | None = None
         self._metadata_service: Any | None = None
         self._procedimento_service: Any | None = None
+        self._workflow_procedimento_service: Any | None = None
 
     def _get_protocollo_repository(self) -> Any:
         """Restituisce il repository protocolli, creandolo lazy.
@@ -88,6 +90,18 @@ class DependencyContainer:
             self._procedimento_repository = ProcedimentoRepository()
 
         return self._procedimento_repository
+
+    def _get_workflow_procedimento_repository(self) -> Any:
+        """Restituisce il repository workflow procedimento, creandolo lazy."""
+
+        if self._workflow_procedimento_repository is None:
+            from ..repositories.workflow_procedimento_repository import (
+                WorkflowProcedimentoRepository,
+            )
+
+            self._workflow_procedimento_repository = WorkflowProcedimentoRepository()
+
+        return self._workflow_procedimento_repository
 
     def get_protocollo_service(self) -> Any:
         """Restituisce `ProtocolloService` con repository opzionali collegati.
@@ -144,6 +158,22 @@ class DependencyContainer:
             )
 
         return self._procedimento_service
+
+    def get_workflow_procedimento_service(self) -> Any:
+        """Restituisce `WorkflowProcedimentoService` read-only collegato."""
+
+        if self._workflow_procedimento_service is None:
+            from ..services.workflow_procedimento_service import (
+                WorkflowProcedimentoService,
+            )
+
+            self._workflow_procedimento_service = WorkflowProcedimentoService(
+                workflow_procedimento_repository=(
+                    self._get_workflow_procedimento_repository()
+                ),
+            )
+
+        return self._workflow_procedimento_service
 
 
 def create_container() -> DependencyContainer:
