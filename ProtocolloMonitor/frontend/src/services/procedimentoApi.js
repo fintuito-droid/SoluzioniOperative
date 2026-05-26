@@ -74,3 +74,15 @@ export function listCatalogoSottofasi(attivoOnly = true) {
 
   return fetchJson(`/protocollo-monitor/catalogo-sottofasi?${params.toString()}`)
 }
+
+export function getSottofaseDocumentale(idSottofase) {
+  return fetchJson(`/protocollo-monitor/sottofasi/${idSottofase}/documentale`)
+}
+
+export function listDocumentiSottofase(idSottofase) {
+  return fetchJson(`/protocollo-monitor/sottofasi/${idSottofase}/documenti`)
+}
+
+export function listStepOperativiSottofase(idSottofase) {
+  return fetchJson(`/protocollo-monitor/sottofasi/${idSottofase}/step-operativi`)
+}

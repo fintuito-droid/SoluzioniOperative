@@ -593,6 +593,11 @@
                       Elimina locale
                     </v-btn>
                   </div>
+
+                  <SottofaseDocumentaleCard
+                    :id-sottofase="sottofaseSelezionata.id"
+                    class="mt-4"
+                  />
                 </v-card>
               </v-card>
             </div>
@@ -654,6 +659,7 @@ import {
   listProtocolliProcedimento,
   listSottofasiFase
 } from '../services/procedimentoApi'
+import SottofaseDocumentaleCard from '../components/procedimenti/SottofaseDocumentaleCard.vue'
 import { statiWorkflow } from '../mock/procedimentoWorkflowMock'
 
 const route = useRoute()
