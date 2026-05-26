@@ -384,21 +384,21 @@
                       <template #prepend>
                         <v-avatar
                           size="38"
-                          :color="item.raw.colore"
+                          :color="catalogoItem(item).colore"
                           class="mr-3"
                         >
                           <v-icon color="white" size="22">
-                            {{ item.raw.icona }}
+                            {{ catalogoItem(item).icona }}
                           </v-icon>
                         </v-avatar>
                       </template>
 
                       <v-list-item-title>
-                        {{ item.raw.titolo }}
+                        {{ catalogoItem(item).titolo }}
                       </v-list-item-title>
 
                       <v-list-item-subtitle>
-                        {{ item.raw.descrizione }}
+                        {{ catalogoItem(item).descrizione }}
                       </v-list-item-subtitle>
                     </v-list-item>
                   </template>
@@ -407,15 +407,15 @@
                     <div class="d-flex align-center">
                       <v-avatar
                         size="28"
-                        :color="item.raw.colore"
+                        :color="catalogoItem(item).colore"
                         class="mr-2"
                       >
                         <v-icon color="white" size="18">
-                          {{ item.raw.icona }}
+                          {{ catalogoItem(item).icona }}
                         </v-icon>
                       </v-avatar>
 
-                      {{ item.raw.titolo }}
+                      {{ catalogoItem(item).titolo }}
                     </div>
                   </template>
                 </v-autocomplete>
@@ -784,17 +784,26 @@ function normalizzaSottofaseWorkflow(dato) {
   }
 }
 
-function normalizzaCatalogoSottofase(dato) {
+function normalizzaCatalogoSottofase(dato = {}) {
+  const sorgente = dato?.raw ?? dato?.value ?? dato ?? {}
+
   return {
-    id: dato.id_catalogo_sottofase ?? dato.IDCatalogoSottofase,
-    codice: dato.codice_sottofase ?? dato.CodiceSottofase ?? '',
-    titolo: dato.titolo ?? dato.Titolo ?? 'Sottofase',
-    descrizione: dato.descrizione ?? dato.Descrizione ?? '',
-    icona: dato.icona ?? dato.Icona ?? 'mdi-checkbox-blank-circle-outline',
-    colore: dato.colore ?? dato.Colore ?? 'grey',
-    categoria: dato.categoria ?? dato.Categoria ?? '',
-    ordineDefault: dato.ordine_default ?? dato.OrdineDefault ?? 0
+    id: sorgente.id ?? sorgente.id_catalogo_sottofase ?? sorgente.IDCatalogoSottofase,
+    codice: sorgente.codice ?? sorgente.codice_sottofase ?? sorgente.CodiceSottofase ?? '',
+    titolo: sorgente.titolo ?? sorgente.Titolo ?? 'Sottofase',
+    descrizione: sorgente.descrizione ?? sorgente.Descrizione ?? '',
+    icona:
+      sorgente.icona ??
+      sorgente.Icona ??
+      'mdi-checkbox-blank-circle-outline',
+    colore: sorgente.colore ?? sorgente.Colore ?? 'grey',
+    categoria: sorgente.categoria ?? sorgente.Categoria ?? '',
+    ordineDefault: sorgente.ordineDefault ?? sorgente.ordine_default ?? sorgente.OrdineDefault ?? 0
   }
+}
+
+function catalogoItem(item) {
+  return normalizzaCatalogoSottofase(item)
 }
 
 function tornaAElenco() {
@@ -825,13 +834,22 @@ function selezionaSottofase(idSottofase) {
 function aggiungiSottofaseDaCatalogo(template) {
   if (!template || !faseSelezionata.value) return
 
+  const sottofaseCatalogo = normalizzaCatalogoSottofase(template)
+
+  if (!sottofaseCatalogo.codice && !sottofaseCatalogo.titolo) {
+    sottofaseDaAggiungere.value = null
+    return
+  }
+
   const nuovaSottofase = {
     id: Date.now(),
     ordine: faseSelezionata.value.sottofasi.length + 1,
-    titolo: template.titolo,
-    descrizione: template.descrizione,
+    codice: sottofaseCatalogo.codice,
+    titolo: sottofaseCatalogo.titolo,
+    descrizione: sottofaseCatalogo.descrizione,
     stato: 'NON_AVVIATA',
-    icona: template.icona
+    icona: sottofaseCatalogo.icona,
+    colore: sottofaseCatalogo.colore
   }
 
   faseSelezionata.value.sottofasi.push(nuovaSottofase)
