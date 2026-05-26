@@ -1,7 +1,13 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000'
 
-async function fetchJson(path) {
-  const response = await fetch(`${API_BASE_URL}${path}`)
+async function fetchJson(path, options = {}) {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...options,
+    headers: {
+      ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+      ...(options.headers || {})
+    }
+  })
 
   if (!response.ok) {
     const error = new Error(`Errore HTTP ${response.status}`)
@@ -33,4 +39,18 @@ export function listProtocolliProcedimento(idProcedimento) {
 
 export function countProtocolliProcedimento(idProcedimento) {
   return fetchJson(`/protocollo-monitor/procedimenti/${idProcedimento}/protocolli/count`)
+}
+
+export function listProcedimentiByProtocollo(idProtocollo) {
+  return fetchJson(`/protocollo-monitor/protocolli/${idProtocollo}/procedimenti`)
+}
+
+export function linkProtocolloToProcedimento(idProtocollo, idProcedimento, payload) {
+  return fetchJson(
+    `/protocollo-monitor/protocolli/${idProtocollo}/procedimenti/${idProcedimento}`,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload || {})
+    }
+  )
 }

@@ -81,6 +81,90 @@
       </v-alert>
     </v-card>
 
+    <v-card rounded="xl" elevation="2" class="pa-4 mb-5">
+      <v-card-title class="d-flex justify-space-between align-center">
+        <span class="font-weight-bold">
+          Procedimenti collegati
+        </span>
+
+        <v-btn
+          color="primary"
+          variant="flat"
+          prepend-icon="mdi-link-variant-plus"
+          :loading="procedimentiDisponibiliLoading"
+          :disabled="!protocollo"
+          @click="apriDialogCollegamento"
+        >
+          Collega a procedimento
+        </v-btn>
+      </v-card-title>
+
+      <v-divider class="mb-4" />
+
+      <v-alert
+        v-if="procedimentiErrore"
+        type="warning"
+        variant="tonal"
+        class="mb-4"
+      >
+        {{ procedimentiErrore }}
+      </v-alert>
+
+      <v-alert
+        v-if="collegamentoMessaggio"
+        type="success"
+        variant="tonal"
+        class="mb-4"
+      >
+        {{ collegamentoMessaggio }}
+      </v-alert>
+
+      <v-data-table
+        :headers="procedimentiHeaders"
+        :items="procedimentiCollegatiNormalizzati"
+        :loading="procedimentiLoading"
+        item-value="idProcedimento"
+        density="compact"
+        hover
+      >
+        <template #no-data>
+          <div class="pa-6 text-medium-emphasis">
+            Nessun procedimento collegato.
+          </div>
+        </template>
+
+        <template #item.Stato="{ item }">
+          <v-chip
+            :color="coloreStatoProcedimento(item.Stato)"
+            size="x-small"
+            variant="tonal"
+          >
+            {{ item.Stato || 'Non definito' }}
+          </v-chip>
+        </template>
+
+        <template #item.Priorita="{ item }">
+          <v-chip
+            :color="colorePrioritaProcedimento(item.Priorita)"
+            size="x-small"
+            variant="tonal"
+          >
+            {{ item.Priorita || 'Normale' }}
+          </v-chip>
+        </template>
+
+        <template #item.Principale="{ item }">
+          <v-chip
+            :color="item.Principale ? 'green' : 'grey'"
+            size="x-small"
+            variant="tonal"
+          >
+            {{ item.Principale ? 'Si' : 'No' }}
+          </v-chip>
+        </template>
+      </v-data-table>
+    </v-card>
+
     <v-card rounded="xl" elevation="2" class="pa-4">
       <v-card-title class="d-flex justify-space-between align-center">
         <span class="font-weight-bold">
@@ -156,12 +240,116 @@
       </v-alert>
     </v-card>
 
+    <v-dialog v-model="dialogCollegamento" max-width="760">
+      <v-card rounded="xl">
+        <v-card-title class="d-flex align-center justify-space-between">
+          <span class="font-weight-bold">
+            Collega a procedimento
+          </span>
+
+          <v-btn
+            icon="mdi-close"
+            variant="text"
+            @click="chiudiDialogCollegamento"
+          />
+        </v-card-title>
+
+        <v-divider />
+
+        <v-card-text>
+          <v-alert
+            v-if="collegamentoErrore"
+            type="warning"
+            variant="tonal"
+            class="mb-4"
+          >
+            {{ collegamentoErrore }}
+          </v-alert>
+
+          <v-row>
+            <v-col cols="12">
+              <v-autocomplete
+                v-model="procedimentoSelezionatoId"
+                :items="procedimentiSelezionabili"
+                item-title="label"
+                item-value="idProcedimento"
+                label="Procedimento"
+                variant="outlined"
+                density="compact"
+                clearable
+                :loading="procedimentiDisponibiliLoading"
+                :disabled="procedimentiDisponibiliLoading"
+                no-data-text="Nessun procedimento disponibile"
+              />
+            </v-col>
+
+            <v-col cols="12" md="6">
+              <v-text-field
+                v-model="formCollegamento.RuoloProtocollo"
+                label="Ruolo protocollo"
+                variant="outlined"
+                density="compact"
+              />
+            </v-col>
+
+            <v-col cols="12" md="6" class="d-flex align-center">
+              <v-checkbox
+                v-model="formCollegamento.Principale"
+                label="Principale"
+                density="compact"
+                hide-details
+              />
+            </v-col>
+
+            <v-col cols="12">
+              <v-textarea
+                v-model="formCollegamento.NoteCollegamento"
+                label="Note collegamento"
+                variant="outlined"
+                density="compact"
+                rows="3"
+                auto-grow
+                clearable
+              />
+            </v-col>
+          </v-row>
+        </v-card-text>
+
+        <v-card-actions class="px-6 pb-5">
+          <v-spacer />
+
+          <v-btn
+            variant="text"
+            @click="chiudiDialogCollegamento"
+          >
+            Annulla
+          </v-btn>
+
+          <v-btn
+            color="primary"
+            variant="flat"
+            :loading="collegamentoLoading"
+            :disabled="!procedimentoSelezionatoId"
+            @click="confermaCollegamento"
+          >
+            Collega
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
   </v-container>
 </template>
 
 <script setup>
 import { ref, onMounted, onBeforeUnmount, computed } from "vue"
 import { useRoute } from "vue-router"
+
+import {
+  linkProtocolloToProcedimento,
+  listProcedimenti,
+  listProcedimentiByProtocollo
+} from "../../services/procedimentoApi"
 
 const route = useRoute()
 const protocollo = ref(null)
@@ -170,6 +358,21 @@ const metadataLoading = ref(false)
 const pdfLoading = ref(false)
 const pdfErrore = ref("")
 const pdfViewerUrl = ref("")
+const procedimentiCollegati = ref([])
+const procedimentiDisponibili = ref([])
+const procedimentiLoading = ref(false)
+const procedimentiDisponibiliLoading = ref(false)
+const procedimentiErrore = ref("")
+const dialogCollegamento = ref(false)
+const collegamentoLoading = ref(false)
+const collegamentoErrore = ref("")
+const collegamentoMessaggio = ref("")
+const procedimentoSelezionatoId = ref(null)
+const formCollegamento = ref({
+  RuoloProtocollo: "COLLEGATO",
+  Principale: false,
+  NoteCollegamento: null
+})
 
 const urlSorgente = computed(() => {
   return protocollo.value?.UrlSorgente || ""
@@ -181,6 +384,29 @@ const urlPdf = computed(() => {
 
 const pdfDisponibile = computed(() => {
   return metadata.value?.pdf_disponibile === true
+})
+
+const procedimentiHeaders = [
+  { title: "Codice procedimento", key: "Codice" },
+  { title: "Titolo", key: "Titolo" },
+  { title: "Stato", key: "Stato" },
+  { title: "Priorita", key: "Priorita" },
+  { title: "Ruolo collegamento", key: "Ruolo" },
+  { title: "Principale", key: "Principale" }
+]
+
+const procedimentiCollegatiNormalizzati = computed(() => {
+  return procedimentiCollegati.value.map(normalizzaProcedimentoCollegato)
+})
+
+const procedimentiSelezionabili = computed(() => {
+  const collegati = new Set(
+    procedimentiCollegatiNormalizzati.value.map((item) => item.idProcedimento)
+  )
+
+  return procedimentiDisponibili.value
+    .map(normalizzaProcedimentoDisponibile)
+    .filter((item) => item.idProcedimento && !collegati.has(item.idProcedimento))
 })
 
 async function caricaProtocollo() {
@@ -197,6 +423,40 @@ async function caricaProtocollo() {
 
   const dati = await response.json()
   protocollo.value = dati.protocollo
+}
+
+async function caricaProcedimentiCollegati() {
+  const idProtocollo = route.params.idProtocollo
+  procedimentiLoading.value = true
+  procedimentiErrore.value = ""
+
+  try {
+    procedimentiCollegati.value = await listProcedimentiByProtocollo(idProtocollo)
+  } catch (error) {
+    if (error.status === 404) {
+      procedimentiErrore.value = "Protocollo non trovato."
+    } else {
+      procedimentiErrore.value = "Impossibile caricare i procedimenti collegati."
+    }
+
+    procedimentiCollegati.value = []
+  } finally {
+    procedimentiLoading.value = false
+  }
+}
+
+async function caricaProcedimentiDisponibili() {
+  procedimentiDisponibiliLoading.value = true
+  collegamentoErrore.value = ""
+
+  try {
+    procedimentiDisponibili.value = await listProcedimenti()
+  } catch {
+    collegamentoErrore.value = "Impossibile caricare l'elenco procedimenti."
+    procedimentiDisponibili.value = []
+  } finally {
+    procedimentiDisponibiliLoading.value = false
+  }
 }
 
 async function caricaMetadata() {
@@ -275,9 +535,155 @@ function apriDocumentoOriginale() {
   window.open(urlSorgente.value, "_blank")
 }
 
+function normalizzaProcedimentoCollegato(item) {
+  return {
+    idProcedimento:
+      item.id_procedimento ??
+      item.IDProcedimento ??
+      item.idProcedimento,
+    Codice:
+      item.codice_procedimento ??
+      item.CodiceProcedimento ??
+      "",
+    Titolo:
+      item.titolo ??
+      item.Titolo ??
+      "",
+    Stato:
+      item.stato_procedimento ??
+      item.StatoProcedimento ??
+      "",
+    Priorita:
+      item.priorita ??
+      item.Priorita ??
+      "",
+    Ruolo:
+      item.ruolo_protocollo ??
+      item.RuoloProtocollo ??
+      "COLLEGATO",
+    Principale:
+      item.principale ??
+      item.Principale ??
+      false
+  }
+}
+
+function normalizzaProcedimentoDisponibile(item) {
+  const idProcedimento =
+    item.id_procedimento ??
+    item.IDProcedimento ??
+    item.idProcedimento
+
+  const codice =
+    item.codice_procedimento ??
+    item.CodiceProcedimento ??
+    ""
+
+  const titolo =
+    item.titolo ??
+    item.Titolo ??
+    ""
+
+  return {
+    idProcedimento,
+    codice,
+    titolo,
+    label: `${codice || "Senza codice"} - ${titolo || "Senza titolo"}`
+  }
+}
+
+function resetFormCollegamento() {
+  procedimentoSelezionatoId.value = null
+  formCollegamento.value = {
+    RuoloProtocollo: "COLLEGATO",
+    Principale: false,
+    NoteCollegamento: null
+  }
+  collegamentoErrore.value = ""
+}
+
+async function apriDialogCollegamento() {
+  resetFormCollegamento()
+  dialogCollegamento.value = true
+  await caricaProcedimentiDisponibili()
+}
+
+function chiudiDialogCollegamento() {
+  if (collegamentoLoading.value) return
+  dialogCollegamento.value = false
+}
+
+async function confermaCollegamento() {
+  if (!procedimentoSelezionatoId.value) return
+
+  collegamentoLoading.value = true
+  collegamentoErrore.value = ""
+  collegamentoMessaggio.value = ""
+
+  try {
+    await linkProtocolloToProcedimento(
+      route.params.idProtocollo,
+      procedimentoSelezionatoId.value,
+      {
+        RuoloProtocollo: formCollegamento.value.RuoloProtocollo || "COLLEGATO",
+        Principale: formCollegamento.value.Principale === true,
+        NoteCollegamento: formCollegamento.value.NoteCollegamento || null
+      }
+    )
+
+    dialogCollegamento.value = false
+    collegamentoMessaggio.value = "Protocollo collegato al procedimento."
+    await caricaProcedimentiCollegati()
+  } catch (error) {
+    if (error.status === 404) {
+      collegamentoErrore.value = "Protocollo o procedimento non trovato."
+    } else if (error.status === 409) {
+      collegamentoErrore.value = "Il protocollo e gia collegato al procedimento selezionato."
+    } else {
+      collegamentoErrore.value = "Impossibile creare il collegamento."
+    }
+  } finally {
+    collegamentoLoading.value = false
+  }
+}
+
+function colorePrioritaProcedimento(valore) {
+  switch (valore) {
+    case "Urgente":
+    case "URGENTE":
+      return "red"
+    case "Alta":
+    case "ALTA":
+    case "MEDIA":
+      return "orange"
+    case "Bassa":
+    case "BASSA":
+      return "grey"
+    default:
+      return "green"
+  }
+}
+
+function coloreStatoProcedimento(valore) {
+  switch (valore) {
+    case "Chiuso":
+    case "CHIUSO":
+      return "green"
+    case "Sospeso":
+    case "SOSPESO":
+      return "orange"
+    case "Aperto":
+    case "APERTO":
+      return "blue"
+    default:
+      return "grey"
+  }
+}
+
 onMounted(() => {
   caricaProtocollo()
   caricaMetadata()
+  caricaProcedimentiCollegati()
 })
 
 onBeforeUnmount(() => {
