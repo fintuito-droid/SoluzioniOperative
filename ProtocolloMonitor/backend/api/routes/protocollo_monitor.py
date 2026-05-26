@@ -74,6 +74,14 @@ def get_workflow_procedimento_service(
     return container.get_workflow_procedimento_service()
 
 
+def get_sottofase_documentale_service(
+    container: DependencyContainer = Depends(get_container),
+) -> Any:
+    """Dipendenza FastAPI per ottenere `SottofaseDocumentaleService`."""
+
+    return container.get_sottofase_documentale_service()
+
+
 def _resolve_pdf_path_or_404(id_protocollo: int, documento_service: Any):
     """Recupera e risolve il path PDF, sollevando 404 coerenti.
 
@@ -335,3 +343,46 @@ def get_catalogo_sottofasi(
     workflow_service: Any = Depends(get_workflow_procedimento_service),
 ):
     return workflow_service.list_catalogo_sottofasi(attivo_only=attivo_only)
+
+
+# ======================================================================================
+# SOTTOFASE DOCUMENTALE - ENDPOINT READ-ONLY
+# ======================================================================================
+
+@router.get("/protocollo-monitor/sottofasi/{id_sottofase}/documentale")
+def get_sottofase_documentale(
+    id_sottofase: int,
+    sottofase_service: Any = Depends(get_sottofase_documentale_service),
+):
+    quadro = sottofase_service.get_quadro_documentale(id_sottofase)
+
+    if quadro is None:
+        raise HTTPException(status_code=404, detail="Sottofase non trovata")
+
+    return quadro
+
+
+@router.get("/protocollo-monitor/sottofasi/{id_sottofase}/documenti")
+def get_sottofase_documenti(
+    id_sottofase: int,
+    sottofase_service: Any = Depends(get_sottofase_documentale_service),
+):
+    sottofase = sottofase_service.get_sottofase_documentale(id_sottofase)
+
+    if sottofase is None:
+        raise HTTPException(status_code=404, detail="Sottofase non trovata")
+
+    return sottofase_service.list_documenti_by_sottofase(id_sottofase)
+
+
+@router.get("/protocollo-monitor/sottofasi/{id_sottofase}/step-operativi")
+def get_sottofase_step_operativi(
+    id_sottofase: int,
+    sottofase_service: Any = Depends(get_sottofase_documentale_service),
+):
+    sottofase = sottofase_service.get_sottofase_documentale(id_sottofase)
+
+    if sottofase is None:
+        raise HTTPException(status_code=404, detail="Sottofase non trovata")
+
+    return sottofase_service.list_step_operativi_by_sottofase(id_sottofase)

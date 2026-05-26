@@ -39,12 +39,14 @@ class DependencyContainer:
         self._metadata_repository: Any | None = None
         self._procedimento_repository: Any | None = None
         self._workflow_procedimento_repository: Any | None = None
+        self._sottofase_documentale_repository: Any | None = None
 
         self._protocollo_service: Any | None = None
         self._documento_service: Any | None = None
         self._metadata_service: Any | None = None
         self._procedimento_service: Any | None = None
         self._workflow_procedimento_service: Any | None = None
+        self._sottofase_documentale_service: Any | None = None
 
     def _get_protocollo_repository(self) -> Any:
         """Restituisce il repository protocolli, creandolo lazy.
@@ -102,6 +104,20 @@ class DependencyContainer:
             self._workflow_procedimento_repository = WorkflowProcedimentoRepository()
 
         return self._workflow_procedimento_repository
+
+    def _get_sottofase_documentale_repository(self) -> Any:
+        """Restituisce il repository documentale sottofase, creandolo lazy."""
+
+        if self._sottofase_documentale_repository is None:
+            from ..repositories.sottofase_documentale_repository import (
+                SottofaseDocumentaleRepository,
+            )
+
+            self._sottofase_documentale_repository = (
+                SottofaseDocumentaleRepository()
+            )
+
+        return self._sottofase_documentale_repository
 
     def get_protocollo_service(self) -> Any:
         """Restituisce `ProtocolloService` con repository opzionali collegati.
@@ -174,6 +190,22 @@ class DependencyContainer:
             )
 
         return self._workflow_procedimento_service
+
+    def get_sottofase_documentale_service(self) -> Any:
+        """Restituisce `SottofaseDocumentaleService` read-only collegato."""
+
+        if self._sottofase_documentale_service is None:
+            from ..services.sottofase_documentale_service import (
+                SottofaseDocumentaleService,
+            )
+
+            self._sottofase_documentale_service = SottofaseDocumentaleService(
+                sottofase_documentale_repository=(
+                    self._get_sottofase_documentale_repository()
+                ),
+            )
+
+        return self._sottofase_documentale_service
 
 
 def create_container() -> DependencyContainer:
