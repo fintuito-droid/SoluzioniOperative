@@ -66,6 +66,14 @@ def get_procedimento_service(
     return container.get_procedimento_service()
 
 
+def get_workflow_procedimento_service(
+    container: DependencyContainer = Depends(get_container),
+) -> Any:
+    """Dipendenza FastAPI per ottenere `WorkflowProcedimentoService`."""
+
+    return container.get_workflow_procedimento_service()
+
+
 def _resolve_pdf_path_or_404(id_protocollo: int, documento_service: Any):
     """Recupera e risolve il path PDF, sollevando 404 coerenti.
 
@@ -281,3 +289,49 @@ def get_procedimento_protocolli_count(
             id_procedimento
         ),
     }
+
+
+# ======================================================================================
+# WORKFLOW PROCEDIMENTO - ENDPOINT READ-ONLY
+# ======================================================================================
+
+@router.get("/protocollo-monitor/procedimenti/{id_procedimento}/fasi")
+def get_procedimento_fasi(
+    id_procedimento: int,
+    workflow_service: Any = Depends(get_workflow_procedimento_service),
+):
+    return workflow_service.list_fasi_by_procedimento(id_procedimento)
+
+
+@router.get("/protocollo-monitor/procedimenti/fasi/{id_fase}")
+def get_procedimento_fase_dettaglio(
+    id_fase: int,
+    workflow_service: Any = Depends(get_workflow_procedimento_service),
+):
+    fase = workflow_service.get_fase_detail(id_fase)
+
+    if fase is None:
+        raise HTTPException(status_code=404, detail="Fase non trovata")
+
+    return fase
+
+
+@router.get("/protocollo-monitor/procedimenti/fasi/{id_fase}/sottofasi")
+def get_procedimento_fase_sottofasi(
+    id_fase: int,
+    workflow_service: Any = Depends(get_workflow_procedimento_service),
+):
+    fase = workflow_service.get_fase_detail(id_fase)
+
+    if fase is None:
+        raise HTTPException(status_code=404, detail="Fase non trovata")
+
+    return workflow_service.list_sottofasi_by_fase(id_fase)
+
+
+@router.get("/protocollo-monitor/catalogo-sottofasi")
+def get_catalogo_sottofasi(
+    attivo_only: bool = True,
+    workflow_service: Any = Depends(get_workflow_procedimento_service),
+):
+    return workflow_service.list_catalogo_sottofasi(attivo_only=attivo_only)
