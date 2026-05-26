@@ -222,20 +222,33 @@
                       <div class="d-flex align-center justify-space-between ga-3">
                         <strong>{{ fase.titolo }}</strong>
 
-                        <v-chip
-                          :color="coloreStatoWorkflow(fase.stato)"
-                          size="x-small"
-                          variant="flat"
-                        >
-                          {{ labelStatoWorkflow(fase.stato) }}
-                        </v-chip>
+                        <div class="d-flex align-center ga-2">
+                          <v-chip
+                            color="indigo"
+                            size="x-small"
+                            variant="tonal"
+                          >
+                            {{ fase.sottofasi.length }}
+                          </v-chip>
+
+                          <v-chip
+                            :color="coloreStatoWorkflow(fase.stato)"
+                            size="x-small"
+                            variant="flat"
+                          >
+                            {{ labelStatoWorkflow(fase.stato) }}
+                          </v-chip>
+                        </div>
                       </div>
 
                       <div class="text-caption mt-3">
                         Responsabile: {{ fase.responsabile }}
                       </div>
 
-                      <div class="text-caption">
+                      <div
+                        class="text-caption"
+                        :class="classeScadenza(fase.dataScadenza)"
+                      >
                         Scadenza: {{ fase.dataScadenza }}
                       </div>
                     </v-card-text>
@@ -288,7 +301,12 @@
 
                   <v-col cols="12" md="6">
                     <div class="label">Scadenza</div>
-                    <div class="value">{{ faseSelezionata.dataScadenza }}</div>
+                    <div
+                      class="value"
+                      :class="classeScadenza(faseSelezionata.dataScadenza)"
+                    >
+                      {{ faseSelezionata.dataScadenza }}
+                    </div>
                   </v-col>
 
                   <v-col cols="12" md="6">
@@ -314,7 +332,27 @@
                     Avvia / lavora fase
                   </v-btn>
 
+                  <v-tooltip
+                    v-if="faseHaSottofasiNonCompletate(faseSelezionata)"
+                    text="Completa prima tutte le sottofasi"
+                    location="top"
+                  >
+                    <template #activator="{ props }">
+                      <span v-bind="props">
+                        <v-btn
+                          color="green"
+                          variant="tonal"
+                          prepend-icon="mdi-check-circle-outline"
+                          disabled
+                        >
+                          Completa fase
+                        </v-btn>
+                      </span>
+                    </template>
+                  </v-tooltip>
+
                   <v-btn
+                    v-else
                     color="green"
                     variant="tonal"
                     prepend-icon="mdi-check-circle-outline"
@@ -332,6 +370,16 @@
                     Blocca fase
                   </v-btn>
                 </div>
+
+                <v-alert
+                  v-if="faseHaSottofasiNonCompletate(faseSelezionata)"
+                  type="info"
+                  variant="tonal"
+                  density="compact"
+                  class="mt-4"
+                >
+                  Completa prima tutte le sottofasi.
+                </v-alert>
               </v-card-text>
             </v-card>
 
@@ -477,7 +525,8 @@
                   variant="tonal"
                   class="mt-2"
                 >
-                  Nessuna sottofase presente. Aggiungine una dal catalogo.
+                  Questa fase non ha ancora sottofasi. Puoi aggiungerne una dal catalogo:
+                  l'operazione resta locale finche il backend workflow rimane read-only.
                 </v-alert>
 
                 <v-divider class="my-4" />
@@ -533,6 +582,16 @@
                     >
                       Blocca
                     </v-btn>
+
+                    <v-btn
+                      size="small"
+                      color="red"
+                      variant="text"
+                      prepend-icon="mdi-delete-outline"
+                      @click="richiediEliminazioneSottofase(sottofaseSelezionata)"
+                    >
+                      Elimina locale
+                    </v-btn>
                   </div>
                 </v-card>
               </v-card>
@@ -541,6 +600,45 @@
         </template>
       </v-row>
     </v-card>
+
+    <v-dialog
+      v-model="dialogEliminaSottofase"
+      max-width="460"
+    >
+      <v-card rounded="lg">
+        <v-card-title class="text-subtitle-1 font-weight-bold">
+          Elimina sottofase locale
+        </v-card-title>
+
+        <v-card-text>
+          Vuoi eliminare
+          <strong>{{ sottofaseDaEliminare?.titolo || 'questa sottofase' }}</strong>
+          dalla fase corrente?
+          <div class="text-caption text-medium-emphasis mt-2">
+            L'operazione modifica solo la vista locale e non salva nulla sul backend.
+          </div>
+        </v-card-text>
+
+        <v-card-actions>
+          <v-spacer />
+
+          <v-btn
+            variant="text"
+            @click="annullaEliminazioneSottofase"
+          >
+            Annulla
+          </v-btn>
+
+          <v-btn
+            color="red"
+            variant="flat"
+            @click="confermaEliminazioneSottofase"
+          >
+            Elimina
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
@@ -576,6 +674,8 @@ const catalogoSottofasi = ref([])
 const faseSelezionataId = ref(null)
 const sottofaseSelezionataId = ref(null)
 const sottofaseDaAggiungere = ref(null)
+const sottofaseDaEliminare = ref(null)
+const dialogEliminaSottofase = ref(false)
 const modalitaLavorazione = ref(false)
 
 const headersProtocolli = [
@@ -685,7 +785,9 @@ async function caricaWorkflow() {
 
         try {
           const sottofasi = await listSottofasiFase(faseNormalizzata.id)
-          faseNormalizzata.sottofasi = sottofasi.map(normalizzaSottofaseWorkflow)
+          faseNormalizzata.sottofasi = sottofasi
+            .map(normalizzaSottofaseWorkflow)
+            .sort(confrontaOrdine)
         } catch {
           faseNormalizzata.sottofasi = []
         }
@@ -694,7 +796,7 @@ async function caricaWorkflow() {
       })
     )
 
-    fasiWorkflow.value = fasiNormalizzate
+    fasiWorkflow.value = fasiNormalizzate.sort(confrontaOrdine)
     faseSelezionataId.value = fasiNormalizzate[0]?.id ?? null
     sottofaseSelezionataId.value = null
     modalitaLavorazione.value = false
@@ -810,6 +912,10 @@ function tornaAElenco() {
   router.push('/protocollo-monitor/procedimenti')
 }
 
+function confrontaOrdine(a, b) {
+  return Number(a?.ordine ?? 0) - Number(b?.ordine ?? 0)
+}
+
 function selezionaFase(idFase) {
   faseSelezionataId.value = idFase
   sottofaseSelezionataId.value = null
@@ -853,6 +959,7 @@ function aggiungiSottofaseDaCatalogo(template) {
   }
 
   faseSelezionata.value.sottofasi.push(nuovaSottofase)
+  faseSelezionata.value.sottofasi.sort(confrontaOrdine)
   sottofaseSelezionataId.value = nuovaSottofase.id
 
   setTimeout(() => {
@@ -862,6 +969,9 @@ function aggiungiSottofaseDaCatalogo(template) {
 
 function aggiornaStatoFase(stato) {
   if (!faseSelezionata.value) return
+  if (stato === 'COMPLETATA' && faseHaSottofasiNonCompletate(faseSelezionata.value)) {
+    return
+  }
   faseSelezionata.value.stato = stato
 }
 
@@ -870,12 +980,74 @@ function aggiornaStatoSottofase(stato) {
   sottofaseSelezionata.value.stato = stato
 }
 
+function faseHaSottofasiNonCompletate(fase) {
+  if (!fase?.sottofasi?.length) return false
+
+  return fase.sottofasi.some(
+    (sottofase) => sottofase.stato !== 'COMPLETATA'
+  )
+}
+
+function richiediEliminazioneSottofase(sottofase) {
+  if (!sottofase) return
+
+  sottofaseDaEliminare.value = sottofase
+  dialogEliminaSottofase.value = true
+}
+
+function annullaEliminazioneSottofase() {
+  dialogEliminaSottofase.value = false
+  sottofaseDaEliminare.value = null
+}
+
+function confermaEliminazioneSottofase() {
+  if (!faseSelezionata.value || !sottofaseDaEliminare.value) {
+    annullaEliminazioneSottofase()
+    return
+  }
+
+  faseSelezionata.value.sottofasi = faseSelezionata.value.sottofasi
+    .filter((sottofase) => sottofase.id !== sottofaseDaEliminare.value.id)
+    .map((sottofase, index) => ({
+      ...sottofase,
+      ordine: index + 1
+    }))
+
+  sottofaseSelezionataId.value =
+    faseSelezionata.value.sottofasi[0]?.id ?? null
+
+  annullaEliminazioneSottofase()
+}
+
 function coloreStatoWorkflow(stato) {
   return statiWorkflow[stato]?.color || 'grey'
 }
 
 function labelStatoWorkflow(stato) {
   return statiWorkflow[stato]?.label || stato
+}
+
+function classeScadenza(valore) {
+  if (!valore || valore === '-') return 'scadenza-standard'
+
+  const data = new Date(valore)
+
+  if (Number.isNaN(data.getTime())) return 'scadenza-standard'
+
+  const oggi = new Date()
+  oggi.setHours(0, 0, 0, 0)
+
+  const scadenza = new Date(data)
+  scadenza.setHours(0, 0, 0, 0)
+
+  const differenzaGiorni = Math.ceil(
+    (scadenza.getTime() - oggi.getTime()) / 86400000
+  )
+
+  if (differenzaGiorni < 0) return 'scadenza-scaduta'
+  if (differenzaGiorni <= 3) return 'scadenza-vicina'
+
+  return 'scadenza-standard'
 }
 
 function colorePriorita(valore) {
@@ -1018,6 +1190,20 @@ onMounted(() => {
 
 .fase-selezionata {
   outline: 2px solid #1976d2;
+}
+
+.scadenza-scaduta {
+  color: #b91c1c;
+  font-weight: 800;
+}
+
+.scadenza-vicina {
+  color: #c2410c;
+  font-weight: 800;
+}
+
+.scadenza-standard {
+  color: inherit;
 }
 
 .fase-intestazione {
