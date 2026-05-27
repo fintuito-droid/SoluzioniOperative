@@ -163,14 +163,26 @@
         <template v-if="!modalitaLavorazione">
           <v-col cols="12" md="4" class="workflow-column">
             <div class="pa-4">
-              <div class="d-flex align-center justify-space-between mb-4">
+              <div class="d-flex flex-wrap align-center justify-space-between ga-2 mb-4">
                 <div class="text-subtitle-1 font-weight-bold">
                   Fasi del procedimento
                 </div>
 
-                <v-chip color="primary" variant="tonal" size="small">
-                  Dati reali
-                </v-chip>
+                <div class="d-flex align-center ga-2">
+                  <v-chip color="primary" variant="tonal" size="small">
+                    Dati reali
+                  </v-chip>
+
+                  <v-btn
+                    color="primary"
+                    variant="tonal"
+                    density="compact"
+                    prepend-icon="mdi-plus"
+                    @click="aggiungiFaseLocale"
+                  >
+                    Aggiungi fase
+                  </v-btn>
+                </div>
               </div>
 
               <v-alert
@@ -922,6 +934,28 @@ function confrontaOrdine(a, b) {
   return Number(a?.ordine ?? 0) - Number(b?.ordine ?? 0)
 }
 
+function aggiungiFaseLocale() {
+  const nuovoOrdine = fasiWorkflow.value.length + 1
+  const nuovaFase = {
+    id: Date.now(),
+    idProcedimento: Number(idProcedimento.value),
+    ordine: nuovoOrdine,
+    titolo: `Nuova fase ${nuovoOrdine}`,
+    descrizione: 'Fase aggiunta localmente. La modifica non viene salvata nel backend.',
+    stato: 'NON_AVVIATA',
+    obbligatoria: false,
+    bloccante: false,
+    responsabile: '-',
+    dataScadenza: '-',
+    sottofasi: []
+  }
+
+  fasiWorkflow.value.push(nuovaFase)
+  fasiWorkflow.value.sort(confrontaOrdine)
+  faseSelezionataId.value = nuovaFase.id
+  sottofaseSelezionataId.value = null
+}
+
 function selezionaFase(idFase) {
   faseSelezionataId.value = idFase
   sottofaseSelezionataId.value = null
@@ -1152,6 +1186,8 @@ onMounted(() => {
 }
 
 .timeline-scroll {
+  --timeline-circle-size: 28px;
+  --timeline-line-width: 3px;
   max-height: 540px;
   overflow-y: auto;
   padding-right: 8px;
@@ -1159,8 +1195,8 @@ onMounted(() => {
 
 .timeline-item {
   display: grid;
-  gap: 12px;
-  grid-template-columns: 36px minmax(0, 1fr);
+  column-gap: 20px;
+  grid-template-columns: var(--timeline-circle-size) minmax(0, 1fr);
   position: relative;
 }
 
@@ -1168,10 +1204,10 @@ onMounted(() => {
   background: #d1d5db;
   bottom: -8px;
   content: '';
-  left: 13px;
+  left: calc((var(--timeline-circle-size) - var(--timeline-line-width)) / 2);
   position: absolute;
   top: 34px;
-  width: 3px;
+  width: var(--timeline-line-width);
 }
 
 .timeline-marker {
@@ -1179,6 +1215,7 @@ onMounted(() => {
   justify-content: center;
   padding-top: 14px;
   position: relative;
+  width: var(--timeline-circle-size);
   z-index: 1;
 }
 
