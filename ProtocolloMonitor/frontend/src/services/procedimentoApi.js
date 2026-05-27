@@ -111,6 +111,10 @@ export function apriDocumentoSottofase(idDocumento) {
   return fetchBlob(`/protocollo-monitor/sottofase-documenti/${idDocumento}/apri`)
 }
 
+export function scaricaDocumentoSottofase(idDocumento) {
+  return fetchBlob(`/protocollo-monitor/sottofase-documenti/${idDocumento}/scarica`)
+}
+
 export function getWorkflowSottofase(idSottofase) {
   return fetchJson(`/protocollo-monitor/sottofasi/${idSottofase}/workflow`)
 }

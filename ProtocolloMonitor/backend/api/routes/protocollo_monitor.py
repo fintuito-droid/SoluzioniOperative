@@ -627,6 +627,34 @@ def apri_sottofase_documento(
     )
 
 
+@router.get("/protocollo-monitor/sottofase-documenti/{id_documento}/scarica")
+def scarica_sottofase_documento(
+    id_documento: int,
+    sottofase_service: Any = Depends(get_sottofase_documentale_service),
+):
+    documento, resolved_document_path = _resolve_sottofase_documento_path_or_404(
+        id_documento,
+        sottofase_service,
+    )
+
+    media_type = (
+        documento.get("mime_type")
+        or mimetypes.guess_type(str(resolved_document_path))[0]
+        or "application/octet-stream"
+    )
+
+    return FileResponse(
+        str(resolved_document_path),
+        media_type=media_type,
+        filename=resolved_document_path.name,
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="{resolved_document_path.name}"'
+            )
+        },
+    )
+
+
 @router.get("/protocollo-monitor/sottofasi/{id_sottofase}/workflow")
 def get_sottofase_workflow(
     id_sottofase: int,

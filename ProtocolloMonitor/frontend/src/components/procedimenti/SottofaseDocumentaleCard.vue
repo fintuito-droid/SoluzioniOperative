@@ -119,26 +119,69 @@
                   </div>
                 </div>
 
-                <v-tooltip
-                  location="top"
-                  :text="tooltipAperturaDocumento(quadro.documentoCorrente)"
-                >
-                  <template #activator="{ props: tooltipProps }">
-                    <span v-bind="tooltipProps" class="azione-documento-wrapper">
-                      <v-btn
-                        color="primary"
-                        variant="tonal"
-                        size="small"
-                        :prepend-icon="iconaAzioneDocumento(quadro.documentoCorrente)"
-                        :disabled="aperturaInCorsoId !== null"
-                        :loading="aperturaInCorsoId === quadro.documentoCorrente.idDocumentoSottofase"
-                        @click="apriDocumento(quadro.documentoCorrente)"
-                      >
-                        {{ labelAzioneDocumentoCorrente(quadro.documentoCorrente) }}
-                      </v-btn>
-                    </span>
-                  </template>
-                </v-tooltip>
+                <div class="azioni-documento">
+                  <v-tooltip
+                    location="top"
+                    :text="tooltipAperturaDocumento(quadro.documentoCorrente)"
+                  >
+                    <template #activator="{ props: tooltipProps }">
+                      <span v-bind="tooltipProps" class="azione-documento-wrapper">
+                        <v-btn
+                          color="primary"
+                          variant="tonal"
+                          size="small"
+                          prepend-icon="mdi-open-in-new"
+                          :disabled="azioneDocumentoInCorso"
+                          :loading="aperturaInCorsoId === quadro.documentoCorrente.idDocumentoSottofase"
+                          @click="apriDocumento(quadro.documentoCorrente)"
+                        >
+                          Apri
+                        </v-btn>
+                      </span>
+                    </template>
+                  </v-tooltip>
+
+                  <v-tooltip
+                    location="top"
+                    :text="tooltipScaricaDocumento(quadro.documentoCorrente)"
+                  >
+                    <template #activator="{ props: tooltipProps }">
+                      <span v-bind="tooltipProps" class="azione-documento-wrapper">
+                        <v-btn
+                          color="primary"
+                          variant="outlined"
+                          size="small"
+                          prepend-icon="mdi-download-outline"
+                          :disabled="azioneDocumentoInCorso"
+                          :loading="downloadInCorsoId === quadro.documentoCorrente.idDocumentoSottofase"
+                          @click="scaricaDocumento(quadro.documentoCorrente)"
+                        >
+                          Scarica
+                        </v-btn>
+                      </span>
+                    </template>
+                  </v-tooltip>
+
+                  <v-tooltip
+                    v-if="isDocumentoWord(quadro.documentoCorrente)"
+                    location="top"
+                    text="Funzione prevista in una fase successiva tramite helper locale Windows."
+                  >
+                    <template #activator="{ props: tooltipProps }">
+                      <span v-bind="tooltipProps" class="azione-documento-wrapper">
+                        <v-btn
+                          color="grey"
+                          variant="text"
+                          size="small"
+                          prepend-icon="mdi-microsoft-word"
+                          disabled
+                        >
+                          Apri con Word
+                        </v-btn>
+                      </span>
+                    </template>
+                  </v-tooltip>
+                </div>
               </div>
             </v-card-text>
           </v-card>
@@ -197,26 +240,69 @@
               </v-list-item-subtitle>
 
               <template #append>
-                <v-tooltip
-                  location="top"
-                  :text="tooltipAperturaDocumento(documento)"
-                >
-                  <template #activator="{ props: tooltipProps }">
-                    <span v-bind="tooltipProps" class="azione-documento-wrapper">
-                      <v-btn
-                        color="primary"
-                        variant="text"
-                        size="small"
-                        :prepend-icon="iconaAzioneDocumento(documento)"
-                        :disabled="aperturaInCorsoId !== null"
-                        :loading="aperturaInCorsoId === documento.idDocumentoSottofase"
-                        @click="apriDocumento(documento)"
-                      >
-                        Apri
-                      </v-btn>
-                    </span>
-                  </template>
-                </v-tooltip>
+                <div class="azioni-documento">
+                  <v-tooltip
+                    location="top"
+                    :text="tooltipAperturaDocumento(documento)"
+                  >
+                    <template #activator="{ props: tooltipProps }">
+                      <span v-bind="tooltipProps" class="azione-documento-wrapper">
+                        <v-btn
+                          color="primary"
+                          variant="text"
+                          size="small"
+                          prepend-icon="mdi-open-in-new"
+                          :disabled="azioneDocumentoInCorso"
+                          :loading="aperturaInCorsoId === documento.idDocumentoSottofase"
+                          @click="apriDocumento(documento)"
+                        >
+                          Apri
+                        </v-btn>
+                      </span>
+                    </template>
+                  </v-tooltip>
+
+                  <v-tooltip
+                    location="top"
+                    :text="tooltipScaricaDocumento(documento)"
+                  >
+                    <template #activator="{ props: tooltipProps }">
+                      <span v-bind="tooltipProps" class="azione-documento-wrapper">
+                        <v-btn
+                          color="primary"
+                          variant="text"
+                          size="small"
+                          prepend-icon="mdi-download-outline"
+                          :disabled="azioneDocumentoInCorso"
+                          :loading="downloadInCorsoId === documento.idDocumentoSottofase"
+                          @click="scaricaDocumento(documento)"
+                        >
+                          Scarica
+                        </v-btn>
+                      </span>
+                    </template>
+                  </v-tooltip>
+
+                  <v-tooltip
+                    v-if="isDocumentoWord(documento)"
+                    location="top"
+                    text="Funzione prevista in una fase successiva tramite helper locale Windows."
+                  >
+                    <template #activator="{ props: tooltipProps }">
+                      <span v-bind="tooltipProps" class="azione-documento-wrapper">
+                        <v-btn
+                          color="grey"
+                          variant="text"
+                          size="small"
+                          prepend-icon="mdi-microsoft-word"
+                          disabled
+                        >
+                          Apri con Word
+                        </v-btn>
+                      </span>
+                    </template>
+                  </v-tooltip>
+                </div>
               </template>
             </v-list-item>
           </v-list>
@@ -298,7 +384,8 @@ import { computed, ref, watch } from 'vue'
 
 import {
   apriDocumentoSottofase,
-  getSottofaseDocumentale
+  getSottofaseDocumentale,
+  scaricaDocumentoSottofase
 } from '../../services/procedimentoApi'
 
 const props = defineProps({
@@ -313,6 +400,7 @@ const errore = ref('')
 const quadro = ref(null)
 const erroreApertura = ref('')
 const aperturaInCorsoId = ref(null)
+const downloadInCorsoId = ref(null)
 
 const documentoPresente = computed(() => {
   return Boolean(
@@ -327,6 +415,10 @@ const versioneCorrente = computed(() => {
     quadro.value?.versioneDocumento ??
     quadro.value?.documentoCorrente?.versioneDocumento
   )
+})
+
+const azioneDocumentoInCorso = computed(() => {
+  return aperturaInCorsoId.value !== null || downloadInCorsoId.value !== null
 })
 
 watch(
@@ -593,31 +685,17 @@ function iconaDocumento(documento) {
   return 'mdi-file-document-outline'
 }
 
-function iconaAzioneDocumento(documento) {
-  if (isDocumentoWord(documento)) return 'mdi-file-word-outline'
-  if (isDocumentoPdf(documento)) return 'mdi-eye-outline'
-
-  return 'mdi-open-in-new'
-}
-
-function labelAzioneDocumentoCorrente(documento) {
-  if (isDocumentoWord(documento)) return 'Apri documento Word'
-  if (isDocumentoPdf(documento)) return 'Visualizza'
-
-  return 'Apri'
-}
-
 function tooltipAperturaDocumento(documento) {
   if (!documento?.idDocumentoSottofase) {
     return 'Documento non disponibile.'
   }
 
-  if (aperturaInCorsoId.value !== null) {
-    return 'Apertura documento in corso.'
+  if (azioneDocumentoInCorso.value) {
+    return 'Operazione documento in corso.'
   }
 
   if (isDocumentoWord(documento)) {
-    return 'Apre il documento Word in una nuova scheda.'
+    return 'Apre il documento Word nel browser o nel visualizzatore associato.'
   }
 
   if (isDocumentoPdf(documento)) {
@@ -625,6 +703,18 @@ function tooltipAperturaDocumento(documento) {
   }
 
   return 'Apre il documento in una nuova scheda.'
+}
+
+function tooltipScaricaDocumento(documento) {
+  if (!documento?.idDocumentoSottofase) {
+    return 'Documento non disponibile.'
+  }
+
+  if (azioneDocumentoInCorso.value) {
+    return 'Operazione documento in corso.'
+  }
+
+  return 'Scarica una copia del file.'
 }
 
 function isDocumentoWord(documento) {
@@ -701,6 +791,49 @@ async function apriDocumento(documento) {
     aperturaInCorsoId.value = null
   }
 }
+
+async function scaricaDocumento(documento) {
+  erroreApertura.value = ''
+
+  const idDocumento = documento?.idDocumentoSottofase
+
+  if (!idDocumento) {
+    erroreApertura.value = 'Documento non scaricabile: identificativo mancante.'
+    return
+  }
+
+  downloadInCorsoId.value = idDocumento
+
+  try {
+    const blob = await scaricaDocumentoSottofase(idDocumento)
+    const blobUrl = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+
+    link.href = blobUrl
+    link.download = documento?.nomeFile || `documento-${idDocumento}`
+    link.style.display = 'none'
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+
+    setTimeout(() => {
+      URL.revokeObjectURL(blobUrl)
+    }, 60000)
+  } catch (error) {
+    if (error.status === 404) {
+      erroreApertura.value =
+        'Documento non disponibile o file fisico non trovato.'
+    } else if (error.status === 500) {
+      erroreApertura.value =
+        'Errore tecnico durante il download del documento.'
+    } else {
+      erroreApertura.value =
+        'Impossibile scaricare il documento collegato alla sottofase.'
+    }
+  } finally {
+    downloadInCorsoId.value = null
+  }
+}
 </script>
 
 <style scoped>
@@ -730,6 +863,14 @@ async function apriDocumento(documento) {
 
 .azione-documento-wrapper {
   display: inline-flex;
+}
+
+.azioni-documento {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
 }
 
 .step-operativi-list {

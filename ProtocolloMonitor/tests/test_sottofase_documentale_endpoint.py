@@ -9,6 +9,7 @@ from backend.api.routes.protocollo_monitor import (
     get_sottofase_documentale,
     get_sottofase_documenti,
     get_sottofase_step_operativi,
+    scarica_sottofase_documento,
 )
 
 
@@ -174,9 +175,45 @@ def test_apri_sottofase_documento_returns_file_response(tmp_path):
     )
 
 
+def test_scarica_sottofase_documento_returns_attachment_response(tmp_path):
+    document_path = tmp_path / "bozza.docx"
+    document_path.write_bytes(b"documento")
+
+    response = scarica_sottofase_documento(
+        10,
+        sottofase_service=FakeSottofaseDocumentaleService(
+            documento={
+                "percorso_documento": str(document_path),
+                "mime_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            }
+        ),
+    )
+
+    assert response.path == str(document_path.resolve())
+    assert (
+        response.media_type
+        == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    )
+    assert (
+        response.headers["content-disposition"]
+        == f'attachment; filename="{document_path.name}"'
+    )
+
+
 def test_apri_sottofase_documento_returns_404_when_document_missing():
     with pytest.raises(HTTPException) as exc_info:
         apri_sottofase_documento(
+            999,
+            sottofase_service=FakeSottofaseDocumentaleService(documento=None),
+        )
+
+    assert exc_info.value.status_code == 404
+    assert exc_info.value.detail == "Documento non trovato"
+
+
+def test_scarica_sottofase_documento_returns_404_when_document_missing():
+    with pytest.raises(HTTPException) as exc_info:
+        scarica_sottofase_documento(
             999,
             sottofase_service=FakeSottofaseDocumentaleService(documento=None),
         )
@@ -198,11 +235,39 @@ def test_apri_sottofase_documento_returns_404_when_path_empty():
     assert exc_info.value.detail == "Documento non disponibile"
 
 
+def test_scarica_sottofase_documento_returns_404_when_path_empty():
+    with pytest.raises(HTTPException) as exc_info:
+        scarica_sottofase_documento(
+            10,
+            sottofase_service=FakeSottofaseDocumentaleService(
+                documento={"percorso_documento": ""}
+            ),
+        )
+
+    assert exc_info.value.status_code == 404
+    assert exc_info.value.detail == "Documento non disponibile"
+
+
 def test_apri_sottofase_documento_returns_404_when_file_missing(tmp_path):
     missing_path = tmp_path / "missing.docx"
 
     with pytest.raises(HTTPException) as exc_info:
         apri_sottofase_documento(
+            10,
+            sottofase_service=FakeSottofaseDocumentaleService(
+                documento={"percorso_documento": str(missing_path)}
+            ),
+        )
+
+    assert exc_info.value.status_code == 404
+    assert exc_info.value.detail == "File documento non trovato"
+
+
+def test_scarica_sottofase_documento_returns_404_when_file_missing(tmp_path):
+    missing_path = tmp_path / "missing.docx"
+
+    with pytest.raises(HTTPException) as exc_info:
+        scarica_sottofase_documento(
             10,
             sottofase_service=FakeSottofaseDocumentaleService(
                 documento={"percorso_documento": str(missing_path)}
