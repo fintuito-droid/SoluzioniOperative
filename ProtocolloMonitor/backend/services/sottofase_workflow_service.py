@@ -85,8 +85,14 @@ class SottofaseWorkflowService:
         )
 
         completed = {
-            "REDIGI": has_document,
-            "REVISIONA": versione_documento >= 2,
+            "REDIGI": (
+                has_document
+                or self._is_step_completed(step_operativi_by_code, "REDIGI")
+            ),
+            "REVISIONA": (
+                versione_documento >= 2
+                or self._is_step_completed(step_operativi_by_code, "REVISIONA")
+            ),
             "FIRMA": self._is_step_completed(step_operativi_by_code, "FIRMA"),
             "PROTOCOLLA": self._is_step_completed(
                 step_operativi_by_code,

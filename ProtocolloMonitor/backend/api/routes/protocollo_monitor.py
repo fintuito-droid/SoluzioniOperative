@@ -11,10 +11,19 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from backend.core.dependency_container import DependencyContainer, create_container
+from backend.schemas.sottofase_workflow import SottofaseWorkflowAzionePayload
 from backend.services.procedimento_service import (
     ProcedimentoNotFoundError,
     ProcedimentoProtocolloLinkAlreadyExistsError,
     ProtocolloNotFoundError,
+)
+from backend.services.sottofase_workflow_action_service import (
+    WorkflowActionValidationError,
+)
+from backend.services.sottofase_workflow_command_service import (
+    SottofaseWorkflowBackupError,
+    SottofaseWorkflowNotFoundError,
+    SottofaseWorkflowWriteError,
 )
 
 
@@ -89,6 +98,14 @@ def get_sottofase_workflow_service(
     """Dipendenza FastAPI per ottenere `SottofaseWorkflowService`."""
 
     return container.get_sottofase_workflow_service()
+
+
+def get_sottofase_workflow_command_service(
+    container: DependencyContainer = Depends(get_container),
+) -> Any:
+    """Dipendenza FastAPI per ottenere il command service workflow."""
+
+    return container.get_sottofase_workflow_command_service()
 
 
 def _resolve_pdf_path_or_404(id_protocollo: int, documento_service: Any):
@@ -480,3 +497,24 @@ def get_sottofase_workflow(
         raise HTTPException(status_code=404, detail="Sottofase non trovata")
 
     return workflow
+
+
+@router.post("/protocollo-monitor/sottofasi/{id_sottofase}/workflow/azioni")
+def esegui_azione_workflow_sottofase(
+    id_sottofase: int,
+    payload: SottofaseWorkflowAzionePayload,
+    command_service: Any = Depends(get_sottofase_workflow_command_service),
+):
+    try:
+        return command_service.esegui_azione_workflow_sottofase(
+            id_sottofase=id_sottofase,
+            payload=payload,
+        )
+    except SottofaseWorkflowNotFoundError:
+        raise HTTPException(status_code=404, detail="Sottofase non trovata")
+    except WorkflowActionValidationError as exc:
+        raise HTTPException(status_code=400, detail=exc.message)
+    except SottofaseWorkflowBackupError as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    except SottofaseWorkflowWriteError as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
