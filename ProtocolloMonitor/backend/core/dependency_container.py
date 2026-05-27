@@ -47,6 +47,7 @@ class DependencyContainer:
         self._procedimento_service: Any | None = None
         self._workflow_procedimento_service: Any | None = None
         self._sottofase_documentale_service: Any | None = None
+        self._sottofase_workflow_service: Any | None = None
 
     def _get_protocollo_repository(self) -> Any:
         """Restituisce il repository protocolli, creandolo lazy.
@@ -206,6 +207,22 @@ class DependencyContainer:
             )
 
         return self._sottofase_documentale_service
+
+    def get_sottofase_workflow_service(self) -> Any:
+        """Restituisce `SottofaseWorkflowService` read-only collegato."""
+
+        if self._sottofase_workflow_service is None:
+            from ..services.sottofase_workflow_service import (
+                SottofaseWorkflowService,
+            )
+
+            self._sottofase_workflow_service = SottofaseWorkflowService(
+                sottofase_documentale_service=(
+                    self.get_sottofase_documentale_service()
+                ),
+            )
+
+        return self._sottofase_workflow_service
 
 
 def create_container() -> DependencyContainer:

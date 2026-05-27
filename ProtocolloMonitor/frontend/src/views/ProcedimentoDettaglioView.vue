@@ -610,6 +610,11 @@
                     :id-sottofase="sottofaseSelezionata.id"
                     class="mt-4"
                   />
+
+                  <WorkflowSottofaseCard
+                    :id-sottofase="sottofaseSelezionata.id"
+                    class="mt-4"
+                  />
                 </v-card>
               </v-card>
             </div>
@@ -672,6 +677,7 @@ import {
   listSottofasiFase
 } from '../services/procedimentoApi'
 import SottofaseDocumentaleCard from '../components/procedimenti/SottofaseDocumentaleCard.vue'
+import WorkflowSottofaseCard from '../components/procedimenti/WorkflowSottofaseCard.vue'
 import { statiWorkflow } from '../mock/procedimentoWorkflowMock'
 
 const route = useRoute()

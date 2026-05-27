@@ -109,3 +109,7 @@ export function listStepOperativiSottofase(idSottofase) {
 export function apriDocumentoSottofase(idDocumento) {
   return fetchBlob(`/protocollo-monitor/sottofase-documenti/${idDocumento}/apri`)
 }
+
+export function getWorkflowSottofase(idSottofase) {
+  return fetchJson(`/protocollo-monitor/sottofasi/${idSottofase}/workflow`)
+}

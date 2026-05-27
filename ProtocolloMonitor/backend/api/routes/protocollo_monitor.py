@@ -83,6 +83,14 @@ def get_sottofase_documentale_service(
     return container.get_sottofase_documentale_service()
 
 
+def get_sottofase_workflow_service(
+    container: DependencyContainer = Depends(get_container),
+) -> Any:
+    """Dipendenza FastAPI per ottenere `SottofaseWorkflowService`."""
+
+    return container.get_sottofase_workflow_service()
+
+
 def _resolve_pdf_path_or_404(id_protocollo: int, documento_service: Any):
     """Recupera e risolve il path PDF, sollevando 404 coerenti.
 
@@ -459,3 +467,16 @@ def apri_sottofase_documento(
             )
         },
     )
+
+
+@router.get("/protocollo-monitor/sottofasi/{id_sottofase}/workflow")
+def get_sottofase_workflow(
+    id_sottofase: int,
+    workflow_service: Any = Depends(get_sottofase_workflow_service),
+):
+    workflow = workflow_service.get_workflow(id_sottofase)
+
+    if workflow is None:
+        raise HTTPException(status_code=404, detail="Sottofase non trovata")
+
+    return workflow
