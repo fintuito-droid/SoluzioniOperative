@@ -118,7 +118,7 @@ Vista Vue
 | `GET` | `/protocollo-monitor/sottofasi/{id_sottofase}/documenti` | Storico documenti sottofase. | Read-only | `SottofaseDocumentaleService`, `SottofaseDocumentaleRepository`. | Attivo. |
 | `POST` | `/protocollo-monitor/sottofasi/{id_sottofase}/documenti` | Upload Word versionato in REDIGI e REVISIONA. | Scrittura controllata | `SottofaseDocumentUploadService`, `SottofaseDocumentUploadRepository`, backup Access. | Attivo Step 30L-16. |
 | `GET` | `/protocollo-monitor/sottofasi/{id_sottofase}/step-operativi` | Step operativi storici. | Read-only | `SottofaseDocumentaleService`, `SottofaseDocumentaleRepository`. | Attivo. |
-| `GET` | `/protocollo-monitor/sottofase-documenti/{id_documento}/apri` | Apre/serve documento collegato. | Read-only/filesystem | `SottofaseDocumentaleService`, `DocumentPathService`, `FileResponse`. | Attivo. |
+| `GET` | `/protocollo-monitor/sottofase-documenti/{id_documento}/apri` | Apre/serve documento collegato Word/PDF/storico. | Read-only/filesystem | `SottofaseDocumentaleService`, `DocumentPathService`, `FileResponse`. | Attivo Step 30L-17, invariato lato backend. |
 | `GET` | `/protocollo-monitor/sottofasi/{id_sottofase}/workflow` | Workflow operativo REDIGI/FINE. | Read-only | `SottofaseWorkflowService`, `SottofaseDocumentaleService`. | Attivo. |
 | `POST` | `/protocollo-monitor/sottofasi/{id_sottofase}/workflow/azioni` | Avanza workflow sottofase. | Scrittura controllata | `SottofaseWorkflowCommandService`, `SottofaseWorkflowActionRepository`, backup Access. | Attivo. |
 
@@ -128,7 +128,7 @@ Vista Vue
 | --- | --- | --- | --- | --- | --- |
 | `ProcedimentiView.vue` | Elenco procedimenti. | Data table, ricerca libera, filtri stato/priorita, click dettaglio. | `GET /procedimenti`, count protocolli. | Navigazione verso dettaglio. | Attivo read-only. |
 | `ProcedimentoDettaglioView.vue` | Dettaglio procedimento, fasi, sottofasi e protocolli. | Pannello sinistro fasi, timeline, dettaglio fase, sottofasi, pulsante aggiungi fase locale, selezione sottofase. | Procedimento, protocolli, fasi, sottofasi, catalogo. | Ascolta `workflow-aggiornato`, ricarica sottofase/documentale. | Attivo. |
-| `SottofaseDocumentaleCard.vue` | Stato documentale di una sottofase. | Chip documento presente, card documento corrente, storico documenti, step operativi, pulsanti Visualizza/Apri. | `GET /documentale`, `GET /sottofase-documenti/{id}/apri`. | Nessun evento principale; si aggiorna via remount/key padre. | Attivo. |
+| `SottofaseDocumentaleCard.vue` | Stato documentale di una sottofase. | Chip documento presente, card documento corrente, storico documenti, step operativi, pulsanti Word/PDF con tooltip, loading e gestione errori apertura. | `GET /documentale`, `GET /sottofase-documenti/{id}/apri`. | Nessun evento principale; si aggiorna via remount/key padre. | Attivo Step 30L-17. |
 | `WorkflowSottofaseCard.vue` | Workflow operativo sottofase e azioni. | Progress bar, step verticali, azioni disponibili, dialog conferma, textarea, upload Word REDIGI/REVISIONA. | `GET /workflow`, `POST /workflow/azioni`, `POST /documenti`. | Emette `workflow-aggiornato`. | Attivo. |
 | `procedimentoApi.js` | Client API frontend. | Helper fetch JSON/blob, FormData per upload Word. | Tutti gli endpoint procedimento/workflow/documentale. | Non emette eventi; usato dai componenti. | Attivo. |
 | `NotaProtocolloView.vue` | Dettaglio protocollo e collegamento procedimenti. | Card procedimenti collegati, dialog collegamento, PDF. | Protocolli, procedimenti collegati, POST link. | Refresh dati dopo link. | Attivo. |
@@ -157,6 +157,7 @@ Controlli gia introdotti:
 - `v-progress-linear` per avanzamento workflow;
 - pulsanti Visualizza, Apri, Conferma, Carica documento;
 - upload `.docx` con `v-file-input`, preview nome/dimensione e limite 50 MB in REDIGI e REVISIONA.
+- apertura documento corrente e versioni storiche con pulsanti dedicati Word/PDF, tooltip, loading anti doppio click e alert errori.
 
 ## 8. Workflow operativo sottofase
 
@@ -264,6 +265,7 @@ Test automatici principali:
 | Step 30L-14 | Prosecuzione reale fino a chiusura | Test reale sequenza `SEGNA_FIRMATO`, `SEGNA_PROTOCOLLATO`, `CHIUDI_SOTTOFASE` su sottofase 5. | Endpoint esistente e database reale. | Completato operativamente. | Non rilevato come commit dedicato. |
 | Step 30L-15 | Documento Word reale REDIGI | Upload `.docx`, V001/V002, backup, insert documento, update documento corrente, UI upload. | `sottofase_document_upload_*`, router, `WorkflowSottofaseCard.vue`, `procedimentoApi.js`, test. | Completato. | `38dfada`. |
 | Step 30L-16 | Revisione documento Word | Upload `.docx` ammesso anche in REVISIONA, generazione V002/V003, storico versioni conservato, documento corrente aggiornato, UI revisione. | `sottofase_document_upload_service.py`, router, `WorkflowSottofaseCard.vue`, test upload. | Completato. | Da commit. |
+| Step 30L-17 | Apertura documento Word corrente e storico | Migliorata UI apertura documento corrente e versioni storiche, label Word/PDF, tooltip, loading, gestione errori 404/500 e popup bloccato usando endpoint esistente. | `SottofaseDocumentaleCard.vue`, `procedimentoApi.js`, roadmap. | Completato. | Da commit. |
 
 ## 13. Decisioni architetturali importanti
 
@@ -284,7 +286,6 @@ Test automatici principali:
 
 | Prossimo step | Obiettivo | Note prudenziali |
 | --- | --- | --- |
-| Step 30L-17 | Raffinare apertura Word reale. | Distinguere download browser, apertura locale Windows e futuro scenario multiutente. |
 | Step 30L-18 | Firma/protocollazione documentale. | Non confondere firma operativa con firma digitale reale. |
 | Step 30L-19 | Audit storico applicativo. | Introdurre tabella/eventi o logging persistente prima della multiutenza. |
 | Step 30L-20 | Utente reale/login. | Sostituire `Francesco Matranga` hardcoded/provvisorio con identita autenticata. |

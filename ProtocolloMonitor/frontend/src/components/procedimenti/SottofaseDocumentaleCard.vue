@@ -119,16 +119,26 @@
                   </div>
                 </div>
 
-                <v-btn
-                  color="primary"
-                  variant="tonal"
-                  size="small"
-                  prepend-icon="mdi-eye-outline"
-                  :loading="aperturaInCorsoId === quadro.documentoCorrente.idDocumentoSottofase"
-                  @click="apriDocumento(quadro.documentoCorrente)"
+                <v-tooltip
+                  location="top"
+                  :text="tooltipAperturaDocumento(quadro.documentoCorrente)"
                 >
-                  Visualizza
-                </v-btn>
+                  <template #activator="{ props: tooltipProps }">
+                    <span v-bind="tooltipProps" class="azione-documento-wrapper">
+                      <v-btn
+                        color="primary"
+                        variant="tonal"
+                        size="small"
+                        :prepend-icon="iconaAzioneDocumento(quadro.documentoCorrente)"
+                        :disabled="aperturaInCorsoId !== null"
+                        :loading="aperturaInCorsoId === quadro.documentoCorrente.idDocumentoSottofase"
+                        @click="apriDocumento(quadro.documentoCorrente)"
+                      >
+                        {{ labelAzioneDocumentoCorrente(quadro.documentoCorrente) }}
+                      </v-btn>
+                    </span>
+                  </template>
+                </v-tooltip>
               </div>
             </v-card-text>
           </v-card>
@@ -187,16 +197,26 @@
               </v-list-item-subtitle>
 
               <template #append>
-                <v-btn
-                  color="primary"
-                  variant="text"
-                  size="small"
-                  prepend-icon="mdi-open-in-new"
-                  :loading="aperturaInCorsoId === documento.idDocumentoSottofase"
-                  @click="apriDocumento(documento)"
+                <v-tooltip
+                  location="top"
+                  :text="tooltipAperturaDocumento(documento)"
                 >
-                  Apri
-                </v-btn>
+                  <template #activator="{ props: tooltipProps }">
+                    <span v-bind="tooltipProps" class="azione-documento-wrapper">
+                      <v-btn
+                        color="primary"
+                        variant="text"
+                        size="small"
+                        :prepend-icon="iconaAzioneDocumento(documento)"
+                        :disabled="aperturaInCorsoId !== null"
+                        :loading="aperturaInCorsoId === documento.idDocumentoSottofase"
+                        @click="apriDocumento(documento)"
+                      >
+                        Apri
+                      </v-btn>
+                    </span>
+                  </template>
+                </v-tooltip>
               </template>
             </v-list-item>
           </v-list>
@@ -417,6 +437,7 @@ function normalizzaDocumento(dato) {
     tipoDocumento: pick(dato, 'tipo_documento', 'TipoDocumento', 'tipoDocumento'),
     nomeFile: pick(dato, 'nome_file', 'NomeFile', 'nomeFile'),
     estensione: pick(dato, 'estensione', 'Estensione'),
+    mimeType: pick(dato, 'mime_type', 'MimeType', 'mimeType'),
     percorsoDocumento: pick(
       dato,
       'percorso_documento',
@@ -491,7 +512,13 @@ function confrontaVersioneDiscendente(a, b) {
 function formattaVersione(value) {
   if (value === null || value === undefined || value === '') return '-'
 
-  return `v${value}`
+  const number = Number(value)
+
+  if (Number.isFinite(number)) {
+    return `V${String(number).padStart(3, '0')}`
+  }
+
+  return String(value)
 }
 
 function formattaDataOra(value) {
@@ -560,12 +587,68 @@ function iconaStep(value) {
 }
 
 function iconaDocumento(documento) {
-  const estensione = String(documento?.estensione || '').toLowerCase()
-
-  if (estensione.includes('doc')) return 'mdi-file-word-outline'
-  if (estensione.includes('pdf')) return 'mdi-file-pdf-box'
+  if (isDocumentoWord(documento)) return 'mdi-file-word-outline'
+  if (isDocumentoPdf(documento)) return 'mdi-file-pdf-box'
 
   return 'mdi-file-document-outline'
+}
+
+function iconaAzioneDocumento(documento) {
+  if (isDocumentoWord(documento)) return 'mdi-file-word-outline'
+  if (isDocumentoPdf(documento)) return 'mdi-eye-outline'
+
+  return 'mdi-open-in-new'
+}
+
+function labelAzioneDocumentoCorrente(documento) {
+  if (isDocumentoWord(documento)) return 'Apri documento Word'
+  if (isDocumentoPdf(documento)) return 'Visualizza'
+
+  return 'Apri'
+}
+
+function tooltipAperturaDocumento(documento) {
+  if (!documento?.idDocumentoSottofase) {
+    return 'Documento non disponibile.'
+  }
+
+  if (aperturaInCorsoId.value !== null) {
+    return 'Apertura documento in corso.'
+  }
+
+  if (isDocumentoWord(documento)) {
+    return 'Apre il documento Word in una nuova scheda.'
+  }
+
+  if (isDocumentoPdf(documento)) {
+    return 'Visualizza il PDF in una nuova scheda.'
+  }
+
+  return 'Apre il documento in una nuova scheda.'
+}
+
+function isDocumentoWord(documento) {
+  const type = documentoTypeSignature(documento)
+
+  return type.includes('.docx') ||
+    type.includes('word') ||
+    type.includes('officedocument.wordprocessingml')
+}
+
+function isDocumentoPdf(documento) {
+  return documentoTypeSignature(documento).includes('pdf')
+}
+
+function documentoTypeSignature(documento) {
+  return [
+    documento?.estensione,
+    documento?.nomeFile,
+    documento?.tipoDocumento,
+    documento?.mimeType
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase()
 }
 
 async function apriDocumento(documento) {
@@ -578,21 +661,21 @@ async function apriDocumento(documento) {
     return
   }
 
+  const openedWindow = window.open('', '_blank')
+
+  if (!openedWindow) {
+    erroreApertura.value =
+      'Il browser ha bloccato l apertura del documento in una nuova scheda.'
+    return
+  }
+
+  openedWindow.opener = null
   aperturaInCorsoId.value = idDocumento
 
   try {
     const blob = await apriDocumentoSottofase(idDocumento)
     const blobUrl = URL.createObjectURL(blob)
-    const openedWindow = window.open(blobUrl, '_blank')
-
-    if (!openedWindow) {
-      URL.revokeObjectURL(blobUrl)
-      erroreApertura.value =
-        'Il browser ha bloccato l apertura del documento in una nuova scheda.'
-      return
-    }
-
-    openedWindow.opener = null
+    openedWindow.location.href = blobUrl
 
     setTimeout(() => {
       URL.revokeObjectURL(blobUrl)
@@ -601,9 +684,18 @@ async function apriDocumento(documento) {
     if (error.status === 404) {
       erroreApertura.value =
         'Documento non disponibile o file fisico non trovato.'
+    } else if (error.status === 500) {
+      erroreApertura.value =
+        'Errore tecnico durante l apertura del documento.'
     } else {
       erroreApertura.value =
         'Impossibile aprire il documento collegato alla sottofase.'
+    }
+
+    try {
+      openedWindow.close()
+    } catch {
+      // La scheda e stata aperta solo per rispettare il gesto utente.
     }
   } finally {
     aperturaInCorsoId.value = null
@@ -634,6 +726,10 @@ async function apriDocumento(documento) {
 .lista-documenti {
   border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: 8px;
+}
+
+.azione-documento-wrapper {
+  display: inline-flex;
 }
 
 .step-operativi-list {
