@@ -613,6 +613,7 @@
 
                   <WorkflowSottofaseCard
                     :id-sottofase="sottofaseSelezionata.id"
+                    :titolo-sottofase="sottofaseSelezionata.titolo"
                     class="mt-4"
                   />
                 </v-card>

@@ -83,6 +83,50 @@
             </div>
           </div>
         </div>
+
+        <v-divider class="my-4" />
+
+        <section>
+          <div class="text-subtitle-2 font-weight-bold mb-3">
+            Azioni disponibili
+          </div>
+
+          <div class="azioni-workflow">
+            <v-tooltip
+              v-for="azione in azioniWorkflow"
+              :key="azione.codice"
+              location="top"
+              :text="azione.tooltip"
+            >
+              <template #activator="{ props: tooltipProps }">
+                <span
+                  v-bind="tooltipProps"
+                  class="azione-tooltip-wrapper"
+                >
+                  <v-btn
+                    :color="azione.disponibile ? azione.colore : 'grey'"
+                    :disabled="!azione.disponibile"
+                    :prepend-icon="azione.icona"
+                    size="small"
+                    variant="tonal"
+                    @click="apriDialogAzione(azione)"
+                  >
+                    {{ azione.titolo }}
+                  </v-btn>
+                </span>
+              </template>
+            </v-tooltip>
+          </div>
+
+          <v-alert
+            type="info"
+            variant="tonal"
+            density="compact"
+            class="mt-3"
+          >
+            Le azioni sono predisposte in sola simulazione: nessuna modifica viene salvata.
+          </v-alert>
+        </section>
       </template>
 
       <v-alert
@@ -95,6 +139,75 @@
       </v-alert>
     </v-card-text>
   </v-card>
+
+  <v-dialog
+    v-model="dialogAzione"
+    max-width="560"
+  >
+    <v-card rounded="lg">
+      <v-card-title class="text-subtitle-1 font-weight-bold">
+        Azione guidata
+      </v-card-title>
+
+      <v-card-text>
+        <v-alert
+          type="warning"
+          variant="tonal"
+          density="compact"
+          class="mb-4"
+        >
+          Funzione non ancora attiva: nessuna modifica sarà salvata.
+        </v-alert>
+
+        <v-row dense>
+          <v-col cols="12" sm="6">
+            <div class="label-azione">Azione selezionata</div>
+            <div class="value-azione">
+              {{ azioneSelezionata?.titolo || '-' }}
+            </div>
+          </v-col>
+
+          <v-col cols="12" sm="6">
+            <div class="label-azione">Sottofase interessata</div>
+            <div class="value-azione">
+              {{ sottofaseLabel }}
+            </div>
+          </v-col>
+
+          <v-col cols="12">
+            <v-textarea
+              v-model="testoOperatore"
+              auto-grow
+              density="compact"
+              hide-details
+              label="Testo libero operatore"
+              rows="3"
+              variant="outlined"
+            />
+          </v-col>
+        </v-row>
+      </v-card-text>
+
+      <v-card-actions>
+        <v-spacer />
+
+        <v-btn
+          variant="text"
+          @click="chiudiDialogAzione"
+        >
+          Chiudi
+        </v-btn>
+
+        <v-btn
+          color="primary"
+          disabled
+          variant="flat"
+        >
+          Conferma non attiva
+        </v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
 </template>
 
 <script setup>
@@ -106,15 +219,85 @@ const props = defineProps({
   idSottofase: {
     type: [Number, String],
     default: null
+  },
+  titoloSottofase: {
+    type: String,
+    default: ''
   }
 })
 
 const loading = ref(false)
 const errore = ref('')
 const workflow = ref(null)
+const dialogAzione = ref(false)
+const azioneSelezionata = ref(null)
+const testoOperatore = ref('')
+
+const AZIONI_WORKFLOW = [
+  {
+    codice: 'AVVIA_REDIGI',
+    step: 'REDIGI',
+    titolo: 'Avvia redazione',
+    icona: 'mdi-file-edit-outline',
+    colore: 'primary'
+  },
+  {
+    codice: 'INVIA_REVISIONE',
+    step: 'REVISIONA',
+    titolo: 'Invia a revisione',
+    icona: 'mdi-send-check-outline',
+    colore: 'blue'
+  },
+  {
+    codice: 'SEGNA_FIRMATO',
+    step: 'FIRMA',
+    titolo: 'Segna come firmato',
+    icona: 'mdi-draw-pen',
+    colore: 'deep-purple'
+  },
+  {
+    codice: 'SEGNA_PROTOCOLLATO',
+    step: 'PROTOCOLLA',
+    titolo: 'Segna come protocollato',
+    icona: 'mdi-stamper',
+    colore: 'teal'
+  },
+  {
+    codice: 'CHIUDI_SOTTOFASE',
+    step: 'FINE',
+    titolo: 'Chiudi sottofase',
+    icona: 'mdi-check-circle-outline',
+    colore: 'green'
+  }
+]
 
 const percentuale = computed(() => {
   return workflow.value?.percentualeAvanzamento ?? 0
+})
+
+const stepAttivo = computed(() => {
+  return workflow.value?.workflow?.find((step) => step.attivo) || null
+})
+
+const azioniWorkflow = computed(() => {
+  return AZIONI_WORKFLOW.map((azione) => {
+    const disponibile = stepAttivo.value?.codice === azione.step
+
+    return {
+      ...azione,
+      disponibile,
+      tooltip: disponibile
+        ? 'Azione disponibile per lo step attivo. In questa fase è solo simulata.'
+        : tooltipAzioneNonDisponibile(azione)
+    }
+  })
+})
+
+const sottofaseLabel = computed(() => {
+  if (props.titoloSottofase) return props.titoloSottofase
+  if (props.idSottofase) return `Sottofase ${props.idSottofase}`
+
+  return '-'
 })
 
 watch(
@@ -188,6 +371,40 @@ function iconaStep(step) {
   return 'mdi-circle-outline'
 }
 
+function tooltipAzioneNonDisponibile(azione) {
+  if (!stepAttivo.value) {
+    return 'Azione non disponibile: il workflow non ha uno step attivo.'
+  }
+
+  return `Azione disponibile solo quando lo step attivo è ${labelStep(azione.step)}.`
+}
+
+function labelStep(value) {
+  const labels = {
+    REDIGI: 'Redigi',
+    REVISIONA: 'Revisiona',
+    FIRMA: 'Firma',
+    PROTOCOLLA: 'Protocolla',
+    FINE: 'Fine'
+  }
+
+  return labels[value] || value || 'non definito'
+}
+
+function apriDialogAzione(azione) {
+  if (!azione?.disponibile) return
+
+  azioneSelezionata.value = azione
+  testoOperatore.value = ''
+  dialogAzione.value = true
+}
+
+function chiudiDialogAzione() {
+  dialogAzione.value = false
+  azioneSelezionata.value = null
+  testoOperatore.value = ''
+}
+
 function formattaDataOra(value) {
   if (!value) return '-'
 
@@ -231,5 +448,26 @@ function formattaDataOra(value) {
 
 .workflow-step-body {
   min-width: 0;
+}
+
+.azioni-workflow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.azione-tooltip-wrapper {
+  display: inline-flex;
+}
+
+.label-azione {
+  color: #6b7280;
+  font-size: 0.74rem;
+  margin-bottom: 4px;
+}
+
+.value-azione {
+  font-size: 0.92rem;
+  font-weight: 700;
 }
 </style>
