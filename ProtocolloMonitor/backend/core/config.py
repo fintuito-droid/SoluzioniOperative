@@ -137,7 +137,7 @@ class AppConfig:
     database_provider: str = os.getenv("PM_DATABASE_PROVIDER", "access")
     access_db_path: str = os.getenv(
         "PM_ACCESS_DB_PATH",
-        r"G:\ProtocolloMonitor.accdb",
+        r"C:\Users\fintu\CloudVVF\Documents\Sviluppo\Grisu\ProtocolloMonitor.accdb",
     )
     postgres_dsn: str = os.getenv("PM_POSTGRES_DSN", "")
     postgres_schema: str = os.getenv("PM_POSTGRES_SCHEMA", "protocollo_monitor")
