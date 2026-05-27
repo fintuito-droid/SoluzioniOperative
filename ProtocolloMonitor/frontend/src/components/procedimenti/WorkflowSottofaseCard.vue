@@ -147,6 +147,89 @@
             Le azioni registrano l'avanzamento tramite il backend e richiedono backup Access automatico.
           </v-alert>
         </section>
+
+        <template v-if="mostraUploadDocumentoWord">
+          <v-divider class="my-4" />
+
+          <section>
+            <div class="text-subtitle-2 font-weight-bold mb-3">
+              Documento Word REDIGI
+            </div>
+
+            <v-file-input
+              v-model="documentoWordSelezionato"
+              accept=".docx"
+              density="compact"
+              label="Collega documento Word"
+              prepend-icon="mdi-file-word-outline"
+              show-size
+              variant="outlined"
+              hide-details
+              :disabled="uploadDocumentoInCorso"
+            />
+
+            <v-card
+              v-if="fileDocumentoWord"
+              class="mt-3 documento-word-preview"
+              rounded="lg"
+              variant="tonal"
+            >
+              <v-card-text class="d-flex flex-wrap align-center justify-space-between ga-3">
+                <div>
+                  <div class="font-weight-bold">
+                    {{ fileDocumentoWord.name }}
+                  </div>
+                  <div class="text-caption text-medium-emphasis">
+                    {{ formattaDimensioneFile(fileDocumentoWord.size) }}
+                    · {{ estensioneDocumentoWord }}
+                  </div>
+                </div>
+
+                <v-btn
+                  color="primary"
+                  :disabled="!documentoWordValido || uploadDocumentoInCorso"
+                  :loading="uploadDocumentoInCorso"
+                  prepend-icon="mdi-cloud-upload-outline"
+                  size="small"
+                  variant="flat"
+                  @click="caricaDocumentoWord"
+                >
+                  Carica documento
+                </v-btn>
+              </v-card-text>
+            </v-card>
+
+            <v-alert
+              v-if="messaggioValidazioneDocumento"
+              type="warning"
+              variant="tonal"
+              density="compact"
+              class="mt-3"
+            >
+              {{ messaggioValidazioneDocumento }}
+            </v-alert>
+
+            <v-alert
+              v-if="messaggioDocumentoWord"
+              type="success"
+              variant="tonal"
+              density="compact"
+              class="mt-3"
+            >
+              {{ messaggioDocumentoWord }}
+            </v-alert>
+
+            <v-alert
+              v-if="erroreUploadDocumento"
+              type="warning"
+              variant="tonal"
+              density="compact"
+              class="mt-3"
+            >
+              {{ erroreUploadDocumento }}
+            </v-alert>
+          </section>
+        </template>
       </template>
 
       <v-alert
@@ -255,6 +338,7 @@
 import { computed, ref, watch } from 'vue'
 
 import {
+  caricaDocumentoWordSottofase,
   eseguiAzioneWorkflowSottofase,
   getWorkflowSottofase
 } from '../../services/procedimentoApi'
@@ -282,8 +366,13 @@ const richiestaInCorso = ref(false)
 const erroreDialog = ref('')
 const erroreAzione = ref('')
 const messaggioSuccesso = ref('')
+const documentoWordSelezionato = ref(null)
+const uploadDocumentoInCorso = ref(false)
+const erroreUploadDocumento = ref('')
+const messaggioDocumentoWord = ref('')
 
 const UTENTE_OPERATORE_PROVVISORIO = 'Francesco Matranga'
+const MAX_DOCX_SIZE_BYTES = 50 * 1024 * 1024
 
 const AZIONI_WORKFLOW = [
   {
@@ -329,6 +418,43 @@ const percentuale = computed(() => {
 
 const stepAttivo = computed(() => {
   return workflow.value?.workflow?.find((step) => step.attivo) || null
+})
+
+const mostraUploadDocumentoWord = computed(() => {
+  return stepAttivo.value?.codice === 'REDIGI'
+})
+
+const fileDocumentoWord = computed(() => {
+  if (Array.isArray(documentoWordSelezionato.value)) {
+    return documentoWordSelezionato.value[0] || null
+  }
+
+  return documentoWordSelezionato.value || null
+})
+
+const estensioneDocumentoWord = computed(() => {
+  const name = fileDocumentoWord.value?.name || ''
+  const lastDot = name.lastIndexOf('.')
+
+  return lastDot >= 0 ? name.slice(lastDot).toLowerCase() : ''
+})
+
+const messaggioValidazioneDocumento = computed(() => {
+  if (!fileDocumentoWord.value) return ''
+
+  if (estensioneDocumentoWord.value !== '.docx') {
+    return 'Seleziona un documento Word in formato .docx.'
+  }
+
+  if (fileDocumentoWord.value.size > MAX_DOCX_SIZE_BYTES) {
+    return 'Il documento supera il limite massimo di 50 MB.'
+  }
+
+  return ''
+})
+
+const documentoWordValido = computed(() => {
+  return Boolean(fileDocumentoWord.value && !messaggioValidazioneDocumento.value)
 })
 
 const azioniWorkflow = computed(() => {
@@ -540,6 +666,75 @@ function resetStatoAzione() {
   erroreDialog.value = ''
   erroreAzione.value = ''
   messaggioSuccesso.value = ''
+  documentoWordSelezionato.value = null
+  uploadDocumentoInCorso.value = false
+  erroreUploadDocumento.value = ''
+  messaggioDocumentoWord.value = ''
+}
+
+async function caricaDocumentoWord() {
+  if (!documentoWordValido.value || uploadDocumentoInCorso.value) return
+
+  uploadDocumentoInCorso.value = true
+  erroreUploadDocumento.value = ''
+  messaggioDocumentoWord.value = ''
+
+  try {
+    const response = await caricaDocumentoWordSottofase(
+      props.idSottofase,
+      fileDocumentoWord.value,
+      UTENTE_OPERATORE_PROVVISORIO
+    )
+
+    messaggioDocumentoWord.value = 'Documento Word collegato correttamente.'
+    documentoWordSelezionato.value = null
+
+    await caricaWorkflowSottofase()
+
+    emit('workflow-aggiornato', {
+      idSottofase: props.idSottofase,
+      documento: response,
+      backupCreato: response?.backup_creato
+    })
+  } catch (error) {
+    erroreUploadDocumento.value = messaggioErroreUploadDocumento(error)
+  } finally {
+    uploadDocumentoInCorso.value = false
+  }
+}
+
+function messaggioErroreUploadDocumento(error) {
+  const dettaglio = error?.payload?.detail
+
+  if (error?.status === 400) {
+    return dettaglio || 'Documento non valido per il collegamento alla sottofase.'
+  }
+
+  if (error?.status === 413) {
+    return dettaglio || 'Documento troppo grande: limite massimo 50 MB.'
+  }
+
+  if (error?.status === 404) {
+    return 'Sottofase non trovata.'
+  }
+
+  if (error?.status === 500) {
+    return dettaglio || 'Errore tecnico durante il collegamento del documento.'
+  }
+
+  return 'Impossibile collegare il documento Word.'
+}
+
+function formattaDimensioneFile(bytes) {
+  if (!Number.isFinite(bytes)) return '-'
+
+  if (bytes < 1024) return `${bytes} B`
+
+  const kilobytes = bytes / 1024
+
+  if (kilobytes < 1024) return `${kilobytes.toFixed(1)} KB`
+
+  return `${(kilobytes / 1024).toFixed(1)} MB`
 }
 
 function formattaDataOra(value) {
@@ -606,5 +801,9 @@ function formattaDataOra(value) {
 .value-azione {
   font-size: 0.92rem;
   font-weight: 700;
+}
+
+.documento-word-preview {
+  border: 1px solid rgba(25, 118, 210, 0.16);
 }
 </style>

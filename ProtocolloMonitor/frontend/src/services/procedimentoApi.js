@@ -1,10 +1,11 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000'
 
 async function fetchJson(path, options = {}) {
+  const isFormData = options.body instanceof FormData
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
     headers: {
-      ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+      ...(!isFormData && options.body ? { 'Content-Type': 'application/json' } : {}),
       ...(options.headers || {})
     }
   })
@@ -120,6 +121,20 @@ export function eseguiAzioneWorkflowSottofase(idSottofase, payload) {
     {
       method: 'POST',
       body: JSON.stringify(payload || {})
+    }
+  )
+}
+
+export function caricaDocumentoWordSottofase(idSottofase, file, utenteOperatore) {
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('utenteOperatore', utenteOperatore || '')
+
+  return fetchJson(
+    `/protocollo-monitor/sottofasi/${idSottofase}/documenti`,
+    {
+      method: 'POST',
+      body: formData
     }
   )
 }

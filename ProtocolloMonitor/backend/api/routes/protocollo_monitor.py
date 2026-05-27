@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from email.parser import BytesParser
+from email.policy import default as email_policy
 import mimetypes
 import subprocess
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
@@ -24,6 +26,14 @@ from backend.services.sottofase_workflow_command_service import (
     SottofaseWorkflowBackupError,
     SottofaseWorkflowNotFoundError,
     SottofaseWorkflowWriteError,
+)
+from backend.services.sottofase_document_upload_service import (
+    MAX_DOCX_SIZE_BYTES,
+    SottofaseDocumentUploadBackupError,
+    SottofaseDocumentUploadNotFoundError,
+    SottofaseDocumentUploadTooLargeError,
+    SottofaseDocumentUploadValidationError,
+    SottofaseDocumentUploadWriteError,
 )
 
 
@@ -108,6 +118,14 @@ def get_sottofase_workflow_command_service(
     return container.get_sottofase_workflow_command_service()
 
 
+def get_sottofase_document_upload_service(
+    container: DependencyContainer = Depends(get_container),
+) -> Any:
+    """Dipendenza FastAPI per ottenere il service upload documenti Word."""
+
+    return container.get_sottofase_document_upload_service()
+
+
 def _resolve_pdf_path_or_404(id_protocollo: int, documento_service: Any):
     """Recupera e risolve il path PDF, sollevando 404 coerenti.
 
@@ -181,6 +199,100 @@ def _resolve_sottofase_documento_path_or_404(
             status_code=500,
             detail="Errore durante apertura documento",
         )
+
+
+def _parse_multipart_form_data(
+    *,
+    content_type: str,
+    body: bytes,
+) -> dict[str, Any]:
+    """Parsing multipart minimale con standard library.
+
+    L'ambiente corrente non include `python-multipart`; usare `UploadFile`,
+    `File` o `Form` farebbe fallire l'import della route. Questa funzione
+    mantiene il contratto `multipart/form-data` senza introdurre dipendenze
+    nuove. Il parsing resta circoscritto al caso richiesto: un campo file e un
+    campo testuale `utenteOperatore`.
+    """
+
+    if "multipart/form-data" not in content_type.lower():
+        raise HTTPException(
+            status_code=400,
+            detail="Richiesta non valida: usare multipart/form-data",
+        )
+
+    message_bytes = (
+        f"Content-Type: {content_type}\r\nMIME-Version: 1.0\r\n\r\n".encode(
+            "utf-8"
+        )
+        + body
+    )
+    message = BytesParser(policy=email_policy).parsebytes(message_bytes)
+
+    if not message.is_multipart():
+        raise HTTPException(
+            status_code=400,
+            detail="Payload multipart non valido",
+        )
+
+    fields: dict[str, Any] = {}
+
+    for part in message.iter_parts():
+        if part.get_content_disposition() != "form-data":
+            continue
+
+        name = part.get_param("name", header="content-disposition")
+
+        if not name:
+            continue
+
+        filename = part.get_filename()
+        payload = part.get_payload(decode=True) or b""
+
+        if filename is not None:
+            fields[name] = {
+                "filename": filename,
+                "content": payload,
+                "content_type": part.get_content_type(),
+            }
+        else:
+            charset = part.get_content_charset() or "utf-8"
+            fields[name] = payload.decode(charset, errors="replace")
+
+    return fields
+
+
+async def _read_documento_word_upload_request(
+    request: Request,
+) -> dict[str, Any]:
+    """Legge file `.docx` e utente operatore dal multipart request."""
+
+    content_length = request.headers.get("content-length")
+
+    if content_length:
+        try:
+            if int(content_length) > MAX_DOCX_SIZE_BYTES + 1024 * 1024:
+                raise HTTPException(
+                    status_code=413,
+                    detail="File troppo grande: limite massimo 50 MB",
+                )
+        except ValueError:
+            pass
+
+    fields = _parse_multipart_form_data(
+        content_type=request.headers.get("content-type", ""),
+        body=await request.body(),
+    )
+    file_part = fields.get("file")
+
+    if not isinstance(file_part, dict):
+        raise HTTPException(status_code=400, detail="File Word mancante")
+
+    return {
+        "file_bytes": file_part.get("content") or b"",
+        "filename": file_part.get("filename") or "",
+        "utente_operatore": fields.get("utenteOperatore"),
+    }
 
 
 # ======================================================================================
@@ -444,6 +556,35 @@ def get_sottofase_documenti(
         raise HTTPException(status_code=404, detail="Sottofase non trovata")
 
     return sottofase_service.list_documenti_by_sottofase(id_sottofase)
+
+
+@router.post("/protocollo-monitor/sottofasi/{id_sottofase}/documenti", status_code=201)
+async def carica_documento_word_sottofase(
+    id_sottofase: int,
+    request: Request,
+    upload_service: Any = Depends(get_sottofase_document_upload_service),
+):
+    """Collega una nuova versione Word alla sottofase in fase REDIGI."""
+
+    upload_data = await _read_documento_word_upload_request(request)
+
+    try:
+        return upload_service.collega_documento_word(
+            id_sottofase=id_sottofase,
+            file_bytes=upload_data["file_bytes"],
+            original_filename=upload_data["filename"],
+            utente_operatore=upload_data["utente_operatore"],
+        )
+    except SottofaseDocumentUploadNotFoundError:
+        raise HTTPException(status_code=404, detail="Sottofase non trovata")
+    except SottofaseDocumentUploadTooLargeError as exc:
+        raise HTTPException(status_code=413, detail=str(exc))
+    except SottofaseDocumentUploadValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except SottofaseDocumentUploadBackupError as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    except SottofaseDocumentUploadWriteError as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @router.get("/protocollo-monitor/sottofasi/{id_sottofase}/step-operativi")

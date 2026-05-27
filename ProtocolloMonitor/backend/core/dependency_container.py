@@ -41,6 +41,7 @@ class DependencyContainer:
         self._workflow_procedimento_repository: Any | None = None
         self._sottofase_documentale_repository: Any | None = None
         self._sottofase_workflow_action_repository: Any | None = None
+        self._sottofase_document_upload_repository: Any | None = None
 
         self._protocollo_service: Any | None = None
         self._documento_service: Any | None = None
@@ -50,6 +51,7 @@ class DependencyContainer:
         self._sottofase_documentale_service: Any | None = None
         self._sottofase_workflow_service: Any | None = None
         self._sottofase_workflow_command_service: Any | None = None
+        self._sottofase_document_upload_service: Any | None = None
 
     def _get_protocollo_repository(self) -> Any:
         """Restituisce il repository protocolli, creandolo lazy.
@@ -135,6 +137,20 @@ class DependencyContainer:
             )
 
         return self._sottofase_workflow_action_repository
+
+    def _get_sottofase_document_upload_repository(self) -> Any:
+        """Restituisce il repository di scrittura documenti sottofase."""
+
+        if self._sottofase_document_upload_repository is None:
+            from ..repositories.sottofase_document_upload_repository import (
+                SottofaseDocumentUploadRepository,
+            )
+
+            self._sottofase_document_upload_repository = (
+                SottofaseDocumentUploadRepository()
+            )
+
+        return self._sottofase_document_upload_repository
 
     def get_protocollo_service(self) -> Any:
         """Restituisce `ProtocolloService` con repository opzionali collegati.
@@ -258,6 +274,28 @@ class DependencyContainer:
             )
 
         return self._sottofase_workflow_command_service
+
+    def get_sottofase_document_upload_service(self) -> Any:
+        """Restituisce il service per upload documenti Word sottofase."""
+
+        if self._sottofase_document_upload_service is None:
+            from ..services.sottofase_document_upload_service import (
+                SottofaseDocumentUploadService,
+            )
+
+            self._sottofase_document_upload_service = (
+                SottofaseDocumentUploadService(
+                    sottofase_documentale_service=(
+                        self.get_sottofase_documentale_service()
+                    ),
+                    workflow_service=self.get_sottofase_workflow_service(),
+                    document_upload_repository=(
+                        self._get_sottofase_document_upload_repository()
+                    ),
+                )
+            )
+
+        return self._sottofase_document_upload_service
 
 
 def create_container() -> DependencyContainer:

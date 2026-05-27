@@ -1,8 +1,11 @@
+import asyncio
+
 import pytest
 from fastapi import HTTPException
 
 from backend.api.routes.protocollo_monitor import (
     apri_sottofase_documento,
+    carica_documento_word_sottofase,
     get_sottofase_documentale,
     get_sottofase_documenti,
     get_sottofase_step_operativi,
@@ -40,6 +43,48 @@ class FakeSottofaseDocumentaleService:
 class FailingSottofaseDocumentaleService:
     def get_documento_by_id(self, id_documento):
         raise RuntimeError("errore test")
+
+
+class FakeRequest:
+    def __init__(self, *, body, content_type):
+        self._body = body
+        self.headers = {
+            "content-type": content_type,
+            "content-length": str(len(body)),
+        }
+
+    async def body(self):
+        return self._body
+
+
+class FakeDocumentUploadService:
+    def __init__(self):
+        self.calls = []
+
+    def collega_documento_word(self, **kwargs):
+        self.calls.append(kwargs)
+
+        return {
+            "success": True,
+            "id_documento_sottofase": 10,
+            "nome_file": "Documento_5_V001.docx",
+        }
+
+
+def build_multipart_body():
+    boundary = "----ProtocolloMonitorTestBoundary"
+    body = (
+        f"--{boundary}\r\n"
+        'Content-Disposition: form-data; name="utenteOperatore"\r\n\r\n'
+        "Francesco Matranga\r\n"
+        f"--{boundary}\r\n"
+        'Content-Disposition: form-data; name="file"; filename="bozza.docx"\r\n'
+        "Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document\r\n\r\n"
+    ).encode("utf-8")
+    body += b"docx-content\r\n"
+    body += f"--{boundary}--\r\n".encode("utf-8")
+
+    return body, f"multipart/form-data; boundary={boundary}"
 
 
 def test_get_sottofase_documentale_returns_summary():
@@ -177,3 +222,26 @@ def test_apri_sottofase_documento_returns_500_on_unexpected_error():
 
     assert exc_info.value.status_code == 500
     assert exc_info.value.detail == "Errore durante apertura documento"
+
+
+def test_carica_documento_word_sottofase_parses_multipart_and_calls_service():
+    body, content_type = build_multipart_body()
+    service = FakeDocumentUploadService()
+
+    response = asyncio.run(
+        carica_documento_word_sottofase(
+            5,
+            request=FakeRequest(body=body, content_type=content_type),
+            upload_service=service,
+        )
+    )
+
+    assert response["success"] is True
+    assert service.calls == [
+        {
+            "id_sottofase": 5,
+            "file_bytes": b"docx-content",
+            "original_filename": "bozza.docx",
+            "utente_operatore": "Francesco Matranga",
+        }
+    ]
