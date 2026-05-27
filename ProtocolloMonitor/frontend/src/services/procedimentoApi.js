@@ -113,3 +113,13 @@ export function apriDocumentoSottofase(idDocumento) {
 export function getWorkflowSottofase(idSottofase) {
   return fetchJson(`/protocollo-monitor/sottofasi/${idSottofase}/workflow`)
 }
+
+export function eseguiAzioneWorkflowSottofase(idSottofase, payload) {
+  return fetchJson(
+    `/protocollo-monitor/sottofasi/${idSottofase}/workflow/azioni`,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload || {})
+    }
+  )
+}

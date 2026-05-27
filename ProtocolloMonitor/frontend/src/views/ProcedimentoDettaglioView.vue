@@ -607,6 +607,7 @@
                   </div>
 
                   <SottofaseDocumentaleCard
+                    :key="`documentale-${sottofaseSelezionata.id}-${refreshSottofaseKey}`"
                     :id-sottofase="sottofaseSelezionata.id"
                     class="mt-4"
                   />
@@ -615,6 +616,7 @@
                     :id-sottofase="sottofaseSelezionata.id"
                     :titolo-sottofase="sottofaseSelezionata.titolo"
                     class="mt-4"
+                    @workflow-aggiornato="gestisciWorkflowAggiornato"
                   />
                 </v-card>
               </v-card>
@@ -702,6 +704,7 @@ const sottofaseDaAggiungere = ref(null)
 const sottofaseDaEliminare = ref(null)
 const dialogEliminaSottofase = ref(false)
 const modalitaLavorazione = ref(false)
+const refreshSottofaseKey = ref(0)
 
 const headersProtocolli = [
   { title: 'Numero protocollo', key: 'NumeroProtocollo' },
@@ -835,6 +838,39 @@ async function caricaWorkflow() {
     loadingWorkflow.value = false
     loadingCatalogo.value = false
   }
+}
+
+async function ricaricaSottofasiFaseCorrente() {
+  if (!faseSelezionata.value) return
+
+  const idFase = faseSelezionata.value.id
+  const idSottofaseCorrente = sottofaseSelezionataId.value
+
+  try {
+    const sottofasi = await listSottofasiFase(idFase)
+    faseSelezionata.value.sottofasi = sottofasi
+      .map(normalizzaSottofaseWorkflow)
+      .sort(confrontaOrdine)
+
+    if (
+      idSottofaseCorrente &&
+      faseSelezionata.value.sottofasi.some(
+        (sottofase) => sottofase.id === idSottofaseCorrente
+      )
+    ) {
+      sottofaseSelezionataId.value = idSottofaseCorrente
+    } else {
+      sottofaseSelezionataId.value = faseSelezionata.value.sottofasi[0]?.id ?? null
+    }
+  } catch {
+    erroreWorkflow.value =
+      'Workflow aggiornato, ma non e stato possibile ricaricare le sottofasi.'
+  }
+}
+
+async function gestisciWorkflowAggiornato() {
+  refreshSottofaseKey.value += 1
+  await ricaricaSottofasiFaseCorrente()
 }
 
 function normalizzaProcedimento(dato) {

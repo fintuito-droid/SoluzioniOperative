@@ -105,7 +105,7 @@
                 >
                   <v-btn
                     :color="azione.disponibile ? azione.colore : 'grey'"
-                    :disabled="!azione.disponibile"
+                    :disabled="!azione.disponibile || richiestaInCorso"
                     :prepend-icon="azione.icona"
                     size="small"
                     variant="tonal"
@@ -119,12 +119,32 @@
           </div>
 
           <v-alert
+            v-if="messaggioSuccesso"
+            type="success"
+            variant="tonal"
+            density="compact"
+            class="mt-3"
+          >
+            {{ messaggioSuccesso }}
+          </v-alert>
+
+          <v-alert
+            v-if="erroreAzione"
+            type="warning"
+            variant="tonal"
+            density="compact"
+            class="mt-3"
+          >
+            {{ erroreAzione }}
+          </v-alert>
+
+          <v-alert
             type="info"
             variant="tonal"
             density="compact"
             class="mt-3"
           >
-            Le azioni sono predisposte in sola simulazione: nessuna modifica viene salvata.
+            Le azioni registrano l'avanzamento tramite il backend e richiedono backup Access automatico.
           </v-alert>
         </section>
       </template>
@@ -143,6 +163,7 @@
   <v-dialog
     v-model="dialogAzione"
     max-width="560"
+    persistent
   >
     <v-card rounded="lg">
       <v-card-title class="text-subtitle-1 font-weight-bold">
@@ -151,12 +172,22 @@
 
       <v-card-text>
         <v-alert
+          v-if="erroreDialog"
           type="warning"
           variant="tonal"
           density="compact"
           class="mb-4"
         >
-          Funzione non ancora attiva: nessuna modifica sarà salvata.
+          {{ erroreDialog }}
+        </v-alert>
+
+        <v-alert
+          type="info"
+          variant="tonal"
+          density="compact"
+          class="mb-4"
+        >
+          L'azione verra registrata sul workflow della sottofase usando l'endpoint backend reale.
         </v-alert>
 
         <v-row dense>
@@ -171,6 +202,13 @@
             <div class="label-azione">Sottofase interessata</div>
             <div class="value-azione">
               {{ sottofaseLabel }}
+            </div>
+          </v-col>
+
+          <v-col cols="12" sm="6">
+            <div class="label-azione">Operatore provvisorio</div>
+            <div class="value-azione">
+              {{ UTENTE_OPERATORE_PROVVISORIO }}
             </div>
           </v-col>
 
@@ -193,17 +231,20 @@
 
         <v-btn
           variant="text"
-          @click="chiudiDialogAzione"
+          :disabled="richiestaInCorso"
+          @click="annullaDialogAzione"
         >
-          Chiudi
+          Annulla
         </v-btn>
 
         <v-btn
           color="primary"
-          disabled
+          :disabled="!azioneSelezionata || richiestaInCorso"
+          :loading="richiestaInCorso"
           variant="flat"
+          @click="confermaAzioneWorkflow"
         >
-          Conferma non attiva
+          Conferma
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -213,7 +254,12 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 
-import { getWorkflowSottofase } from '../../services/procedimentoApi'
+import {
+  eseguiAzioneWorkflowSottofase,
+  getWorkflowSottofase
+} from '../../services/procedimentoApi'
+
+const emit = defineEmits(['workflow-aggiornato'])
 
 const props = defineProps({
   idSottofase: {
@@ -232,10 +278,16 @@ const workflow = ref(null)
 const dialogAzione = ref(false)
 const azioneSelezionata = ref(null)
 const testoOperatore = ref('')
+const richiestaInCorso = ref(false)
+const erroreDialog = ref('')
+const erroreAzione = ref('')
+const messaggioSuccesso = ref('')
+
+const UTENTE_OPERATORE_PROVVISORIO = 'Francesco Matranga'
 
 const AZIONI_WORKFLOW = [
   {
-    codice: 'AVVIA_REDIGI',
+    codice: 'AVVIA_REDAZIONE',
     step: 'REDIGI',
     titolo: 'Avvia redazione',
     icona: 'mdi-file-edit-outline',
@@ -286,9 +338,7 @@ const azioniWorkflow = computed(() => {
     return {
       ...azione,
       disponibile,
-      tooltip: disponibile
-        ? 'Azione disponibile per lo step attivo. In questa fase è solo simulata.'
-        : tooltipAzioneNonDisponibile(azione)
+      tooltip: tooltipAzione(azione, disponibile)
     }
   })
 })
@@ -303,6 +353,7 @@ const sottofaseLabel = computed(() => {
 watch(
   () => props.idSottofase,
   () => {
+    resetStatoAzione()
     caricaWorkflowSottofase()
   },
   { immediate: true }
@@ -371,12 +422,24 @@ function iconaStep(step) {
   return 'mdi-circle-outline'
 }
 
+function tooltipAzione(azione, disponibile) {
+  if (richiestaInCorso.value) {
+    return 'Richiesta in corso: attendi il completamento dell azione.'
+  }
+
+  if (disponibile) {
+    return 'Azione disponibile per lo step attivo.'
+  }
+
+  return tooltipAzioneNonDisponibile(azione)
+}
+
 function tooltipAzioneNonDisponibile(azione) {
   if (!stepAttivo.value) {
     return 'Azione non disponibile: il workflow non ha uno step attivo.'
   }
 
-  return `Azione disponibile solo quando lo step attivo è ${labelStep(azione.step)}.`
+  return `Azione disponibile solo quando lo step attivo e ${labelStep(azione.step)}.`
 }
 
 function labelStep(value) {
@@ -392,17 +455,91 @@ function labelStep(value) {
 }
 
 function apriDialogAzione(azione) {
-  if (!azione?.disponibile) return
+  if (!azione?.disponibile || richiestaInCorso.value) return
 
   azioneSelezionata.value = azione
   testoOperatore.value = ''
+  erroreDialog.value = ''
+  erroreAzione.value = ''
+  messaggioSuccesso.value = ''
   dialogAzione.value = true
 }
 
-function chiudiDialogAzione() {
+function annullaDialogAzione() {
+  if (richiestaInCorso.value) return
+
   dialogAzione.value = false
   azioneSelezionata.value = null
   testoOperatore.value = ''
+  erroreDialog.value = ''
+}
+
+async function confermaAzioneWorkflow() {
+  if (!azioneSelezionata.value || richiestaInCorso.value) return
+
+  richiestaInCorso.value = true
+  erroreDialog.value = ''
+  erroreAzione.value = ''
+  messaggioSuccesso.value = ''
+
+  try {
+    const response = await eseguiAzioneWorkflowSottofase(props.idSottofase, {
+      azione: azioneSelezionata.value.codice,
+      testoOperatore: testoOperatore.value || null,
+      utenteOperatore: UTENTE_OPERATORE_PROVVISORIO
+    })
+
+    if (response?.workflow) {
+      workflow.value = normalizzaWorkflow(response.workflow)
+    } else {
+      await caricaWorkflowSottofase()
+    }
+
+    messaggioSuccesso.value = 'Azione workflow registrata correttamente.'
+    dialogAzione.value = false
+    azioneSelezionata.value = null
+    testoOperatore.value = ''
+
+    emit('workflow-aggiornato', {
+      idSottofase: props.idSottofase,
+      azione: response?.azione,
+      workflow: response?.workflow,
+      backupCreato: response?.backupCreato
+    })
+  } catch (error) {
+    erroreDialog.value = messaggioErroreWorkflow(error)
+    erroreAzione.value = erroreDialog.value
+  } finally {
+    richiestaInCorso.value = false
+  }
+}
+
+function messaggioErroreWorkflow(error) {
+  const dettaglio = error?.payload?.detail
+
+  if (error?.status === 400) {
+    return dettaglio || 'Azione non valida per lo stato corrente della sottofase.'
+  }
+
+  if (error?.status === 404) {
+    return 'Sottofase non trovata.'
+  }
+
+  if (error?.status === 500) {
+    return dettaglio || 'Errore tecnico durante la registrazione del workflow.'
+  }
+
+  return 'Impossibile registrare l azione workflow.'
+}
+
+function resetStatoAzione() {
+  dialogAzione.value = false
+  azioneSelezionata.value = null
+  testoOperatore.value = ''
+  richiestaInCorso.value = false
+  erroreDialog.value = ''
+  erroreAzione.value = ''
+  messaggioSuccesso.value = ''
 }
 
 function formattaDataOra(value) {
