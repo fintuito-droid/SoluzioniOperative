@@ -1,4 +1,6 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000'
+const WORD_HELPER_BASE_URL =
+  import.meta.env.VITE_WORD_HELPER_BASE_URL || 'http://127.0.0.1:8020'
 
 async function fetchJson(path, options = {}) {
   const isFormData = options.body instanceof FormData
@@ -113,6 +115,40 @@ export function apriDocumentoSottofase(idDocumento) {
 
 export function scaricaDocumentoSottofase(idDocumento) {
   return fetchBlob(`/protocollo-monitor/sottofase-documenti/${idDocumento}/scarica`)
+}
+
+export async function apriDocumentoConWord(idDocumento) {
+  let response
+
+  try {
+    response = await fetch(`${WORD_HELPER_BASE_URL}/open-word`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ idDocumento })
+    })
+  } catch (error) {
+    const helperError = new Error('Helper locale Word non raggiungibile')
+    helperError.status = 0
+    helperError.cause = error
+    throw helperError
+  }
+
+  if (!response.ok) {
+    const error = new Error(`Errore helper Word ${response.status}`)
+    error.status = response.status
+
+    try {
+      error.payload = await response.json()
+    } catch {
+      error.payload = null
+    }
+
+    throw error
+  }
+
+  return response.json()
 }
 
 export function getWorkflowSottofase(idSottofase) {

@@ -165,16 +165,18 @@
                   <v-tooltip
                     v-if="isDocumentoWord(quadro.documentoCorrente)"
                     location="top"
-                    text="Funzione prevista in una fase successiva tramite helper locale Windows."
+                    :text="tooltipApriConWord(quadro.documentoCorrente)"
                   >
                     <template #activator="{ props: tooltipProps }">
                       <span v-bind="tooltipProps" class="azione-documento-wrapper">
                         <v-btn
-                          color="grey"
+                          color="indigo"
                           variant="text"
                           size="small"
                           prepend-icon="mdi-microsoft-word"
-                          disabled
+                          :disabled="azioneDocumentoInCorso"
+                          :loading="wordInCorsoId === quadro.documentoCorrente.idDocumentoSottofase"
+                          @click="apriConWord(quadro.documentoCorrente)"
                         >
                           Apri con Word
                         </v-btn>
@@ -203,6 +205,16 @@
             class="mt-3"
           >
             {{ erroreApertura }}
+          </v-alert>
+
+          <v-alert
+            v-if="messaggioAzioneDocumento"
+            type="success"
+            variant="tonal"
+            density="compact"
+            class="mt-3"
+          >
+            {{ messaggioAzioneDocumento }}
           </v-alert>
         </section>
 
@@ -286,16 +298,18 @@
                   <v-tooltip
                     v-if="isDocumentoWord(documento)"
                     location="top"
-                    text="Funzione prevista in una fase successiva tramite helper locale Windows."
+                    :text="tooltipApriConWord(documento)"
                   >
                     <template #activator="{ props: tooltipProps }">
                       <span v-bind="tooltipProps" class="azione-documento-wrapper">
                         <v-btn
-                          color="grey"
+                          color="indigo"
                           variant="text"
                           size="small"
                           prepend-icon="mdi-microsoft-word"
-                          disabled
+                          :disabled="azioneDocumentoInCorso"
+                          :loading="wordInCorsoId === documento.idDocumentoSottofase"
+                          @click="apriConWord(documento)"
                         >
                           Apri con Word
                         </v-btn>
@@ -384,6 +398,7 @@ import { computed, ref, watch } from 'vue'
 
 import {
   apriDocumentoSottofase,
+  apriDocumentoConWord,
   getSottofaseDocumentale,
   scaricaDocumentoSottofase
 } from '../../services/procedimentoApi'
@@ -399,8 +414,10 @@ const loading = ref(false)
 const errore = ref('')
 const quadro = ref(null)
 const erroreApertura = ref('')
+const messaggioAzioneDocumento = ref('')
 const aperturaInCorsoId = ref(null)
 const downloadInCorsoId = ref(null)
+const wordInCorsoId = ref(null)
 
 const documentoPresente = computed(() => {
   return Boolean(
@@ -418,7 +435,9 @@ const versioneCorrente = computed(() => {
 })
 
 const azioneDocumentoInCorso = computed(() => {
-  return aperturaInCorsoId.value !== null || downloadInCorsoId.value !== null
+  return aperturaInCorsoId.value !== null ||
+    downloadInCorsoId.value !== null ||
+    wordInCorsoId.value !== null
 })
 
 watch(
@@ -431,6 +450,7 @@ watch(
 
 async function caricaSottofaseDocumentale() {
   erroreApertura.value = ''
+  messaggioAzioneDocumento.value = ''
 
   if (!props.idSottofase) {
     quadro.value = null
@@ -717,6 +737,18 @@ function tooltipScaricaDocumento(documento) {
   return 'Scarica una copia del file.'
 }
 
+function tooltipApriConWord(documento) {
+  if (!documento?.idDocumentoSottofase) {
+    return 'Documento non disponibile.'
+  }
+
+  if (azioneDocumentoInCorso.value) {
+    return 'Operazione documento in corso.'
+  }
+
+  return 'Apre il documento con Word tramite helper locale Windows.'
+}
+
 function isDocumentoWord(documento) {
   const type = documentoTypeSignature(documento)
 
@@ -743,6 +775,7 @@ function documentoTypeSignature(documento) {
 
 async function apriDocumento(documento) {
   erroreApertura.value = ''
+  messaggioAzioneDocumento.value = ''
 
   const idDocumento = documento?.idDocumentoSottofase
 
@@ -794,6 +827,7 @@ async function apriDocumento(documento) {
 
 async function scaricaDocumento(documento) {
   erroreApertura.value = ''
+  messaggioAzioneDocumento.value = ''
 
   const idDocumento = documento?.idDocumentoSottofase
 
@@ -833,6 +867,56 @@ async function scaricaDocumento(documento) {
   } finally {
     downloadInCorsoId.value = null
   }
+}
+
+async function apriConWord(documento) {
+  erroreApertura.value = ''
+  messaggioAzioneDocumento.value = ''
+
+  const idDocumento = documento?.idDocumentoSottofase
+
+  if (!idDocumento) {
+    erroreApertura.value =
+      'Documento non apribile con Word: identificativo mancante.'
+    return
+  }
+
+  wordInCorsoId.value = idDocumento
+
+  try {
+    await apriDocumentoConWord(idDocumento)
+    messaggioAzioneDocumento.value = 'Apertura con Word avviata.'
+  } catch (error) {
+    erroreApertura.value = messaggioErroreApriConWord(error)
+  } finally {
+    wordInCorsoId.value = null
+  }
+}
+
+function messaggioErroreApriConWord(error) {
+  const dettaglio = error?.payload?.error || error?.payload?.detail
+
+  if (error?.status === 0) {
+    return 'Helper locale Word non avviato: avvia open_word_helper.py e riprova.'
+  }
+
+  if (error?.status === 400) {
+    return dettaglio || 'Documento non valido per apertura con Word.'
+  }
+
+  if (error?.status === 403) {
+    return dettaglio || 'Documento fuori dalla cartella autorizzata.'
+  }
+
+  if (error?.status === 404) {
+    return dettaglio || 'Documento Word non disponibile o file fisico mancante.'
+  }
+
+  if (error?.status === 500) {
+    return dettaglio || 'Errore tecnico nel helper locale Word.'
+  }
+
+  return 'Impossibile aprire il documento con Word.'
 }
 </script>
 
