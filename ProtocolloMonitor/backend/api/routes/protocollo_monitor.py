@@ -564,7 +564,7 @@ async def carica_documento_word_sottofase(
     request: Request,
     upload_service: Any = Depends(get_sottofase_document_upload_service),
 ):
-    """Collega una nuova versione Word alla sottofase in fase REDIGI."""
+    """Collega una nuova versione Word alla sottofase in REDIGI/REVISIONA."""
 
     upload_data = await _read_documento_word_upload_request(request)
 

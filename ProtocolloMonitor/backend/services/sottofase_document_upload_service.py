@@ -1,8 +1,11 @@
 """Service applicativo per collegare documenti Word alle sottofasi.
 
 Lo Step 30L-15 abilita il primo caricamento reale di documenti `.docx` legati
-alla REDIGI della sottofase. Il service coordina validazione, backup Access,
-salvataggio fisico versionato e registrazione DB, mantenendo separati:
+alla REDIGI della sottofase. Lo Step 30L-16 riusa lo stesso flusso
+transazionale anche durante REVISIONA, cosi le revisioni V002/V003 entrano
+nello storico documenti senza sovrascrivere V001. Il service coordina
+validazione, backup Access, salvataggio fisico versionato e registrazione DB,
+mantenendo separati:
 
 - controllo funzionale e workflow;
 - filesystem `DocumentiWorkflow`;
@@ -24,6 +27,7 @@ MAX_DOCX_SIZE_BYTES = 50 * 1024 * 1024
 DOCX_MIME_TYPE = (
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 )
+ALLOWED_UPLOAD_STEPS = {"REDIGI", "REVISIONA"}
 
 
 class SottofaseDocumentUploadValidationError(ValueError):
@@ -80,10 +84,10 @@ class SottofaseDocumentUploadService:
     ) -> dict[str, Any]:
         """Valida, salva e registra una nuova versione Word della sottofase.
 
-        L'upload e consentito solo quando il workflow espone REDIGI come step
-        attivo. Il backup Access viene creato prima della registrazione DB. Se
-        il DB fallisce dopo il salvataggio file, il file appena scritto viene
-        rimosso per evitare una versione orfana.
+        L'upload e consentito quando il workflow espone REDIGI o REVISIONA come
+        step attivo. Il backup Access viene creato prima della registrazione
+        DB. Se il DB fallisce dopo il salvataggio file, il file appena scritto
+        viene rimosso per evitare una versione orfana.
         """
 
         self._validate_docx_file(
@@ -91,11 +95,11 @@ class SottofaseDocumentUploadService:
             original_filename=original_filename,
         )
         sottofase = self._get_sottofase_or_raise(id_sottofase)
-        self._ensure_redigi_active(id_sottofase)
+        workflow_step = self._ensure_upload_step_active(id_sottofase)
 
         existing_documents = self._list_existing_documents(id_sottofase)
         version = self._next_version(existing_documents)
-        target_path = self._build_target_path(
+        target_path, version = self._build_target_path(
             id_sottofase=id_sottofase,
             version=version,
         )
@@ -149,6 +153,7 @@ class SottofaseDocumentUploadService:
             "hash_file": hashlib.sha256(file_bytes).hexdigest(),
             "versione_documento": version,
             "versione_label": version_label,
+            "step_workflow": workflow_step,
             "data_collegamento": now.isoformat(sep=" "),
             "utente_collegamento": utente_operatore,
             "backup_creato": str(backup_path),
@@ -180,8 +185,8 @@ class SottofaseDocumentUploadService:
 
         return sottofase
 
-    def _ensure_redigi_active(self, id_sottofase: int) -> None:
-        """Verifica che il caricamento sia coerente con lo step REDIGI."""
+    def _ensure_upload_step_active(self, id_sottofase: int) -> str:
+        """Verifica che il caricamento sia coerente con REDIGI/REVISIONA."""
 
         workflow = None
 
@@ -193,10 +198,13 @@ class SottofaseDocumentUploadService:
 
         active_step = self._active_step_code(workflow)
 
-        if active_step != "REDIGI":
+        if active_step not in ALLOWED_UPLOAD_STEPS:
             raise SottofaseDocumentUploadValidationError(
-                "Documento Word collegabile solo quando REDIGI e lo step attivo."
+                "Documento Word collegabile solo quando REDIGI o REVISIONA "
+                "sono lo step attivo."
             )
+
+        return active_step
 
     def _list_existing_documents(self, id_sottofase: int) -> list[dict[str, Any]]:
         """Legge lo storico documenti per calcolare la versione successiva."""
@@ -215,8 +223,13 @@ class SottofaseDocumentUploadService:
 
         return list_documenti(id_sottofase) or []
 
-    def _build_target_path(self, *, id_sottofase: int, version: int) -> Path:
-        """Costruisce il path `DocumentiWorkflow/IDSottofase/Vnnn/file.docx`."""
+    def _build_target_path(
+        self,
+        *,
+        id_sottofase: int,
+        version: int,
+    ) -> tuple[Path, int]:
+        """Costruisce path e versione `DocumentiWorkflow/IDSottofase/Vnnn`."""
 
         candidate_version = version
 
@@ -231,7 +244,7 @@ class SottofaseDocumentUploadService:
             )
 
             if not target_path.exists():
-                return target_path
+                return target_path, candidate_version
 
             candidate_version += 1
 

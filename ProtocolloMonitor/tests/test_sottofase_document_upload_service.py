@@ -123,6 +123,88 @@ def test_upload_v002_when_existing_version_is_present(tmp_path):
     assert result["nome_file"] == "Documento_5_V002.docx"
 
 
+def test_upload_revision_creates_v002_and_keeps_version_history(tmp_path):
+    repository = FakeUploadRepository()
+    service = make_service(
+        tmp_path,
+        active_code="REVISIONA",
+        documenti=[{"versione_documento": 1}],
+        repository=repository,
+    )
+
+    result = service.collega_documento_word(
+        id_sottofase=5,
+        file_bytes=b"revised-docx-content",
+        original_filename="bozza_revisionata.docx",
+        utente_operatore="Francesco Matranga",
+    )
+
+    saved_path = Path(result["percorso_documento"])
+
+    assert result["versione_documento"] == 2
+    assert result["versione_label"] == "V002"
+    assert result["step_workflow"] == "REVISIONA"
+    assert result["nome_file"] == "Documento_5_V002.docx"
+    assert saved_path.exists()
+    assert repository.calls[0]["versione_documento"] == 2
+
+
+def test_upload_revision_creates_v003_after_multiple_versions(tmp_path):
+    service = make_service(
+        tmp_path,
+        active_code="REVISIONA",
+        documenti=[
+            {"versione_documento": 1},
+            {"versione_documento": 2},
+        ],
+    )
+
+    result = service.collega_documento_word(
+        id_sottofase=5,
+        file_bytes=b"third-docx-content",
+        original_filename="bozza_revisionata.docx",
+        utente_operatore=None,
+    )
+
+    assert result["versione_documento"] == 3
+    assert result["versione_label"] == "V003"
+    assert result["nome_file"] == "Documento_5_V003.docx"
+
+
+def test_upload_skips_existing_physical_version_and_keeps_metadata_aligned(
+    tmp_path,
+):
+    existing_path = (
+        tmp_path
+        / "DocumentiWorkflow"
+        / "5"
+        / "V002"
+        / "Documento_5_V002.docx"
+    )
+    existing_path.parent.mkdir(parents=True)
+    existing_path.write_bytes(b"orphan-file")
+
+    repository = FakeUploadRepository()
+    service = make_service(
+        tmp_path,
+        active_code="REVISIONA",
+        documenti=[{"versione_documento": 1}],
+        repository=repository,
+    )
+
+    result = service.collega_documento_word(
+        id_sottofase=5,
+        file_bytes=b"revision-after-orphan",
+        original_filename="bozza_revisionata.docx",
+        utente_operatore=None,
+    )
+
+    assert result["versione_documento"] == 3
+    assert result["versione_label"] == "V003"
+    assert result["nome_file"] == "Documento_5_V003.docx"
+    assert repository.calls[0]["versione_documento"] == 3
+
+
 def test_upload_rejects_invalid_extension(tmp_path):
     service = make_service(tmp_path)
 
@@ -165,8 +247,8 @@ def test_upload_requires_existing_sottofase(tmp_path):
         )
 
 
-def test_upload_requires_active_redigi(tmp_path):
-    service = make_service(tmp_path, active_code="REVISIONA")
+def test_upload_requires_redigi_or_revisiona_active(tmp_path):
+    service = make_service(tmp_path, active_code="FIRMA")
 
     with pytest.raises(SottofaseDocumentUploadValidationError):
         service.collega_documento_word(

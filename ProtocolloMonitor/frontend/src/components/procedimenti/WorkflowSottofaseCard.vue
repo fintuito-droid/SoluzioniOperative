@@ -153,7 +153,7 @@
 
           <section>
             <div class="text-subtitle-2 font-weight-bold mb-3">
-              Documento Word REDIGI
+              {{ titoloUploadDocumentoWord }}
             </div>
 
             <v-file-input
@@ -181,7 +181,7 @@
                   </div>
                   <div class="text-caption text-medium-emphasis">
                     {{ formattaDimensioneFile(fileDocumentoWord.size) }}
-                    · {{ estensioneDocumentoWord }}
+                    - {{ estensioneDocumentoWord }}
                   </div>
                 </div>
 
@@ -194,7 +194,7 @@
                   variant="flat"
                   @click="caricaDocumentoWord"
                 >
-                  Carica documento
+                  {{ labelPulsanteUploadDocumentoWord }}
                 </v-btn>
               </v-card-text>
             </v-card>
@@ -421,7 +421,23 @@ const stepAttivo = computed(() => {
 })
 
 const mostraUploadDocumentoWord = computed(() => {
-  return stepAttivo.value?.codice === 'REDIGI'
+  return ['REDIGI', 'REVISIONA'].includes(stepAttivo.value?.codice)
+})
+
+const titoloUploadDocumentoWord = computed(() => {
+  if (stepAttivo.value?.codice === 'REVISIONA') {
+    return 'Revisione documento Word'
+  }
+
+  return 'Documento Word REDIGI'
+})
+
+const labelPulsanteUploadDocumentoWord = computed(() => {
+  if (stepAttivo.value?.codice === 'REVISIONA') {
+    return 'Carica revisione'
+  }
+
+  return 'Carica documento'
 })
 
 const fileDocumentoWord = computed(() => {
@@ -686,7 +702,7 @@ async function caricaDocumentoWord() {
       UTENTE_OPERATORE_PROVVISORIO
     )
 
-    messaggioDocumentoWord.value = 'Documento Word collegato correttamente.'
+    messaggioDocumentoWord.value = messaggioUploadCompletato(response)
     documentoWordSelezionato.value = null
 
     await caricaWorkflowSottofase()
@@ -723,6 +739,20 @@ function messaggioErroreUploadDocumento(error) {
   }
 
   return 'Impossibile collegare il documento Word.'
+}
+
+function messaggioUploadCompletato(response) {
+  const versione = response?.versione_label
+
+  if (stepAttivo.value?.codice === 'REVISIONA') {
+    return versione
+      ? `Revisione ${versione} collegata correttamente.`
+      : 'Revisione collegata correttamente.'
+  }
+
+  return versione
+    ? `Documento Word ${versione} collegato correttamente.`
+    : 'Documento Word collegato correttamente.'
 }
 
 function formattaDimensioneFile(bytes) {
