@@ -210,6 +210,20 @@ class OpenWordRequestHandler(BaseHTTPRequestHandler):
     def do_OPTIONS(self) -> None:
         self._send_json(204, {})
 
+    def do_GET(self) -> None:
+        if self.path != "/health":
+            self._send_json(404, {"success": False, "error": "Endpoint non trovato."})
+            return
+
+        self._send_json(
+            200,
+            {
+                "success": True,
+                "service": "open-word-helper",
+                "status": "ok",
+            },
+        )
+
     def do_POST(self) -> None:
         if self.path != "/open-word":
             self._send_json(404, {"success": False, "error": "Endpoint non trovato."})

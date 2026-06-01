@@ -13,6 +13,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from backend.core.dependency_container import DependencyContainer, create_container
+from backend.schemas.sottofase_partecipanti import SottofasePartecipantePayload
 from backend.schemas.sottofase_workflow import SottofaseWorkflowAzionePayload
 from backend.services.procedimento_service import (
     ProcedimentoNotFoundError,
@@ -34,6 +35,13 @@ from backend.services.sottofase_document_upload_service import (
     SottofaseDocumentUploadTooLargeError,
     SottofaseDocumentUploadValidationError,
     SottofaseDocumentUploadWriteError,
+)
+from backend.services.sottofase_partecipanti_service import (
+    SottofasePartecipantiBackupError,
+    SottofasePartecipantiDuplicateError,
+    SottofasePartecipantiNotFoundError,
+    SottofasePartecipantiValidationError,
+    SottofasePartecipantiWriteError,
 )
 
 
@@ -124,6 +132,14 @@ def get_sottofase_document_upload_service(
     """Dipendenza FastAPI per ottenere il service upload documenti Word."""
 
     return container.get_sottofase_document_upload_service()
+
+
+def get_sottofase_partecipanti_service(
+    container: DependencyContainer = Depends(get_container),
+) -> Any:
+    """Dipendenza FastAPI per ottenere il service partecipanti sottofase."""
+
+    return container.get_sottofase_partecipanti_service()
 
 
 def _resolve_pdf_path_or_404(id_protocollo: int, documento_service: Any):
@@ -598,6 +614,62 @@ def get_sottofase_step_operativi(
         raise HTTPException(status_code=404, detail="Sottofase non trovata")
 
     return sottofase_service.list_step_operativi_by_sottofase(id_sottofase)
+
+
+@router.get("/protocollo-monitor/sottofasi/{id_sottofase}/partecipanti")
+def get_sottofase_partecipanti(
+    id_sottofase: int,
+    partecipanti_service: Any = Depends(get_sottofase_partecipanti_service),
+):
+    try:
+        return partecipanti_service.list_partecipanti(id_sottofase)
+    except SottofasePartecipantiNotFoundError:
+        raise HTTPException(status_code=404, detail="Sottofase non trovata")
+
+
+@router.post(
+    "/protocollo-monitor/sottofasi/{id_sottofase}/partecipanti",
+    status_code=201,
+)
+def crea_sottofase_partecipante(
+    id_sottofase: int,
+    payload: SottofasePartecipantePayload,
+    partecipanti_service: Any = Depends(get_sottofase_partecipanti_service),
+):
+    try:
+        return partecipanti_service.crea_partecipante(
+            id_sottofase=id_sottofase,
+            payload=payload,
+        )
+    except SottofasePartecipantiNotFoundError:
+        raise HTTPException(status_code=404, detail="Sottofase non trovata")
+    except SottofasePartecipantiDuplicateError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    except SottofasePartecipantiValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except SottofasePartecipantiBackupError as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    except SottofasePartecipantiWriteError as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router.get(
+    "/protocollo-monitor/sottofasi/{id_sottofase}/step-operativi/{id_step}/partecipanti"
+)
+def get_sottofase_step_partecipanti(
+    id_sottofase: int,
+    id_step: int,
+    partecipanti_service: Any = Depends(get_sottofase_partecipanti_service),
+):
+    try:
+        return partecipanti_service.list_partecipanti_by_step(
+            id_sottofase=id_sottofase,
+            id_step_operativo=id_step,
+        )
+    except SottofasePartecipantiNotFoundError:
+        raise HTTPException(status_code=404, detail="Sottofase non trovata")
+    except SottofasePartecipantiValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 
 @router.get("/protocollo-monitor/sottofase-documenti/{id_documento}/apri")

@@ -74,7 +74,7 @@ Vista Vue
 | `L_CatalogoSottofasi` | Catalogo riusabile per aggiungere sottofasi. | `IDCatalogoSottofase`, `CodiceSottofase`, `Titolo`, `Descrizione`, `Icona`, `Colore`, `Categoria`, `OrdineDefault`, `Attivo`. | Riferimento opzionale da `T_ProcedimentoSottofasi.IDCatalogoSottofase`. | Gia usata per tendina/avatar e dati reali. |
 | `T_SottofaseDocumenti` | Storico versionato dei documenti collegati a una sottofase. | `IDDocumentoSottofase`, `IDSottofase`, `TipoDocumento`, `NomeFile`, `Estensione`, `PercorsoDocumento`, `MimeType`, `DimensioneBytes`, `HashFile`, `VersioneDocumento`, `DataCollegamento`, `UtenteCollegamento`, `Attivo`. | Figlia logica di `T_ProcedimentoSottofasi`; puo essere documento corrente della sottofase. | Gia usata in read-only, apertura documento e upload Word. |
 | `T_SottofaseStepOperativi` | Storico degli step interni della sottofase documentale. | `IDStepSottofase`, `IDSottofase`, `CodiceStep`, `Ordine`, `StatoStep`, `DataAvvio`, `DataCompletamento`, `NoteStep`, `UtenteAssegnato`, `UtenteCompletamento`, `IDDocumentoSottofase`, `VersioneDocumento`. | Figlia logica di `T_ProcedimentoSottofasi`; storico REDIGI/FIRMA/etc. | Gia usata per workflow e azioni reali. |
-| `T_SottofasePartecipanti` | Partecipanti assegnati a una sottofase. | `IDPartecipante`, `IDSottofase`, `IDUtente`, `NomeVisualizzato`, `Email`, `Ruolo`, `StatoPartecipante`, `Ordine`, `ColoreAvatar`, `Iniziali`, date, note, `Attivo`. | Figlia logica di `T_ProcedimentoSottofasi`; base per revisori, firmatari, protocollatori, approvatori, operatori e osservatori. | Creata Step 30L-22 con backup; backend GET/POST minimo. |
+| `T_SottofasePartecipanti` | Partecipanti assegnati a una sottofase o a uno step timeline. | `IDPartecipante`, `IDSottofase`, `IDStepOperativo`, `IDUtente`, `NomeVisualizzato`, `Email`, `Ruolo`, `StatoPartecipante`, `Ordine`, `ColoreAvatar`, `Iniziali`, date, note, `Attivo`. | Figlia logica di `T_ProcedimentoSottofasi`; `IDStepOperativo` opzionale collega il partecipante a uno step in `T_SottofaseStepOperativi`. | Creata Step 30L-22, estesa Step 30L-27 con backup. |
 | `T_Documenti` | Tabella documentale legacy/predisposta. | Dipende dallo schema Access esistente; usata in modo prudente da `DocumentoRepository`. | Relazione indiretta con protocolli tramite path documento. | Coinvolta ma non centrale nel nuovo workflow. |
 
 ## 4. Campi aggiunti o usati
@@ -123,6 +123,7 @@ Vista Vue
 | `GET` | `/protocollo-monitor/sottofase-documenti/{id_documento}/scarica` | Scarica documento collegato Word/PDF/storico con `Content-Disposition: attachment`. | Read-only/filesystem | `SottofaseDocumentaleService`, `DocumentPathService`, `FileResponse`. | Attivo Step 30L-18. |
 | `GET` | `/protocollo-monitor/sottofasi/{id_sottofase}/partecipanti` | Elenco partecipanti attivi collegati alla sottofase. | Read-only | `SottofasePartecipantiService`, `SottofasePartecipantiRepository`. | Attivo Step 30L-22. |
 | `POST` | `/protocollo-monitor/sottofasi/{id_sottofase}/partecipanti` | Inserisce un partecipante sottofase con backup Access e validazioni. | Scrittura controllata | `SottofasePartecipantiService`, `SottofasePartecipantiRepository`, backup Access. | Attivo Step 30L-22. |
+| `GET` | `/protocollo-monitor/sottofasi/{id_sottofase}/step-operativi/{id_step}/partecipanti` | Elenco partecipanti attivi collegati a uno specifico step timeline. | Read-only | `SottofasePartecipantiService`, `SottofasePartecipantiRepository`. | Attivo Step 30L-27. |
 | `GET` | `/protocollo-monitor/sottofasi/{id_sottofase}/workflow` | Workflow operativo REDIGI/FINE. | Read-only | `SottofaseWorkflowService`, `SottofaseDocumentaleService`. | Attivo. |
 | `POST` | `/protocollo-monitor/sottofasi/{id_sottofase}/workflow/azioni` | Avanza workflow sottofase. | Scrittura controllata | `SottofaseWorkflowCommandService`, `SottofaseWorkflowActionRepository`, backup Access. | Attivo. |
 | `POST` | `http://127.0.0.1:8020/open-word` | Helper locale separato per aprire `.docx` con Word da `idDocumento`. | Read-only locale/filesystem | `Python/open_word_helper.py`, Access read-only, whitelist `DocumentiWorkflow`. | Attivo Step 30L-19, fuori dal backend principale. |
@@ -279,6 +280,7 @@ Test automatici principali:
 | Step 30L-19 | Helper locale Windows Apri con Word | Creato helper separato `POST /open-word` su `127.0.0.1:8020`, recupero path da `idDocumento`, whitelist `DocumentiWorkflow`, solo `.docx`, UI collegata e gestione helper non avviato. | `Python/open_word_helper.py`, `SottofaseDocumentaleCard.vue`, `procedimentoApi.js`, test helper, roadmap. | Completato. | Da commit. |
 | Step 30L-20 | Avvio automatico helper locali | Aggiornato batch locale per avviare backend FastAPI, frontend Vue, server Flask Grisu e helper Apri con Word; aggiunto health check helper. | `Python/Avvia_ProtocolloMonitor.bat`, `Python/open_word_helper.py`, roadmap. | Completato. | Da commit. |
 | Step 30L-22 | Partecipanti sottofase | Creata tabella `T_SottofasePartecipanti`, repository/service/schema Pydantic, endpoint GET/POST, validazioni e test. | `sottofase_partecipanti_*`, router, dependency container, test, roadmap. | Completato. | Da commit. |
+| Step 30L-27 | Partecipanti collegati allo step | Estesa `T_SottofasePartecipanti` con `IDStepOperativo`, validazioni step/sottofase/ruolo, endpoint GET per partecipanti step e test. | `sottofase_partecipanti_*`, router, test, roadmap. | Completato. | Da commit. |
 
 ## 13. Decisioni architetturali importanti
 
@@ -1639,11 +1641,135 @@ Regole UI:
 - UI troppo permissiva rispetto alle regole di dominio.
 - Accumulo di step annullati senza filtri o vista storico.
 
+## Step 30L-27 – Partecipanti collegati allo step
+
+Questo step introduce il modello ibrido dei partecipanti della sottofase: un
+partecipante puo essere generale della sottofase oppure collegato a uno
+specifico step della timeline.
+
+### Modello dati
+
+Tabella esistente: `T_SottofasePartecipanti`.
+
+Campo aggiunto:
+
+- `IDStepOperativo LONG NULL`.
+
+Significato:
+
+- `IDStepOperativo = NULL`: partecipante generale della sottofase;
+- `IDStepOperativo` valorizzato: partecipante collegato a uno specifico step
+  timeline in `T_SottofaseStepOperativi`.
+
+Indice aggiunto:
+
+- `IX_T_SottofasePartecipanti_IDStepOperativo`.
+
+Backup Access creato prima della modifica schema:
+
+```text
+C:\Users\fintu\CloudVVF\Documents\Sviluppo\Grisu\Backup\ProtocolloMonitor_BACKUP_20260601_124025.accdb
+```
+
+Esito schema:
+
+- tabella `T_SottofasePartecipanti` gia esistente;
+- campo `IDStepOperativo` aggiunto;
+- indice `IX_T_SottofasePartecipanti_IDStepOperativo` creato;
+- nessun dato reale popolato automaticamente.
+
+### Backend
+
+File modificati:
+
+- `backend/schemas/sottofase_partecipanti.py`;
+- `backend/repositories/sottofase_partecipanti_repository.py`;
+- `backend/services/sottofase_partecipanti_service.py`;
+- `backend/api/routes/protocollo_monitor.py`;
+- `tests/test_sottofase_partecipanti_repository.py`;
+- `tests/test_sottofase_partecipanti_service.py`;
+- `tests/test_sottofase_partecipanti_endpoint.py`;
+- `ROADMAP_PROTOCOLLOMONITOR.md`.
+
+File creati: nessuno.
+
+Endpoint modificati:
+
+| Metodo | Endpoint | Modifica |
+| --- | --- | --- |
+| `GET` | `/protocollo-monitor/sottofasi/{id_sottofase}/partecipanti` | Restituisce anche `id_step_operativo`. |
+| `POST` | `/protocollo-monitor/sottofasi/{id_sottofase}/partecipanti` | Accetta opzionalmente `idStepOperativo`. |
+
+Endpoint aggiunto:
+
+| Metodo | Endpoint | Scopo |
+| --- | --- | --- |
+| `GET` | `/protocollo-monitor/sottofasi/{id_sottofase}/step-operativi/{id_step}/partecipanti` | Restituisce partecipanti collegati a uno specifico step timeline. |
+
+### Validazioni implementate
+
+- Se `idStepOperativo` e valorizzato, lo step deve esistere in
+  `T_SottofaseStepOperativi`.
+- Lo step deve appartenere alla stessa `IDSottofase`.
+- Ruolo coerente con il codice step quando determinabile:
+  - `REVISIONA` -> `REVISORE`;
+  - `FIRMA` -> `FIRMATARIO`;
+  - `PROTOCOLLA` -> `PROTOCOLLATORE`.
+- Approccio scelto per ruolo incoerente: errore `400`, non warning.
+- Duplicato partecipante generale: stessa sottofase, email e ruolo con
+  `IDStepOperativo NULL`.
+- Duplicato partecipante step: stessa sottofase, stesso `IDStepOperativo`,
+  stessa email e stesso ruolo.
+- Backup Access prima dell'insert.
+- Insert transazionale con rollback su errore.
+
+### Test
+
+Test aggiornati o aggiunti per:
+
+- campo `IDStepOperativo` aggiunto se assente;
+- indice `IX_T_SottofasePartecipanti_IDStepOperativo` creato se assente;
+- POST partecipante generale con `idStepOperativo` nullo;
+- POST partecipante collegato a step valido;
+- POST `idStepOperativo` inesistente;
+- POST `idStepOperativo` appartenente ad altra sottofase;
+- ruoli coerenti `REVISORE`/`REVISIONA`, `FIRMATARIO`/`FIRMA`,
+  `PROTOCOLLATORE`/`PROTOCOLLA`;
+- ruolo incoerente con errore;
+- duplicato generale;
+- duplicato su step;
+- GET con `id_step_operativo`;
+- rollback su errore insert.
+
+Risultato test mirati:
+
+```text
+33 passed
+```
+
+### Vincoli rispettati
+
+- `Python/server_protocollo.py` non modificato.
+- Frontend non modificato.
+- Workflow legacy non modificato.
+- PostgreSQL-friendly: chiave opzionale, semantica esplicita, nessuna logica
+  Access-only nel contratto.
+- Nessun commit eseguito.
+
+### Punti dubbi
+
+- Il campo si chiama `IDStepOperativo`, mentre la chiave primaria della tabella
+  step e `IDStepSottofase`; il nome e coerente semanticamente con la timeline,
+  ma va documentato nella futura migrazione PostgreSQL.
+- La coerenza ruolo-step oggi copre solo step standard noti; per step
+  personalizzati servira una configurazione futura.
+- Il vincolo referenziale non e stato introdotto come FK Access: la coerenza e
+  garantita dal backend.
+
 ## 14. Prossima tabella di marcia
 
 | Prossimo step | Obiettivo | Note prudenziali |
 | --- | --- | --- |
-| Step 30L-27 | Partecipanti collegati allo step. | Definire relazione tra partecipanti generali della sottofase e partecipanti specifici della timeline. |
 | Step 30L-28 | Completamento automatico guidato dai partecipanti. | Definire quorum, obbligatorieta, respingimenti e richieste integrazione prima delle automazioni. |
 | Step 30L-29 | Audit e storico timeline. | Progettare eventi di audit prima di attivare modifiche strutturali reali. |
 | Step 30L-30 | Implementazione UI timeline dinamica. | Tradurre regole di inserimento, annullamento e riordino in controlli frontend sicuri. |
