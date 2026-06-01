@@ -1,16 +1,13 @@
-"""Repository read-only per workflow procedimento.
+"""Repository per fasi verticali e step orizzontali del procedimento.
 
-Il modulo legge le nuove tabelle Access introdotte per il workflow del
-procedimento:
+Il modulo usa le tabelle Access del procedimento:
 
 - `T_ProcedimentoFasi`
-- `T_ProcedimentoSottofasi`
-- `L_CatalogoSottofasi`
+- `T_FaseStepOrizzontali`
 
-Il repository e volutamente solo in lettura: non crea fasi, non modifica stati,
-non inserisce sottofasi e non aggiorna il catalogo. Questa separazione mantiene
-prudente l'integrazione backend dopo la creazione reale dello schema Access e
-prepara una futura implementazione PostgreSQL con lo stesso contratto logico.
+Restano presenti alcune letture legacy del vecchio modello sottofase solo per
+compatibilita difensiva; la creazione/modifica complessa delle sottofasi e stata
+rimossa dal contratto del repository.
 """
 
 from __future__ import annotations
@@ -23,6 +20,14 @@ from .base import BaseRepository
 
 class WorkflowProcedimentoRepository(BaseRepository):
     """Repository Access-compatible per leggere il workflow dei procedimenti."""
+
+    STEP_ORIZZONTALI_DEFAULT = [
+        ("REDIGI", "Redigi", 1),
+        ("REVISIONA", "Revisiona", 2),
+        ("FIRMA", "Firma", 3),
+        ("PROTOCOLLA", "Protocolla", 4),
+        ("FINE", "Fine", 5),
+    ]
 
     @staticmethod
     def _normalize_value(value: Any) -> Any:
@@ -130,6 +135,29 @@ class WorkflowProcedimentoRepository(BaseRepository):
             "colore": self._normalize_value(self._get(row, "Colore")),
             "categoria": self._normalize_value(self._get(row, "Categoria")),
             "ordine_default": self._normalize_value(self._get(row, "OrdineDefault")),
+            "attivo": bool(self._get(row, "Attivo"))
+            if self._get(row, "Attivo") is not None
+            else False,
+            "data_creazione": self._normalize_value(self._get(row, "DataCreazione")),
+            "data_modifica": self._normalize_value(self._get(row, "DataModifica")),
+        }
+
+    def _step_orizzontale_row_to_dict(self, row: Any) -> dict[str, Any]:
+        """Converte una riga `T_FaseStepOrizzontali` in dizionario snake_case."""
+
+        return {
+            "id_step_orizzontale": self._normalize_value(
+                self._get(row, "IDStepOrizzontale")
+            ),
+            "id_fase": self._normalize_value(self._get(row, "IDFase")),
+            "codice_step": self._normalize_value(self._get(row, "CodiceStep")),
+            "titolo_step": self._normalize_value(self._get(row, "TitoloStep")),
+            "ordine": self._normalize_value(self._get(row, "Ordine")),
+            "stato_step": self._normalize_value(self._get(row, "StatoStep")),
+            "data_avvio": self._normalize_value(self._get(row, "DataAvvio")),
+            "data_completamento": self._normalize_value(
+                self._get(row, "DataCompletamento")
+            ),
             "attivo": bool(self._get(row, "Attivo"))
             if self._get(row, "Attivo") is not None
             else False,
@@ -364,6 +392,120 @@ class WorkflowProcedimentoRepository(BaseRepository):
 
         return self.get_fase_detail(id_fase)
 
+    def list_step_orizzontali_by_fase(
+        self,
+        id_fase: int,
+    ) -> list[dict[str, Any]]:
+        """Legge gli step orizzontali fissi associati a una fase."""
+
+        query = """
+            SELECT
+                IDStepOrizzontale,
+                IDFase,
+                CodiceStep,
+                TitoloStep,
+                Ordine,
+                StatoStep,
+                DataAvvio,
+                DataCompletamento,
+                Attivo,
+                DataCreazione,
+                DataModifica
+            FROM T_FaseStepOrizzontali
+            WHERE IDFase = ? AND Attivo = ?
+            ORDER BY Ordine ASC, IDStepOrizzontale ASC
+        """
+
+        conn = self._open_access_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute(query, (id_fase, True))
+            return [
+                self._step_orizzontale_row_to_dict(row)
+                for row in cursor.fetchall()
+            ]
+        finally:
+            cursor.close()
+            conn.close()
+
+    def inizializza_step_orizzontali_fase(
+        self,
+        *,
+        id_fase: int,
+        data_creazione: datetime,
+    ) -> dict[str, Any]:
+        """Crea i cinque step orizzontali fissi se non sono gia presenti."""
+
+        conn = self._open_access_connection()
+        cursor = conn.cursor()
+
+        report = {
+            "id_fase": id_fase,
+            "step_creati": [],
+            "step_gia_presenti": [],
+        }
+
+        try:
+            cursor.execute(
+                """
+                SELECT CodiceStep
+                FROM T_FaseStepOrizzontali
+                WHERE IDFase = ? AND Attivo = ?
+                """,
+                (id_fase, True),
+            )
+            existing = {
+                str(self._get(row, "CodiceStep") or "").upper()
+                for row in cursor.fetchall()
+            }
+
+            for codice, titolo, ordine in self.STEP_ORIZZONTALI_DEFAULT:
+                if codice in existing:
+                    report["step_gia_presenti"].append(codice)
+                    continue
+
+                cursor.execute(
+                    """
+                    INSERT INTO T_FaseStepOrizzontali (
+                        IDFase,
+                        CodiceStep,
+                        TitoloStep,
+                        Ordine,
+                        StatoStep,
+                        DataAvvio,
+                        DataCompletamento,
+                        Attivo,
+                        DataCreazione,
+                        DataModifica
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        id_fase,
+                        codice,
+                        titolo,
+                        ordine,
+                        "NON_AVVIATO",
+                        None,
+                        None,
+                        True,
+                        data_creazione,
+                        data_creazione,
+                    ),
+                )
+                report["step_creati"].append(codice)
+
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            cursor.close()
+            conn.close()
+
+        report["step"] = self.list_step_orizzontali_by_fase(id_fase)
+        return report
+
     @staticmethod
     def _identity_from_row(row: Any, *, field_name: str = "IDFase") -> int:
         if row is None:
@@ -428,212 +570,6 @@ class WorkflowProcedimentoRepository(BaseRepository):
         finally:
             cursor.close()
             conn.close()
-
-    def get_sottofase_detail(self, id_sottofase: int) -> dict[str, Any] | None:
-        """Legge il dettaglio di una sottofase, oppure `None` se non esiste."""
-
-        query = """
-            SELECT
-                IDSottofase,
-                IDFase,
-                IDCatalogoSottofase,
-                CodiceSottofase,
-                Titolo,
-                Descrizione,
-                Ordine,
-                StatoSottofase,
-                Icona,
-                Colore,
-                Responsabile,
-                DataScadenza,
-                DataAvvio,
-                DataCompletamento,
-                NoteInterne,
-                Attivo,
-                DataCreazione,
-                DataModifica
-            FROM T_ProcedimentoSottofasi
-            WHERE IDSottofase = ?
-        """
-
-        conn = self._open_access_connection()
-        cursor = conn.cursor()
-
-        try:
-            cursor.execute(query, (id_sottofase,))
-            row = cursor.fetchone()
-            if not row:
-                return None
-
-            return self._sottofase_row_to_dict(row)
-        finally:
-            cursor.close()
-            conn.close()
-
-    def crea_sottofase_fase(
-        self,
-        *,
-        id_fase: int,
-        codice_sottofase: str,
-        titolo: str,
-        descrizione: str | None,
-        responsabile: str | None,
-        data_scadenza: Any,
-        data_creazione: datetime,
-    ) -> dict[str, Any]:
-        """Inserisce una sottofase dentro una fase e restituisce il record."""
-
-        conn = self._open_access_connection()
-        cursor = conn.cursor()
-
-        try:
-            cursor.execute(
-                """
-                SELECT MAX(Ordine) AS MaxOrdine
-                FROM T_ProcedimentoSottofasi
-                WHERE IDFase = ?
-                """,
-                (id_fase,),
-            )
-            row = cursor.fetchone()
-            max_ordine = self._get(row, "MaxOrdine")
-            ordine = 1 if max_ordine is None else int(max_ordine) + 1
-
-            cursor.execute(
-                """
-                INSERT INTO T_ProcedimentoSottofasi (
-                    IDFase,
-                    IDCatalogoSottofase,
-                    CodiceSottofase,
-                    Titolo,
-                    Descrizione,
-                    Ordine,
-                    StatoSottofase,
-                    Icona,
-                    Colore,
-                    Responsabile,
-                    DataScadenza,
-                    DataAvvio,
-                    DataCompletamento,
-                    NoteInterne,
-                    Attivo,
-                    DataCreazione,
-                    DataModifica,
-                    StepCorrente,
-                    TestoOperatore,
-                    HaDocumentoCollegato,
-                    IDDocumentoCorrente,
-                    DataUltimaAzione,
-                    UtenteUltimaAzione,
-                    VersioneDocumento
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    id_fase,
-                    None,
-                    codice_sottofase,
-                    titolo,
-                    descrizione,
-                    ordine,
-                    "NON_AVVIATA",
-                    "mdi-checkbox-blank-circle-outline",
-                    "grey",
-                    responsabile,
-                    data_scadenza,
-                    None,
-                    None,
-                    None,
-                    True,
-                    data_creazione,
-                    data_creazione,
-                    None,
-                    None,
-                    False,
-                    None,
-                    None,
-                    None,
-                    None,
-                ),
-            )
-            cursor.execute("SELECT @@IDENTITY AS IDSottofase")
-            identity_row = cursor.fetchone()
-            id_sottofase = self._identity_from_row(
-                identity_row,
-                field_name="IDSottofase",
-            )
-            conn.commit()
-        except Exception:
-            conn.rollback()
-            raise
-        finally:
-            cursor.close()
-            conn.close()
-
-        created = self.get_sottofase_detail(id_sottofase)
-        if created is None:
-            raise RuntimeError("Sottofase creata ma non rileggibile.")
-
-        return created
-
-    def aggiorna_sottofase_fase(
-        self,
-        *,
-        id_fase: int,
-        id_sottofase: int,
-        codice_sottofase: str | None,
-        titolo: str,
-        descrizione: str | None,
-        responsabile: str | None,
-        data_scadenza: Any,
-        data_modifica: datetime,
-    ) -> dict[str, Any] | None:
-        """Aggiorna i campi editabili di una sottofase."""
-
-        query = """
-            UPDATE T_ProcedimentoSottofasi
-            SET CodiceSottofase = ?,
-                Titolo = ?,
-                Descrizione = ?,
-                Responsabile = ?,
-                DataScadenza = ?,
-                DataModifica = ?
-            WHERE IDSottofase = ? AND IDFase = ?
-        """
-
-        conn = self._open_access_connection()
-        cursor = conn.cursor()
-
-        try:
-            existing = self.get_sottofase_detail(id_sottofase)
-            if existing is None:
-                return None
-
-            cursor.execute(
-                query,
-                (
-                    codice_sottofase or existing.get("codice_sottofase"),
-                    titolo,
-                    descrizione,
-                    responsabile,
-                    data_scadenza,
-                    data_modifica,
-                    id_sottofase,
-                    id_fase,
-                ),
-            )
-            if getattr(cursor, "rowcount", 1) == 0:
-                conn.rollback()
-                return None
-
-            conn.commit()
-        except Exception:
-            conn.rollback()
-            raise
-        finally:
-            cursor.close()
-            conn.close()
-
-        return self.get_sottofase_detail(id_sottofase)
 
     def list_catalogo_sottofasi(
         self,

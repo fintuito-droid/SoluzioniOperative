@@ -113,28 +113,16 @@ export function listSottofasiFase(idFase) {
   return fetchJson(`/protocollo-monitor/procedimenti/fasi/${idFase}/sottofasi`)
 }
 
-export function createSottofaseProcedimento(idProcedimento, idFase, payload) {
+export function listStepOrizzontaliFase(idProcedimento, idFase) {
   return fetchJson(
-    `/protocollo-monitor/procedimenti/${idProcedimento}/fasi/${idFase}/sottofasi`,
-    {
-      method: 'POST',
-      body: JSON.stringify(payload || {})
-    }
+    `/protocollo-monitor/procedimenti/${idProcedimento}/fasi/${idFase}/step-orizzontali`
   )
 }
 
-export function updateSottofaseProcedimento(
-  idProcedimento,
-  idFase,
-  idSottofase,
-  payload
-) {
+export function inizializzaStepOrizzontaliFase(idProcedimento, idFase) {
   return fetchJson(
-    `/protocollo-monitor/procedimenti/${idProcedimento}/fasi/${idFase}/sottofasi/${idSottofase}`,
-    {
-      method: 'PUT',
-      body: JSON.stringify(payload || {})
-    }
+    `/protocollo-monitor/procedimenti/${idProcedimento}/fasi/${idFase}/step-orizzontali/inizializza`,
+    { method: 'POST' }
   )
 }
 

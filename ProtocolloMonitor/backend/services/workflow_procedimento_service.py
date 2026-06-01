@@ -1,9 +1,7 @@
-"""Service read-only per workflow procedimento.
+"""Service per fasi verticali e step orizzontali del procedimento.
 
-Il service espone un primo contratto applicativo per leggere fasi, sottofasi e
-catalogo workflow senza collegare ancora route FastAPI e senza introdurre
-scritture. Tutte le query restano nel repository; il service fornisce fallback
-sicuri e mantiene il backend pronto a una futura persistenza PostgreSQL.
+Il service mantiene la creazione/modifica delle fasi verticali e inizializza gli
+step orizzontali fissi REDIGI, REVISIONA, FIRMA, PROTOCOLLA e FINE.
 """
 
 from __future__ import annotations
@@ -20,16 +18,8 @@ class WorkflowFaseValidationError(ValueError):
     """Payload fase non valido."""
 
 
-class WorkflowSottofaseNotFoundError(Exception):
-    """Errore applicativo per sottofase workflow inesistente."""
-
-
-class WorkflowSottofaseValidationError(ValueError):
-    """Payload sottofase non valido."""
-
-
 class WorkflowProcedimentoService:
-    """Service minimale e read-only per il workflow dei procedimenti."""
+    """Service applicativo per workflow procedimento semplificato."""
 
     def __init__(
         self,
@@ -103,84 +93,55 @@ class WorkflowProcedimentoService:
 
         return updated
 
-    def crea_sottofase_fase(
+    def inizializza_step_orizzontali_fase(
         self,
         *,
         id_procedimento: int,
         id_fase: int,
-        payload: Any,
     ) -> dict[str, Any]:
-        """Crea una sottofase dentro una fase del procedimento."""
+        """Inizializza e restituisce gli step orizzontali fissi della fase."""
 
         if self.workflow_procedimento_repository is None:
-            raise WorkflowSottofaseNotFoundError()
+            raise WorkflowFaseNotFoundError()
 
         fase = self.workflow_procedimento_repository.get_fase_detail(id_fase)
         if fase is None or int(fase.get("id_procedimento") or 0) != int(
             id_procedimento
         ):
-            raise WorkflowSottofaseNotFoundError()
+            raise WorkflowFaseNotFoundError()
 
-        data = self._payload_to_dict(payload)
-        titolo = self._clean_required_sottofase(data.get("Titolo"))
-        descrizione = self._clean_optional(data.get("Descrizione"))
-        codice = self._clean_optional(data.get("CodiceSottofase"))
-        now = self.now_factory()
-        if codice is None:
-            codice = now.strftime("SF-%Y%m%d-%H%M%S")
-
-        return self.workflow_procedimento_repository.crea_sottofase_fase(
+        return self.workflow_procedimento_repository.inizializza_step_orizzontali_fase(
             id_fase=id_fase,
-            codice_sottofase=codice,
-            titolo=titolo,
-            descrizione=descrizione,
-            responsabile=self._clean_optional(data.get("Responsabile")),
-            data_scadenza=self._clean_datetime(data.get("DataScadenza")),
-            data_creazione=now,
+            data_creazione=self.now_factory(),
         )
 
-    def aggiorna_sottofase_fase(
+    def list_step_orizzontali_fase(
         self,
         *,
         id_procedimento: int,
         id_fase: int,
-        id_sottofase: int,
-        payload: Any,
-    ) -> dict[str, Any]:
-        """Aggiorna i campi editabili di una sottofase."""
-
+        inizializza: bool = True,
+    ) -> list[dict[str, Any]]:
+        """Restituisce gli step orizzontali della fase, inizializzandoli se richiesto."""
         if self.workflow_procedimento_repository is None:
-            raise WorkflowSottofaseNotFoundError()
+            return []
 
         fase = self.workflow_procedimento_repository.get_fase_detail(id_fase)
         if fase is None or int(fase.get("id_procedimento") or 0) != int(
             id_procedimento
         ):
-            raise WorkflowSottofaseNotFoundError()
+            raise WorkflowFaseNotFoundError()
 
-        sottofase = self.workflow_procedimento_repository.get_sottofase_detail(
-            id_sottofase
+        if inizializza:
+            report = self.inizializza_step_orizzontali_fase(
+                id_procedimento=id_procedimento,
+                id_fase=id_fase,
+            )
+            return report.get("step", [])
+
+        return self.workflow_procedimento_repository.list_step_orizzontali_by_fase(
+            id_fase
         )
-        if sottofase is None or int(sottofase.get("id_fase") or 0) != int(id_fase):
-            raise WorkflowSottofaseNotFoundError()
-
-        data = self._payload_to_dict(payload)
-        titolo = self._clean_required_sottofase(data.get("Titolo"))
-
-        updated = self.workflow_procedimento_repository.aggiorna_sottofase_fase(
-            id_fase=id_fase,
-            id_sottofase=id_sottofase,
-            codice_sottofase=self._clean_optional(data.get("CodiceSottofase")),
-            titolo=titolo,
-            descrizione=self._clean_optional(data.get("Descrizione")),
-            responsabile=self._clean_optional(data.get("Responsabile")),
-            data_scadenza=self._clean_datetime(data.get("DataScadenza")),
-            data_modifica=self.now_factory(),
-        )
-        if updated is None:
-            raise WorkflowSottofaseNotFoundError()
-
-        return updated
 
     def list_fasi_by_procedimento(
         self,
@@ -298,21 +259,3 @@ class WorkflowProcedimentoService:
         if normalized is None:
             raise WorkflowFaseValidationError("Titolo fase obbligatorio.")
         return normalized
-
-    @classmethod
-    def _clean_required_sottofase(cls, value: Any) -> str:
-        normalized = cls._clean_optional(value)
-        if normalized is None:
-            raise WorkflowSottofaseValidationError("Titolo sottofase obbligatorio.")
-        return normalized
-
-    @staticmethod
-    def _clean_datetime(value: Any) -> Any:
-        normalized = WorkflowProcedimentoService._clean_optional(value)
-        if not isinstance(normalized, str):
-            return normalized
-
-        try:
-            return datetime.fromisoformat(normalized)
-        except ValueError:
-            return normalized
