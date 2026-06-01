@@ -43,6 +43,11 @@ from backend.services.sottofase_partecipanti_service import (
     SottofasePartecipantiValidationError,
     SottofasePartecipantiWriteError,
 )
+from backend.services.sottofase_assegnazioni_service import (
+    SottofaseAssegnazioniBackupError,
+    SottofaseAssegnazioniNotFoundError,
+    SottofaseAssegnazioniWriteError,
+)
 
 
 router = APIRouter()
@@ -140,6 +145,14 @@ def get_sottofase_partecipanti_service(
     """Dipendenza FastAPI per ottenere il service partecipanti sottofase."""
 
     return container.get_sottofase_partecipanti_service()
+
+
+def get_sottofase_assegnazioni_service(
+    container: DependencyContainer = Depends(get_container),
+) -> Any:
+    """Dipendenza FastAPI per ottenere il service assegnazioni sottofase."""
+
+    return container.get_sottofase_assegnazioni_service()
 
 
 def _resolve_pdf_path_or_404(id_protocollo: int, documento_service: Any):
@@ -695,6 +708,25 @@ def completa_sottofase_step_partecipante(
     except SottofasePartecipantiBackupError as exc:
         raise HTTPException(status_code=500, detail=str(exc))
     except SottofasePartecipantiWriteError as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router.post(
+    "/protocollo-monitor/sottofasi/{id_sottofase}/assegnazioni/applica-regole"
+)
+def applica_regole_assegnazione_sottofase(
+    id_sottofase: int,
+    assegnazioni_service: Any = Depends(get_sottofase_assegnazioni_service),
+):
+    try:
+        return assegnazioni_service.applica_regole_assegnazione_sottofase(
+            id_sottofase,
+        )
+    except SottofaseAssegnazioniNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except SottofaseAssegnazioniBackupError as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    except SottofaseAssegnazioniWriteError as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
 
