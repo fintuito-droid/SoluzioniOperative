@@ -16,8 +16,10 @@ class SottofaseDocumentaleService:
         self,
         *,
         sottofase_documentale_repository: Any | None = None,
+        sottofase_assegnazioni_service: Any | None = None,
     ) -> None:
         self.sottofase_documentale_repository = sottofase_documentale_repository
+        self.sottofase_assegnazioni_service = sottofase_assegnazioni_service
 
     def get_sottofase_documentale(
         self,
@@ -154,9 +156,36 @@ class SottofaseDocumentaleService:
         if sottofase is None:
             return None
 
+        assegnazioni_auto_report = self._applica_assegnazioni_auto(id_sottofase)
+
         return {
             **sottofase,
             "documento_corrente": self.get_documento_corrente(sottofase),
             "step_operativi": self.list_step_operativi_by_sottofase(id_sottofase),
             "documenti": self.list_documenti_by_sottofase(id_sottofase),
+            "assegnazioni_auto_report": assegnazioni_auto_report,
         }
+
+    def _applica_assegnazioni_auto(self, id_sottofase: int) -> dict[str, Any] | None:
+        """Applica regole automatiche senza bloccare il caricamento."""
+
+        if self.sottofase_assegnazioni_service is None:
+            return None
+
+        applica_regole = getattr(
+            self.sottofase_assegnazioni_service,
+            "applica_regole_assegnazione_sottofase",
+            None,
+        )
+        if applica_regole is None:
+            return None
+
+        try:
+            return applica_regole(id_sottofase)
+        except Exception as exc:
+            return {
+                "success": False,
+                "id_sottofase": id_sottofase,
+                "errore": str(exc),
+                "non_bloccante": True,
+            }

@@ -268,6 +268,9 @@ class DependencyContainer:
                 sottofase_documentale_repository=(
                     self._get_sottofase_documentale_repository()
                 ),
+                sottofase_assegnazioni_service=(
+                    self.get_sottofase_assegnazioni_service()
+                ),
             )
 
         return self._sottofase_documentale_service
