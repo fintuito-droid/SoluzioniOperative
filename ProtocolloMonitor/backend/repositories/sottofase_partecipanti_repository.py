@@ -496,6 +496,54 @@ class SottofasePartecipantiRepository(BaseRepository):
             cursor.close()
             conn.close()
 
+    def completa_partecipante_step(
+        self,
+        *,
+        id_sottofase: int,
+        id_step_operativo: int,
+        id_partecipante: int,
+        data_azione: datetime,
+    ) -> None:
+        """Marca un partecipante di step come completato in transazione."""
+
+        conn = self._open_access_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute(
+                """
+                UPDATE T_SottofasePartecipanti
+                SET
+                    StatoPartecipante = ?,
+                    DataAzione = ?,
+                    DataModifica = ?
+                WHERE IDPartecipante = ?
+                  AND IDSottofase = ?
+                  AND IDStepOperativo = ?
+                  AND Attivo = ?
+                """,
+                (
+                    "COMPLETATO",
+                    data_azione,
+                    data_azione,
+                    id_partecipante,
+                    id_sottofase,
+                    id_step_operativo,
+                    True,
+                ),
+            )
+
+            if getattr(cursor, "rowcount", 1) == 0:
+                raise RuntimeError("Partecipante step non aggiornato.")
+
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            cursor.close()
+            conn.close()
+
     @staticmethod
     def _identity_from_row(row: Any) -> int:
         if row is None:

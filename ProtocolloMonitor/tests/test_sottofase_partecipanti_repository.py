@@ -27,11 +27,13 @@ class FakeCursor:
         existing_columns=None,
         existing_indexes=None,
         fail_on_insert=False,
+        fail_on_update=False,
     ):
         self.table_exists_value = table_exists
         self.existing_columns = existing_columns or set()
         self.existing_indexes = existing_indexes or set()
         self.fail_on_insert = fail_on_insert
+        self.fail_on_update = fail_on_update
         self.calls = []
         self.rowcount = 1
 
@@ -54,6 +56,8 @@ class FakeCursor:
 
         if query.strip().upper().startswith("INSERT") and self.fail_on_insert:
             raise RuntimeError("insert fallito")
+        if query.strip().upper().startswith("UPDATE") and self.fail_on_update:
+            raise RuntimeError("update fallito")
 
     def fetchone(self):
         return (77,)
@@ -196,6 +200,43 @@ def test_repository_rolls_back_when_insert_fails():
             iniziali="MR",
             note_partecipante=None,
             data_creazione=datetime(2026, 6, 1, 10, 0, 0),
+        )
+
+    assert connection.committed is False
+    assert connection.rolled_back is True
+
+
+def test_repository_completes_step_participant_in_transaction():
+    cursor = FakeCursor(table_exists=True)
+    connection = FakeConnection(cursor)
+    repository = FakeRepository(connection)
+
+    repository.completa_partecipante_step(
+        id_sottofase=5,
+        id_step_operativo=12,
+        id_partecipante=42,
+        data_azione=datetime(2026, 6, 1, 13, 0, 0),
+    )
+
+    assert connection.committed is True
+    assert connection.rolled_back is False
+    assert any(
+        "UPDATE T_SottofasePartecipanti" in call[0]
+        for call in cursor.calls
+    )
+
+
+def test_repository_rolls_back_when_complete_participant_fails():
+    cursor = FakeCursor(table_exists=True, fail_on_update=True)
+    connection = FakeConnection(cursor)
+    repository = FakeRepository(connection)
+
+    with pytest.raises(RuntimeError):
+        repository.completa_partecipante_step(
+            id_sottofase=5,
+            id_step_operativo=12,
+            id_partecipante=42,
+            data_azione=datetime(2026, 6, 1, 13, 0, 0),
         )
 
     assert connection.committed is False

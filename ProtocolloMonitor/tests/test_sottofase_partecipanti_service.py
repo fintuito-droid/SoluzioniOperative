@@ -32,14 +32,17 @@ class FakeRepository:
         fail_completion=False,
         steps=None,
         participants_by_step=None,
+        participants_by_id=None,
     ):
         self.duplicate = duplicate
         self.fail_insert = fail_insert
         self.fail_completion = fail_completion
         self.steps = steps or {}
         self.participants_by_step = participants_by_step or {}
+        self.participants_by_id = participants_by_id or {}
         self.insert_payload = None
         self.completed_payload = None
+        self.completed_participant_payload = None
 
     def list_by_sottofase(self, id_sottofase):
         return []
@@ -61,11 +64,31 @@ class FakeRepository:
         return 42
 
     def get_by_id(self, id_partecipante):
+        if id_partecipante in self.participants_by_id:
+            return self.participants_by_id[id_partecipante]
+
+        if self.insert_payload is None:
+            return None
+
         return {
             "id_partecipante": id_partecipante,
             "nome_visualizzato": self.insert_payload["nome_visualizzato"],
             "iniziali": self.insert_payload["iniziali"],
         }
+
+    def completa_partecipante_step(self, **kwargs):
+        self.completed_participant_payload = kwargs
+        id_partecipante = kwargs["id_partecipante"]
+        participant = self.participants_by_id.get(id_partecipante)
+        if participant is not None:
+            participant["stato_partecipante"] = "COMPLETATO"
+            participant["data_azione"] = kwargs["data_azione"].isoformat(sep=" ")
+            participant["data_modifica"] = kwargs["data_azione"].isoformat(sep=" ")
+
+        for participants in self.participants_by_step.values():
+            for item in participants:
+                if item.get("id_partecipante") == id_partecipante:
+                    item["stato_partecipante"] = "COMPLETATO"
 
     def completa_step_operativo_da_partecipanti(self, **kwargs):
         if self.fail_completion:
@@ -591,3 +614,198 @@ def test_auto_completion_wraps_repository_error():
             id_sottofase=7,
             id_step_operativo=12,
         )
+
+
+def test_complete_step_participant_updates_participant_and_reuses_auto_completion():
+    backups = []
+    repository = FakeRepository(
+        steps={
+            12: {
+                "id_step_operativo": 12,
+                "id_sottofase": 7,
+                "codice_step": "REVISIONA",
+                "stato_step": "IN_CORSO",
+            }
+        },
+        participants_by_id={
+            42: {
+                "id_partecipante": 42,
+                "id_sottofase": 7,
+                "id_step_operativo": 12,
+                "stato_partecipante": "IN_CORSO",
+            }
+        },
+        participants_by_step={
+            12: [
+                {
+                    "id_partecipante": 42,
+                    "stato_partecipante": "IN_CORSO",
+                    "partecipante_obbligatorio": True,
+                }
+            ]
+        },
+    )
+    service = SottofasePartecipantiService(
+        partecipanti_repository=repository,
+        sottofase_documentale_service=FakeSottofaseDocumentaleService(),
+        backup_factory=lambda: backups.append("backup.accdb") or "backup.accdb",
+        now_factory=lambda: datetime(2026, 6, 1, 13, 0, 0),
+    )
+
+    response = service.completa_partecipante_step(
+        id_sottofase=7,
+        id_step_operativo=12,
+        id_partecipante=42,
+    )
+
+    assert response["success"] is True
+    assert response["stato_partecipante"] == "COMPLETATO"
+    assert response["step_completato"] is True
+    assert repository.completed_participant_payload["id_partecipante"] == 42
+    assert repository.completed_payload["id_step_operativo"] == 12
+    assert backups == ["backup.accdb", "backup.accdb"]
+
+
+def test_complete_step_participant_rejects_missing_participant():
+    service = SottofasePartecipantiService(
+        partecipanti_repository=FakeRepository(
+            steps={
+                12: {
+                    "id_step_operativo": 12,
+                    "id_sottofase": 7,
+                    "codice_step": "REVISIONA",
+                }
+            }
+        ),
+        sottofase_documentale_service=FakeSottofaseDocumentaleService(),
+    )
+
+    with pytest.raises(SottofasePartecipantiNotFoundError):
+        service.completa_partecipante_step(
+            id_sottofase=7,
+            id_step_operativo=12,
+            id_partecipante=999,
+        )
+
+
+def test_complete_step_participant_maps_missing_step_to_not_found():
+    service = SottofasePartecipantiService(
+        partecipanti_repository=FakeRepository(),
+        sottofase_documentale_service=FakeSottofaseDocumentaleService(),
+    )
+
+    with pytest.raises(SottofasePartecipantiNotFoundError):
+        service.completa_partecipante_step(
+            id_sottofase=7,
+            id_step_operativo=999,
+            id_partecipante=42,
+        )
+
+
+def test_complete_step_participant_rejects_participant_from_other_step():
+    service = SottofasePartecipantiService(
+        partecipanti_repository=FakeRepository(
+            steps={
+                12: {
+                    "id_step_operativo": 12,
+                    "id_sottofase": 7,
+                    "codice_step": "REVISIONA",
+                }
+            },
+            participants_by_id={
+                42: {
+                    "id_partecipante": 42,
+                    "id_sottofase": 7,
+                    "id_step_operativo": 99,
+                    "stato_partecipante": "ASSEGNATO",
+                }
+            },
+        ),
+        sottofase_documentale_service=FakeSottofaseDocumentaleService(),
+    )
+
+    with pytest.raises(SottofasePartecipantiNotFoundError):
+        service.completa_partecipante_step(
+            id_sottofase=7,
+            id_step_operativo=12,
+            id_partecipante=42,
+        )
+
+
+def test_complete_step_participant_rejects_non_completable_state():
+    service = SottofasePartecipantiService(
+        partecipanti_repository=FakeRepository(
+            steps={
+                12: {
+                    "id_step_operativo": 12,
+                    "id_sottofase": 7,
+                    "codice_step": "REVISIONA",
+                }
+            },
+            participants_by_id={
+                42: {
+                    "id_partecipante": 42,
+                    "id_sottofase": 7,
+                    "id_step_operativo": 12,
+                    "stato_partecipante": "ANNULLATO",
+                }
+            },
+        ),
+        sottofase_documentale_service=FakeSottofaseDocumentaleService(),
+    )
+
+    with pytest.raises(SottofasePartecipantiValidationError):
+        service.completa_partecipante_step(
+            id_sottofase=7,
+            id_step_operativo=12,
+            id_partecipante=42,
+        )
+
+
+def test_complete_optional_participant_does_not_unlock_step():
+    repository = FakeRepository(
+        steps={
+            12: {
+                "id_step_operativo": 12,
+                "id_sottofase": 7,
+                "codice_step": "REVISIONA",
+                "stato_step": "IN_CORSO",
+            }
+        },
+        participants_by_id={
+            42: {
+                "id_partecipante": 42,
+                "id_sottofase": 7,
+                "id_step_operativo": 12,
+                "stato_partecipante": "IN_CORSO",
+            }
+        },
+        participants_by_step={
+            12: [
+                {
+                    "id_partecipante": 41,
+                    "stato_partecipante": "IN_CORSO",
+                    "partecipante_obbligatorio": True,
+                },
+                {
+                    "id_partecipante": 42,
+                    "stato_partecipante": "IN_CORSO",
+                    "partecipante_obbligatorio": False,
+                },
+            ]
+        },
+    )
+    service = SottofasePartecipantiService(
+        partecipanti_repository=repository,
+        sottofase_documentale_service=FakeSottofaseDocumentaleService(),
+        backup_factory=lambda: "backup.accdb",
+    )
+
+    response = service.completa_partecipante_step(
+        id_sottofase=7,
+        id_step_operativo=12,
+        id_partecipante=42,
+    )
+
+    assert response["step_completato"] is False
+    assert repository.completed_payload is None

@@ -2,6 +2,7 @@ import pytest
 from fastapi import HTTPException
 
 from backend.api.routes.protocollo_monitor import (
+    completa_sottofase_step_partecipante,
     crea_sottofase_partecipante,
     get_sottofase_step_partecipanti,
     get_sottofase_partecipanti,
@@ -45,6 +46,26 @@ class FakePartecipantiService:
                 "nome_visualizzato": payload.nomeVisualizzato,
                 "ruolo": payload.ruolo.value,
             },
+        }
+
+    def completa_partecipante_step(
+        self,
+        *,
+        id_sottofase,
+        id_step_operativo,
+        id_partecipante,
+    ):
+        if self.raises:
+            raise self.raises
+
+        return {
+            "success": True,
+            "id_sottofase": id_sottofase,
+            "id_step_operativo": id_step_operativo,
+            "id_partecipante": id_partecipante,
+            "stato_partecipante": "COMPLETATO",
+            "step_completato": True,
+            "sottofase_completata": False,
         }
 
 
@@ -128,6 +149,43 @@ def test_get_sottofase_step_partecipanti_maps_validation_error():
         )
 
     assert exc_info.value.status_code == 400
+
+
+def test_post_completa_sottofase_step_partecipante_returns_response():
+    response = completa_sottofase_step_partecipante(
+        7,
+        12,
+        42,
+        partecipanti_service=FakePartecipantiService(),
+    )
+
+    assert response["success"] is True
+    assert response["stato_partecipante"] == "COMPLETATO"
+    assert response["step_completato"] is True
+
+
+@pytest.mark.parametrize(
+    ("error", "status_code"),
+    [
+        (SottofasePartecipantiNotFoundError("non trovato"), 404),
+        (SottofasePartecipantiValidationError("non completabile"), 400),
+        (SottofasePartecipantiBackupError("backup"), 500),
+        (SottofasePartecipantiWriteError("write"), 500),
+    ],
+)
+def test_post_completa_sottofase_step_partecipante_maps_errors(
+    error,
+    status_code,
+):
+    with pytest.raises(HTTPException) as exc_info:
+        completa_sottofase_step_partecipante(
+            7,
+            12,
+            42,
+            partecipanti_service=FakePartecipantiService(raises=error),
+        )
+
+    assert exc_info.value.status_code == status_code
 
 
 @pytest.mark.parametrize(

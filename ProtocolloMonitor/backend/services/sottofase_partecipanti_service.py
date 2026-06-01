@@ -280,6 +280,113 @@ class SottofasePartecipantiService:
         report["motivo"] = "Step completato automaticamente."
         return report
 
+    def completa_partecipante_step(
+        self,
+        *,
+        id_sottofase: int,
+        id_step_operativo: int,
+        id_partecipante: int,
+    ) -> dict[str, Any]:
+        """Completa un partecipante di step e verifica il completamento step."""
+
+        self._ensure_sottofase_exists(id_sottofase)
+        try:
+            step = self._get_step_or_raise(
+                id_sottofase=id_sottofase,
+                id_step_operativo=id_step_operativo,
+            )
+        except SottofasePartecipantiValidationError as exc:
+            raise SottofasePartecipantiNotFoundError(str(exc))
+        stato_step_iniziale = str(step.get("stato_step") or "").strip() or None
+
+        if self.partecipanti_repository is None:
+            raise SottofasePartecipantiWriteError(
+                "Repository partecipanti non configurato."
+            )
+
+        partecipante = self.partecipanti_repository.get_by_id(id_partecipante)
+        if not partecipante:
+            raise SottofasePartecipantiNotFoundError("Partecipante non trovato.")
+
+        if (
+            self._safe_int(partecipante.get("id_sottofase")) != id_sottofase
+            or self._safe_int(partecipante.get("id_step_operativo"))
+            != id_step_operativo
+        ):
+            raise SottofasePartecipantiNotFoundError(
+                "Partecipante non appartenente allo step indicato."
+            )
+
+        stato_partecipante = (
+            str(partecipante.get("stato_partecipante") or "").strip().upper()
+        )
+        if stato_partecipante in {"COMPLETATO", "COMPLETED"}:
+            raise SottofasePartecipantiValidationError(
+                "Partecipante gia completato."
+            )
+        if stato_partecipante in {"ANNULLATO", "CANCELLED", "RESPINTO"}:
+            raise SottofasePartecipantiValidationError(
+                "Partecipante in stato non completabile."
+            )
+
+        completa_partecipante = getattr(
+            self.partecipanti_repository,
+            "completa_partecipante_step",
+            None,
+        )
+        if completa_partecipante is None:
+            raise SottofasePartecipantiWriteError(
+                "Completamento partecipante non disponibile."
+            )
+
+        backup_path = self._create_backup_or_raise()
+        now = self.now_factory()
+
+        try:
+            completa_partecipante(
+                id_sottofase=id_sottofase,
+                id_step_operativo=id_step_operativo,
+                id_partecipante=id_partecipante,
+                data_azione=now,
+            )
+        except Exception as exc:
+            raise SottofasePartecipantiWriteError(
+                f"Completamento partecipante non riuscito: {exc}"
+            )
+
+        updated = self.partecipanti_repository.get_by_id(id_partecipante) or {
+            **partecipante,
+            "stato_partecipante": "COMPLETATO",
+            "data_azione": self._normalize_datetime(now),
+            "data_modifica": self._normalize_datetime(now),
+        }
+        auto_report = self.verifica_e_completa_step_da_partecipanti(
+            id_sottofase=id_sottofase,
+            id_step_operativo=id_step_operativo,
+        )
+
+        return {
+            "success": True,
+            "id_sottofase": id_sottofase,
+            "id_step_operativo": id_step_operativo,
+            "id_partecipante": id_partecipante,
+            "stato_partecipante": "COMPLETATO",
+            "partecipante": updated,
+            "stato_step": (
+                "COMPLETATO"
+                if auto_report.get("step_completato")
+                or auto_report.get("step_gia_completato")
+                else stato_step_iniziale
+            ),
+            "step_completato": auto_report.get("step_completato", False),
+            "sottofase_completata": auto_report.get(
+                "sottofase_completata",
+                False,
+            ),
+            "backup_creato": str(backup_path),
+            "auto_completamento_step": auto_report,
+        }
+
     def _get_step_or_raise(
         self,
         *,
@@ -319,6 +426,17 @@ class SottofasePartecipantiService:
             )
 
         return step
+
+    @staticmethod
+    def _safe_int(value: Any) -> int | None:
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return None
+
+    @staticmethod
+    def _normalize_datetime(value: datetime) -> str:
+        return value.isoformat(sep=" ")
 
     @staticmethod
     def _validate_ruolo_coerente_con_step(

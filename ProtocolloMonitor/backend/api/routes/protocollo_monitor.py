@@ -672,6 +672,32 @@ def get_sottofase_step_partecipanti(
         raise HTTPException(status_code=400, detail=str(exc))
 
 
+@router.post(
+    "/protocollo-monitor/sottofasi/{id_sottofase}/step/{id_step}/"
+    "partecipanti/{id_partecipante}/completa"
+)
+def completa_sottofase_step_partecipante(
+    id_sottofase: int,
+    id_step: int,
+    id_partecipante: int,
+    partecipanti_service: Any = Depends(get_sottofase_partecipanti_service),
+):
+    try:
+        return partecipanti_service.completa_partecipante_step(
+            id_sottofase=id_sottofase,
+            id_step_operativo=id_step,
+            id_partecipante=id_partecipante,
+        )
+    except SottofasePartecipantiNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except SottofasePartecipantiValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except SottofasePartecipantiBackupError as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    except SottofasePartecipantiWriteError as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
 @router.get("/protocollo-monitor/sottofase-documenti/{id_documento}/apri")
 def apri_sottofase_documento(
     id_documento: int,

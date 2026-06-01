@@ -1938,12 +1938,151 @@ Risultato test mirati:
 - Non esiste ancora audit strutturato per il completamento automatico: resta
   previsto nello Step 30L-29.
 
+## Step 30L-29 - Endpoint backend completamento partecipante
+
+Questo step espone la logica operativa per segnare un partecipante collegato a
+uno step timeline come `COMPLETATO` e, subito dopo, richiamare la verifica di
+completamento automatico dello step introdotta nello Step 30L-28.
+
+### Endpoint aggiunto
+
+```text
+POST /protocollo-monitor/sottofasi/{id_sottofase}/step/{id_step}/partecipanti/{id_partecipante}/completa
+```
+
+Responsabilita:
+
+1. verificare che la sottofase esista;
+2. verificare che lo step operativo esista e appartenga alla sottofase;
+3. verificare che il partecipante esista;
+4. verificare che il partecipante appartenga allo stesso step;
+5. rifiutare partecipanti gia completati, annullati o respinti;
+6. creare backup Access prima della scrittura runtime;
+7. aggiornare `StatoPartecipante = COMPLETATO`;
+8. valorizzare `DataAzione` e `DataModifica`;
+9. richiamare `verifica_e_completa_step_da_partecipanti(...)`;
+10. restituire lo stato del partecipante, l'esito dello step e l'eventuale
+    completamento della sottofase.
+
+### Schema Access
+
+Nessuna modifica schema necessaria.
+
+Campi gia disponibili e riutilizzati:
+
+- `T_SottofasePartecipanti.StatoPartecipante`;
+- `T_SottofasePartecipanti.DataAzione`;
+- `T_SottofasePartecipanti.DataModifica`;
+- `T_SottofasePartecipanti.IDStepOperativo`;
+- `T_SottofasePartecipanti.PartecipanteObbligatorio`.
+
+Backup schema:
+
+- nessun backup schema creato, perche non sono stati aggiunti campi, tabelle o
+  indici;
+- il service crea comunque backup Access preventivo prima delle scritture
+  runtime sul partecipante;
+- se la verifica automatica completa anche lo step, viene riutilizzato il backup
+  preventivo previsto dalla logica dello Step 30L-28.
+
+### Logica backend
+
+Metodo service aggiunto:
+
+```text
+completa_partecipante_step(id_sottofase, id_step_operativo, id_partecipante)
+```
+
+Metodo repository aggiunto:
+
+```text
+completa_partecipante_step(...)
+```
+
+La scrittura repository e transazionale:
+
+- `commit` se l'update del partecipante riesce;
+- `rollback` in caso di errore;
+- nessuna duplicazione della logica di completamento step.
+
+La logica di completamento step resta centralizzata in:
+
+```text
+verifica_e_completa_step_da_partecipanti(...)
+```
+
+### Gestione errori
+
+| Caso | Esito |
+| --- | --- |
+| Sottofase non trovata | `404` |
+| Step inesistente o non coerente con sottofase | `404` |
+| Partecipante inesistente | `404` |
+| Partecipante non appartenente allo step | `404` |
+| Partecipante gia completato | `400` |
+| Partecipante annullato o respinto | `400` |
+| Backup non riuscito | `500` |
+| Errore imprevisto di scrittura | `500` |
+
+### Risposta endpoint
+
+La risposta contiene:
+
+- `success`;
+- `id_sottofase`;
+- `id_step_operativo`;
+- `id_partecipante`;
+- `stato_partecipante`;
+- `partecipante`;
+- `stato_step`;
+- `step_completato`;
+- `sottofase_completata`;
+- `backup_creato`;
+- `auto_completamento_step`.
+
+### Test
+
+Test aggiunti o aggiornati per:
+
+- completamento partecipante valido;
+- partecipante inesistente;
+- partecipante non appartenente allo step;
+- partecipante in stato non completabile;
+- completamento ultimo obbligatorio con completamento automatico step;
+- partecipante facoltativo che non sblocca lo step;
+- endpoint con risposta valida;
+- mapping errori endpoint;
+- transazione repository su update partecipante;
+- rollback repository su errore update.
+
+### File modificati
+
+- `backend/api/routes/protocollo_monitor.py`;
+- `backend/repositories/sottofase_partecipanti_repository.py`;
+- `backend/services/sottofase_partecipanti_service.py`;
+- `tests/test_sottofase_partecipanti_endpoint.py`;
+- `tests/test_sottofase_partecipanti_repository.py`;
+- `tests/test_sottofase_partecipanti_service.py`;
+- `ROADMAP_PROTOCOLLOMONITOR.md`.
+
+### Rischi e limiti
+
+- La chiamata puo generare due backup runtime: uno prima di completare il
+  partecipante e uno, solo se necessario, prima di completare automaticamente lo
+  step. In futuro si puo valutare un'unica transazione applicativa coordinata.
+- Lo step inesistente viene classificato come `404` in questo endpoint, pur
+  riusando internamente le validazioni gia presenti nello Step 30L-27.
+- Non e ancora presente un audit strutturato dell'evento: resta demandato allo
+  step dedicato ad audit e storico timeline.
+- Il frontend non e stato modificato: l'endpoint e pronto per integrazione
+  futura.
+
 ## 14. Prossima tabella di marcia
 
 | Prossimo step | Obiettivo | Note prudenziali |
 | --- | --- | --- |
-| Step 30L-29 | Audit e storico timeline. | Progettare eventi di audit prima di attivare modifiche strutturali reali. |
-| Step 30L-30 | Implementazione UI timeline dinamica. | Tradurre regole di inserimento, annullamento e riordino in controlli frontend sicuri. |
+| Step 30L-30 | Audit e storico timeline. | Progettare eventi di audit prima di attivare modifiche strutturali reali. |
+| Step 30L-31 | Implementazione UI timeline dinamica. | Tradurre regole di inserimento, annullamento e riordino in controlli frontend sicuri. |
 
 ## 15. Punti non ricostruibili automaticamente
 
