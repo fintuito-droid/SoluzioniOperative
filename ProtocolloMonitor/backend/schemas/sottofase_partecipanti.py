@@ -49,6 +49,7 @@ class SottofasePartecipantePayload(BaseModel):
     email: str | None = Field(default=None, max_length=255)
     ruolo: RuoloPartecipanteSottofase
     statoPartecipante: StatoPartecipanteSottofase
+    partecipanteObbligatorio: bool = True
     ordine: int | None = None
     coloreAvatar: str | None = Field(default=None, max_length=20)
     iniziali: str | None = Field(default=None, max_length=10)

@@ -74,7 +74,7 @@ Vista Vue
 | `L_CatalogoSottofasi` | Catalogo riusabile per aggiungere sottofasi. | `IDCatalogoSottofase`, `CodiceSottofase`, `Titolo`, `Descrizione`, `Icona`, `Colore`, `Categoria`, `OrdineDefault`, `Attivo`. | Riferimento opzionale da `T_ProcedimentoSottofasi.IDCatalogoSottofase`. | Gia usata per tendina/avatar e dati reali. |
 | `T_SottofaseDocumenti` | Storico versionato dei documenti collegati a una sottofase. | `IDDocumentoSottofase`, `IDSottofase`, `TipoDocumento`, `NomeFile`, `Estensione`, `PercorsoDocumento`, `MimeType`, `DimensioneBytes`, `HashFile`, `VersioneDocumento`, `DataCollegamento`, `UtenteCollegamento`, `Attivo`. | Figlia logica di `T_ProcedimentoSottofasi`; puo essere documento corrente della sottofase. | Gia usata in read-only, apertura documento e upload Word. |
 | `T_SottofaseStepOperativi` | Storico degli step interni della sottofase documentale. | `IDStepSottofase`, `IDSottofase`, `CodiceStep`, `Ordine`, `StatoStep`, `DataAvvio`, `DataCompletamento`, `NoteStep`, `UtenteAssegnato`, `UtenteCompletamento`, `IDDocumentoSottofase`, `VersioneDocumento`. | Figlia logica di `T_ProcedimentoSottofasi`; storico REDIGI/FIRMA/etc. | Gia usata per workflow e azioni reali. |
-| `T_SottofasePartecipanti` | Partecipanti assegnati a una sottofase o a uno step timeline. | `IDPartecipante`, `IDSottofase`, `IDStepOperativo`, `IDUtente`, `NomeVisualizzato`, `Email`, `Ruolo`, `StatoPartecipante`, `Ordine`, `ColoreAvatar`, `Iniziali`, date, note, `Attivo`. | Figlia logica di `T_ProcedimentoSottofasi`; `IDStepOperativo` opzionale collega il partecipante a uno step in `T_SottofaseStepOperativi`. | Creata Step 30L-22, estesa Step 30L-27 con backup. |
+| `T_SottofasePartecipanti` | Partecipanti assegnati a una sottofase o a uno step timeline. | `IDPartecipante`, `IDSottofase`, `IDStepOperativo`, `IDUtente`, `NomeVisualizzato`, `Email`, `Ruolo`, `StatoPartecipante`, `PartecipanteObbligatorio`, `Ordine`, `ColoreAvatar`, `Iniziali`, date, note, `Attivo`. | Figlia logica di `T_ProcedimentoSottofasi`; `IDStepOperativo` opzionale collega il partecipante a uno step in `T_SottofaseStepOperativi`. | Creata Step 30L-22, estesa Step 30L-27 e Step 30L-28 con backup. |
 | `T_Documenti` | Tabella documentale legacy/predisposta. | Dipende dallo schema Access esistente; usata in modo prudente da `DocumentoRepository`. | Relazione indiretta con protocolli tramite path documento. | Coinvolta ma non centrale nel nuovo workflow. |
 
 ## 4. Campi aggiunti o usati
@@ -281,6 +281,7 @@ Test automatici principali:
 | Step 30L-20 | Avvio automatico helper locali | Aggiornato batch locale per avviare backend FastAPI, frontend Vue, server Flask Grisu e helper Apri con Word; aggiunto health check helper. | `Python/Avvia_ProtocolloMonitor.bat`, `Python/open_word_helper.py`, roadmap. | Completato. | Da commit. |
 | Step 30L-22 | Partecipanti sottofase | Creata tabella `T_SottofasePartecipanti`, repository/service/schema Pydantic, endpoint GET/POST, validazioni e test. | `sottofase_partecipanti_*`, router, dependency container, test, roadmap. | Completato. | Da commit. |
 | Step 30L-27 | Partecipanti collegati allo step | Estesa `T_SottofasePartecipanti` con `IDStepOperativo`, validazioni step/sottofase/ruolo, endpoint GET per partecipanti step e test. | `sottofase_partecipanti_*`, router, test, roadmap. | Completato. | Da commit. |
+| Step 30L-28 | Completamento automatico guidato dai partecipanti | Aggiunto `PartecipanteObbligatorio`, funzione backend di verifica/completamento step, update step e sottofase se tutti gli step sono chiusi, test. | `sottofase_partecipanti_*`, test, roadmap. | Completato. | Da commit. |
 
 ## 13. Decisioni architetturali importanti
 
@@ -1766,11 +1767,181 @@ Risultato test mirati:
 - Il vincolo referenziale non e stato introdotto come FK Access: la coerenza e
   garantita dal backend.
 
+## Step 30L-28 – Completamento automatico guidato dai partecipanti
+
+Questo step implementa la prima logica backend per completare automaticamente
+uno step operativo quando tutti i partecipanti obbligatori collegati allo step
+risultano completati.
+
+### Analisi campi disponibili
+
+Tabelle coinvolte:
+
+- `T_SottofasePartecipanti`;
+- `T_SottofaseStepOperativi`;
+- `T_ProcedimentoSottofasi`.
+
+Campi gia disponibili:
+
+- `T_SottofasePartecipanti.IDStepOperativo`;
+- `T_SottofasePartecipanti.StatoPartecipante`;
+- `T_SottofasePartecipanti.Attivo`;
+- `T_SottofaseStepOperativi.StatoStep`;
+- `T_SottofaseStepOperativi.DataCompletamento`;
+- `T_ProcedimentoSottofasi.StatoSottofase`;
+- `T_ProcedimentoSottofasi.DataCompletamento`.
+
+Campo mancante individuato:
+
+- distinzione tra partecipante obbligatorio e partecipante facoltativo.
+
+### Modifica schema Access
+
+Campo aggiunto a `T_SottofasePartecipanti`:
+
+- `PartecipanteObbligatorio YESNO`.
+
+Significato:
+
+- `True`: il partecipante e bloccante per il completamento automatico dello step;
+- `False`: il partecipante e informativo/facoltativo e non blocca lo step.
+
+Compatibilita:
+
+- per i record esistenti o con valore nullo, il backend interpreta il
+  partecipante come obbligatorio;
+- nessun dato reale e stato popolato automaticamente.
+
+Backup Access creato prima della modifica schema:
+
+```text
+C:\Users\fintu\CloudVVF\Documents\Sviluppo\Grisu\Backup\ProtocolloMonitor_BACKUP_20260601_125227.accdb
+```
+
+Esito schema:
+
+- tabella `T_SottofasePartecipanti` gia esistente;
+- campo `PartecipanteObbligatorio` aggiunto;
+- nessun indice aggiunto.
+
+### Funzione backend
+
+Funzione aggiunta nel service partecipanti:
+
+```text
+verifica_e_completa_step_da_partecipanti(id_sottofase, id_step_operativo)
+```
+
+Responsabilita:
+
+1. verificare che la sottofase esista;
+2. verificare che lo step operativo esista e appartenga alla sottofase;
+3. leggere i partecipanti attivi collegati allo step;
+4. distinguere partecipanti obbligatori e facoltativi;
+5. verificare che esista almeno un partecipante obbligatorio;
+6. verificare che tutti gli obbligatori siano `COMPLETATO`;
+7. se la condizione e soddisfatta, creare backup Access;
+8. marcare lo step come `COMPLETATO`;
+9. valorizzare `DataCompletamento` e `DataModifica`;
+10. se tutti gli step della sottofase sono completati o annullati, marcare la
+    sottofase come `COMPLETATA`.
+
+Partecipanti facoltativi:
+
+- vengono conteggiati nel report;
+- non bloccano il completamento automatico.
+
+### Scritture controllate
+
+Repository aggiornato con:
+
+```text
+completa_step_operativo_da_partecipanti(...)
+```
+
+Scritture eseguite in transazione:
+
+- `UPDATE T_SottofaseStepOperativi`
+  - `StatoStep = COMPLETATO`;
+  - `DataCompletamento`;
+  - `DataModifica`;
+- eventuale `UPDATE T_ProcedimentoSottofasi`
+  - `StatoSottofase = COMPLETATA`;
+  - `DataCompletamento`;
+  - `DataUltimaAzione`;
+  - `DataModifica`.
+
+In caso di errore viene eseguito rollback.
+
+### Regole implementate
+
+| Caso | Esito |
+| --- | --- |
+| Nessun partecipante obbligatorio collegato allo step | Nessun completamento automatico. |
+| Alcuni obbligatori non completati | Nessun completamento automatico. |
+| Tutti gli obbligatori completati | Step marcato `COMPLETATO`. |
+| Partecipanti facoltativi non completati | Non bloccano lo step. |
+| Step gia completato | Nessuna nuova scrittura. |
+| Tutti gli step della sottofase completati o annullati | Sottofase marcata `COMPLETATA`. |
+
+### File modificati
+
+- `backend/schemas/sottofase_partecipanti.py`;
+- `backend/repositories/sottofase_partecipanti_repository.py`;
+- `backend/services/sottofase_partecipanti_service.py`;
+- `tests/test_sottofase_partecipanti_repository.py`;
+- `tests/test_sottofase_partecipanti_service.py`;
+- `ROADMAP_PROTOCOLLOMONITOR.md`.
+
+File creati: nessuno.
+
+Endpoint modificati o aggiunti: nessuno.
+
+### Test
+
+Test aggiornati o aggiunti per:
+
+- campo `PartecipanteObbligatorio` aggiunto se assente;
+- POST partecipante con default obbligatorio;
+- completamento non eseguito senza obbligatori;
+- completamento non eseguito se non tutti gli obbligatori sono completati;
+- completamento eseguito se tutti gli obbligatori sono completati;
+- partecipanti facoltativi non bloccanti;
+- step gia completato senza nuova scrittura;
+- wrapping errore repository in errore di scrittura controllato.
+
+Risultato test mirati:
+
+```text
+38 passed
+```
+
+### Test manuali consigliati
+
+- Creare uno step `REVISIONA` con due revisori obbligatori e un osservatore
+  facoltativo.
+- Portare un solo revisore a `COMPLETATO` e verificare che lo step resti non
+  completato.
+- Portare tutti i revisori obbligatori a `COMPLETATO` e verificare il
+  completamento automatico dello step.
+- Verificare che un partecipante facoltativo non completato non blocchi lo step.
+- Verificare che la sottofase venga marcata `COMPLETATA` solo quando tutti gli
+  step sono completati o annullati.
+- Verificare rollback simulando errore durante update step.
+
+### Punti dubbi
+
+- La funzione non e ancora esposta da endpoint: andra collegata allo step che
+  aggiornera lo stato partecipante.
+- La regola "tutti gli step completati o annullati" usa lo stato esistente degli
+  step; eventuali stati futuri dovranno essere mappati esplicitamente.
+- Non esiste ancora audit strutturato per il completamento automatico: resta
+  previsto nello Step 30L-29.
+
 ## 14. Prossima tabella di marcia
 
 | Prossimo step | Obiettivo | Note prudenziali |
 | --- | --- | --- |
-| Step 30L-28 | Completamento automatico guidato dai partecipanti. | Definire quorum, obbligatorieta, respingimenti e richieste integrazione prima delle automazioni. |
 | Step 30L-29 | Audit e storico timeline. | Progettare eventi di audit prima di attivare modifiche strutturali reali. |
 | Step 30L-30 | Implementazione UI timeline dinamica. | Tradurre regole di inserimento, annullamento e riordino in controlli frontend sicuri. |
 

@@ -119,7 +119,7 @@ def test_ensure_schema_does_not_recreate_existing_table_or_indexes():
     }
     cursor = FakeCursor(
         table_exists=True,
-        existing_columns={"IDStepOperativo"},
+        existing_columns={"IDStepOperativo", "PartecipanteObbligatorio"},
         existing_indexes=existing_indexes,
     )
     connection = FakeConnection(cursor)
@@ -142,9 +142,13 @@ def test_ensure_schema_adds_step_field_and_index_when_missing():
     result = repository.ensure_schema()
 
     assert result["table_created"] is False
-    assert result["columns_added"] == ["IDStepOperativo"]
+    assert result["columns_added"] == ["IDStepOperativo", "PartecipanteObbligatorio"]
     assert "IX_T_SottofasePartecipanti_IDStepOperativo" in result["indexes_created"]
     assert any("ADD COLUMN IDStepOperativo" in call[0] for call in cursor.calls)
+    assert any(
+        "ADD COLUMN PartecipanteObbligatorio" in call[0]
+        for call in cursor.calls
+    )
 
 
 def test_repository_inserts_participant_in_transaction():
@@ -159,6 +163,7 @@ def test_repository_inserts_participant_in_transaction():
         email="mario.rossi@example.it",
         ruolo="REVISORE",
         stato_partecipante="ASSEGNATO",
+        partecipante_obbligatorio=True,
         ordine=1,
         colore_avatar="#1976D2",
         iniziali="MR",
@@ -182,10 +187,11 @@ def test_repository_rolls_back_when_insert_fails():
                 id_sottofase=5,
                 id_step_operativo=None,
                 nome_visualizzato="Mario Rossi",
-            email="mario.rossi@example.it",
-            ruolo="REVISORE",
-            stato_partecipante="ASSEGNATO",
-            ordine=1,
+                email="mario.rossi@example.it",
+                ruolo="REVISORE",
+                stato_partecipante="ASSEGNATO",
+                partecipante_obbligatorio=True,
+                ordine=1,
             colore_avatar="#1976D2",
             iniziali="MR",
             note_partecipante=None,

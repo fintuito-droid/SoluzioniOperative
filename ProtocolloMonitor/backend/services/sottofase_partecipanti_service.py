@@ -154,6 +154,9 @@ class SottofasePartecipantiService:
                 email=email,
                 ruolo=ruolo,
                 stato_partecipante=normalized_payload.statoPartecipante.value,
+                partecipante_obbligatorio=(
+                    normalized_payload.partecipanteObbligatorio
+                ),
                 ordine=normalized_payload.ordine,
                 colore_avatar=normalized_payload.coloreAvatar,
                 iniziali=iniziali,
@@ -179,6 +182,9 @@ class SottofasePartecipantiService:
                 "email": email,
                 "ruolo": ruolo,
                 "stato_partecipante": normalized_payload.statoPartecipante.value,
+                "partecipante_obbligatorio": (
+                    normalized_payload.partecipanteObbligatorio
+                ),
                 "ordine": normalized_payload.ordine,
                 "colore_avatar": normalized_payload.coloreAvatar,
                 "iniziali": iniziali,
@@ -186,6 +192,93 @@ class SottofasePartecipantiService:
             },
             "backup_creato": str(backup_path),
         }
+
+    def verifica_e_completa_step_da_partecipanti(
+        self,
+        *,
+        id_sottofase: int,
+        id_step_operativo: int,
+    ) -> dict[str, Any]:
+        """Completa uno step se tutti i partecipanti obbligatori sono completati."""
+
+        self._ensure_sottofase_exists(id_sottofase)
+        step = self._get_step_or_raise(
+            id_sottofase=id_sottofase,
+            id_step_operativo=id_step_operativo,
+        )
+
+        stato_step = str(step.get("stato_step") or "").strip().upper()
+        partecipanti = self.list_partecipanti_by_step(
+            id_sottofase=id_sottofase,
+            id_step_operativo=id_step_operativo,
+        )
+        obbligatori = [
+            partecipante
+            for partecipante in partecipanti
+            if partecipante.get("partecipante_obbligatorio", True)
+        ]
+        obbligatori_completati = [
+            partecipante
+            for partecipante in obbligatori
+            if str(partecipante.get("stato_partecipante") or "").strip().upper()
+            == "COMPLETATO"
+        ]
+        facoltativi = [
+            partecipante
+            for partecipante in partecipanti
+            if not partecipante.get("partecipante_obbligatorio", True)
+        ]
+
+        report = {
+            "id_sottofase": id_sottofase,
+            "id_step_operativo": id_step_operativo,
+            "step_gia_completato": stato_step in {"COMPLETATO", "COMPLETED"},
+            "partecipanti_obbligatori": len(obbligatori),
+            "partecipanti_obbligatori_completati": len(obbligatori_completati),
+            "partecipanti_facoltativi": len(facoltativi),
+            "step_completato": False,
+            "sottofase_completata": False,
+            "backup_creato": None,
+            "motivo": "",
+        }
+
+        if report["step_gia_completato"]:
+            report["motivo"] = "Step gia completato."
+            return report
+
+        if not obbligatori:
+            report["motivo"] = "Nessun partecipante obbligatorio collegato allo step."
+            return report
+
+        if len(obbligatori) != len(obbligatori_completati):
+            report["motivo"] = "Partecipanti obbligatori non ancora tutti completati."
+            return report
+
+        if self.partecipanti_repository is None:
+            raise SottofasePartecipantiWriteError(
+                "Repository partecipanti non configurato."
+            )
+
+        backup_path = self._create_backup_or_raise()
+        now = self.now_factory()
+
+        try:
+            completion_result = (
+                self.partecipanti_repository.completa_step_operativo_da_partecipanti(
+                    id_sottofase=id_sottofase,
+                    id_step_operativo=id_step_operativo,
+                    data_completamento=now,
+                )
+            )
+        except Exception as exc:
+            raise SottofasePartecipantiWriteError(
+                f"Completamento automatico step non riuscito: {exc}"
+            )
+
+        report.update(completion_result)
+        report["backup_creato"] = str(backup_path)
+        report["motivo"] = "Step completato automaticamente."
+        return report
 
     def _get_step_or_raise(
         self,

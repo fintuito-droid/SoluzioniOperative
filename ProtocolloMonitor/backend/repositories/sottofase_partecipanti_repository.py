@@ -51,6 +51,9 @@ class SottofasePartecipantiRepository(BaseRepository):
             "stato_partecipante": cls._normalize_value(
                 cls._get(row, "StatoPartecipante")
             ),
+            "partecipante_obbligatorio": bool(
+                cls._get(row, "PartecipanteObbligatorio", True)
+            ),
             "ordine": cls._normalize_value(cls._get(row, "Ordine")),
             "colore_avatar": cls._normalize_value(cls._get(row, "ColoreAvatar")),
             "iniziali": cls._normalize_value(cls._get(row, "Iniziali")),
@@ -91,6 +94,7 @@ class SottofasePartecipantiRepository(BaseRepository):
                         Email TEXT(255) NULL,
                         Ruolo TEXT(50) NOT NULL,
                         StatoPartecipante TEXT(50) NOT NULL,
+                        PartecipanteObbligatorio YESNO,
                         Ordine SHORT NULL,
                         ColoreAvatar TEXT(20) NULL,
                         Iniziali TEXT(10) NULL,
@@ -111,6 +115,16 @@ class SottofasePartecipantiRepository(BaseRepository):
                     "ADD COLUMN IDStepOperativo LONG NULL"
                 )
                 added_columns.append("IDStepOperativo")
+
+            if (
+                not created_table
+                and not self.column_exists(cursor, "PartecipanteObbligatorio")
+            ):
+                cursor.execute(
+                    f"ALTER TABLE {TABLE_NAME} "
+                    "ADD COLUMN PartecipanteObbligatorio YESNO"
+                )
+                added_columns.append("PartecipanteObbligatorio")
 
             for index_name, field_name in (
                 ("IX_T_SottofasePartecipanti_IDSottofase", "IDSottofase"),
@@ -216,6 +230,7 @@ class SottofasePartecipantiRepository(BaseRepository):
                 Email,
                 Ruolo,
                 StatoPartecipante,
+                PartecipanteObbligatorio,
                 Ordine,
                 ColoreAvatar,
                 Iniziali,
@@ -253,6 +268,7 @@ class SottofasePartecipantiRepository(BaseRepository):
                 Email,
                 Ruolo,
                 StatoPartecipante,
+                PartecipanteObbligatorio,
                 Ordine,
                 ColoreAvatar,
                 Iniziali,
@@ -374,6 +390,7 @@ class SottofasePartecipantiRepository(BaseRepository):
                 Email,
                 Ruolo,
                 StatoPartecipante,
+                PartecipanteObbligatorio,
                 Ordine,
                 ColoreAvatar,
                 Iniziali,
@@ -409,6 +426,7 @@ class SottofasePartecipantiRepository(BaseRepository):
         email: str | None,
         ruolo: str,
         stato_partecipante: str,
+        partecipante_obbligatorio: bool,
         ordine: int | None,
         colore_avatar: str | None,
         iniziali: str,
@@ -426,6 +444,7 @@ class SottofasePartecipantiRepository(BaseRepository):
                 Email,
                 Ruolo,
                 StatoPartecipante,
+                PartecipanteObbligatorio,
                 Ordine,
                 ColoreAvatar,
                 Iniziali,
@@ -436,7 +455,7 @@ class SottofasePartecipantiRepository(BaseRepository):
                 DataCreazione,
                 DataModifica
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
 
         conn = self._open_access_connection()
@@ -453,6 +472,7 @@ class SottofasePartecipantiRepository(BaseRepository):
                     email,
                     ruolo,
                     stato_partecipante,
+                    partecipante_obbligatorio,
                     ordine,
                     colore_avatar,
                     iniziali,
@@ -493,3 +513,103 @@ class SottofasePartecipantiRepository(BaseRepository):
             raise RuntimeError("ID partecipante non leggibile da Access.")
 
         return int(value)
+
+    def completa_step_operativo_da_partecipanti(
+        self,
+        *,
+        id_sottofase: int,
+        id_step_operativo: int,
+        data_completamento: datetime,
+    ) -> dict[str, Any]:
+        """Marca lo step come completato e chiude la sottofase se tutti gli step sono chiusi."""
+
+        conn = self._open_access_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute(
+                """
+                UPDATE T_SottofaseStepOperativi
+                SET
+                    StatoStep = ?,
+                    DataCompletamento = ?,
+                    DataModifica = ?
+                WHERE IDStepSottofase = ?
+                  AND IDSottofase = ?
+                """,
+                (
+                    "COMPLETATO",
+                    data_completamento,
+                    data_completamento,
+                    id_step_operativo,
+                    id_sottofase,
+                ),
+            )
+
+            if getattr(cursor, "rowcount", 1) == 0:
+                raise RuntimeError("Step operativo non aggiornato.")
+
+            sottofase_completata = False
+            if self._all_steps_completed_or_cancelled(
+                cursor=cursor,
+                id_sottofase=id_sottofase,
+            ):
+                cursor.execute(
+                    """
+                    UPDATE T_ProcedimentoSottofasi
+                    SET
+                        StatoSottofase = ?,
+                        DataCompletamento = ?,
+                        DataUltimaAzione = ?,
+                        DataModifica = ?
+                    WHERE IDSottofase = ?
+                    """,
+                    (
+                        "COMPLETATA",
+                        data_completamento,
+                        data_completamento,
+                        data_completamento,
+                        id_sottofase,
+                    ),
+                )
+                sottofase_completata = getattr(cursor, "rowcount", 1) != 0
+
+            conn.commit()
+            return {
+                "step_completato": True,
+                "sottofase_completata": sottofase_completata,
+            }
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            cursor.close()
+            conn.close()
+
+    def _all_steps_completed_or_cancelled(
+        self,
+        *,
+        cursor: Any,
+        id_sottofase: int,
+    ) -> bool:
+        """Verifica se tutti gli step della sottofase sono completati o annullati."""
+
+        cursor.execute(
+            """
+            SELECT StatoStep
+            FROM T_SottofaseStepOperativi
+            WHERE IDSottofase = ?
+            """,
+            (id_sottofase,),
+        )
+        rows = cursor.fetchall()
+
+        if not rows:
+            return False
+
+        for row in rows:
+            stato = str(self._get(row, "StatoStep", "") or "").strip().upper()
+            if stato not in {"COMPLETATO", "COMPLETED", "CANCELLED", "ANNULLATO"}:
+                return False
+
+        return True
