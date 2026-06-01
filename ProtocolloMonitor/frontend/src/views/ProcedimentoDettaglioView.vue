@@ -178,7 +178,7 @@
                     variant="tonal"
                     density="compact"
                     prepend-icon="mdi-plus"
-                    @click="aggiungiFaseLocale"
+                    @click="apriDialogNuovaFase"
                   >
                     Aggiungi fase
                   </v-btn>
@@ -235,6 +235,13 @@
                         <strong>{{ fase.titolo }}</strong>
 
                         <div class="d-flex align-center ga-2">
+                          <v-btn
+                            icon="mdi-pencil"
+                            size="x-small"
+                            variant="text"
+                            @click.stop="apriDialogModificaFase(fase)"
+                          />
+
                           <v-chip
                             color="indigo"
                             size="x-small"
@@ -290,12 +297,21 @@
                   {{ faseSelezionata.titolo }}
                 </span>
 
-                <v-chip
-                  :color="coloreStatoWorkflow(faseSelezionata.stato)"
-                  variant="flat"
-                >
-                  {{ labelStatoWorkflow(faseSelezionata.stato) }}
-                </v-chip>
+                <div class="d-flex align-center ga-2">
+                  <v-btn
+                    icon="mdi-pencil"
+                    size="small"
+                    variant="text"
+                    @click="apriDialogModificaFase(faseSelezionata)"
+                  />
+
+                  <v-chip
+                    :color="coloreStatoWorkflow(faseSelezionata.stato)"
+                    variant="flat"
+                  >
+                    {{ labelStatoWorkflow(faseSelezionata.stato) }}
+                  </v-chip>
+                </div>
               </v-card-title>
 
               <v-divider class="mb-4" />
@@ -627,6 +643,75 @@
     </v-card>
 
     <v-dialog
+      v-model="dialogFase"
+      max-width="640"
+      persistent
+    >
+      <v-card rounded="xl">
+        <v-card-title class="text-subtitle-1 font-weight-bold">
+          {{ faseDialogMode === 'create' ? 'Aggiungi fase' : 'Modifica fase' }}
+        </v-card-title>
+
+        <v-card-text>
+          <v-alert
+            v-if="erroreFaseDialog"
+            type="error"
+            variant="tonal"
+            density="compact"
+            class="mb-4"
+          >
+            {{ erroreFaseDialog }}
+          </v-alert>
+
+          <v-form ref="faseFormRef">
+            <v-text-field
+              v-model="faseForm.Titolo"
+              label="Titolo fase"
+              variant="outlined"
+              density="compact"
+              :rules="[regoleFase.titolo]"
+              autofocus
+            />
+
+            <v-textarea
+              v-model="faseForm.Descrizione"
+              label="Descrizione"
+              variant="outlined"
+              rows="3"
+              auto-grow
+            />
+          </v-form>
+        </v-card-text>
+
+        <v-card-actions class="justify-end">
+          <v-btn
+            variant="text"
+            :disabled="salvataggioFaseInCorso"
+            @click="chiudiDialogFase"
+          >
+            Annulla
+          </v-btn>
+          <v-btn
+            color="primary"
+            variant="flat"
+            :loading="salvataggioFaseInCorso"
+            @click="salvaFase"
+          >
+            Salva
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <v-snackbar
+      v-model="snackbarFase"
+      color="success"
+      timeout="3000"
+    >
+      {{ messaggioFase }}
+    </v-snackbar>
+
+    <v-dialog
       v-model="dialogEliminaSottofase"
       max-width="460"
     >
@@ -668,16 +753,18 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import {
   countProtocolliProcedimento,
+  createFaseProcedimento,
   getProcedimento,
   listCatalogoSottofasi,
   listFasiProcedimento,
   listProtocolliProcedimento,
-  listSottofasiFase
+  listSottofasiFase,
+  updateFaseProcedimento
 } from '../services/procedimentoApi'
 import SottofaseDocumentaleCard from '../components/procedimenti/SottofaseDocumentaleCard.vue'
 import WorkflowSottofaseCard from '../components/procedimenti/WorkflowSottofaseCard.vue'
@@ -705,6 +792,22 @@ const sottofaseDaEliminare = ref(null)
 const dialogEliminaSottofase = ref(false)
 const modalitaLavorazione = ref(false)
 const refreshSottofaseKey = ref(0)
+const dialogFase = ref(false)
+const faseDialogMode = ref('create')
+const faseInModificaId = ref(null)
+const faseFormRef = ref(null)
+const salvataggioFaseInCorso = ref(false)
+const erroreFaseDialog = ref('')
+const snackbarFase = ref(false)
+const messaggioFase = ref('')
+const faseForm = reactive({
+  Titolo: '',
+  Descrizione: ''
+})
+
+const regoleFase = {
+  titolo: (value) => Boolean(String(value || '').trim()) || 'Titolo fase obbligatorio'
+}
 
 const headersProtocolli = [
   { title: 'Numero protocollo', key: 'NumeroProtocollo' },
@@ -977,26 +1080,79 @@ function confrontaOrdine(a, b) {
   return Number(a?.ordine ?? 0) - Number(b?.ordine ?? 0)
 }
 
-function aggiungiFaseLocale() {
-  const nuovoOrdine = fasiWorkflow.value.length + 1
-  const nuovaFase = {
-    id: Date.now(),
-    idProcedimento: Number(idProcedimento.value),
-    ordine: nuovoOrdine,
-    titolo: `Nuova fase ${nuovoOrdine}`,
-    descrizione: 'Fase aggiunta localmente. La modifica non viene salvata nel backend.',
-    stato: 'NON_AVVIATA',
-    obbligatoria: false,
-    bloccante: false,
-    responsabile: '-',
-    dataScadenza: '-',
-    sottofasi: []
-  }
+function apriDialogNuovaFase() {
+  faseDialogMode.value = 'create'
+  faseInModificaId.value = null
+  faseForm.Titolo = ''
+  faseForm.Descrizione = ''
+  erroreFaseDialog.value = ''
+  dialogFase.value = true
+}
 
-  fasiWorkflow.value.push(nuovaFase)
-  fasiWorkflow.value.sort(confrontaOrdine)
-  faseSelezionataId.value = nuovaFase.id
-  sottofaseSelezionataId.value = null
+function apriDialogModificaFase(fase) {
+  if (!fase) return
+
+  faseDialogMode.value = 'edit'
+  faseInModificaId.value = fase.id
+  faseForm.Titolo = fase.titolo || ''
+  faseForm.Descrizione = fase.descrizione || ''
+  erroreFaseDialog.value = ''
+  dialogFase.value = true
+}
+
+function chiudiDialogFase() {
+  if (salvataggioFaseInCorso.value) return
+
+  dialogFase.value = false
+  erroreFaseDialog.value = ''
+}
+
+async function salvaFase() {
+  const validation = await faseFormRef.value?.validate()
+  if (validation && !validation.valid) return
+
+  salvataggioFaseInCorso.value = true
+  erroreFaseDialog.value = ''
+
+  try {
+    const payload = pulisciPayloadFase(faseForm)
+    const faseSalvata = faseDialogMode.value === 'create'
+      ? await createFaseProcedimento(idProcedimento.value, payload)
+      : await updateFaseProcedimento(
+        idProcedimento.value,
+        faseInModificaId.value,
+        payload
+      )
+
+    const faseNormalizzata = normalizzaFaseWorkflow(faseSalvata)
+    await caricaWorkflow()
+    faseSelezionataId.value = faseNormalizzata.id
+    sottofaseSelezionataId.value = null
+    dialogFase.value = false
+    messaggioFase.value = faseDialogMode.value === 'create'
+      ? 'Fase creata.'
+      : 'Fase aggiornata.'
+    snackbarFase.value = true
+  } catch (error) {
+    erroreFaseDialog.value = messaggioErroreFase(error)
+  } finally {
+    salvataggioFaseInCorso.value = false
+  }
+}
+
+function pulisciPayloadFase(payload) {
+  return {
+    Titolo: String(payload.Titolo || '').trim() || null,
+    Descrizione: String(payload.Descrizione || '').trim() || null
+  }
+}
+
+function messaggioErroreFase(error) {
+  const dettaglio = error?.payload?.detail
+  if (typeof dettaglio === 'string') return dettaglio
+
+  if (error?.status === 404) return 'Fase non trovata.'
+  return 'Impossibile salvare la fase.'
 }
 
 function selezionaFase(idFase) {

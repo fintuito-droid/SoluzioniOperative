@@ -1,3 +1,4 @@
+from datetime import datetime
 from types import SimpleNamespace
 
 from backend.repositories.workflow_procedimento_repository import (
@@ -34,10 +35,18 @@ class FakeCursor:
 class FakeConnection:
     def __init__(self, cursor):
         self.cursor_instance = cursor
+        self.committed = False
+        self.rolled_back = False
         self.closed = False
 
     def cursor(self):
         return self.cursor_instance
+
+    def commit(self):
+        self.committed = True
+
+    def rollback(self):
+        self.rolled_back = True
 
     def close(self):
         self.closed = True
@@ -114,6 +123,101 @@ def test_get_fase_detail_returns_none_when_missing():
 
     assert detail is None
     assert cursor.executed_params == [(999,)]
+
+
+def test_crea_fase_procedimento_inserts_with_progressive_order():
+    now = datetime(2026, 6, 1, 10, 36, 0)
+    cursor = FakeCursor(
+        [
+            [SimpleNamespace(NuovoOrdine=4)],
+            [],
+            [SimpleNamespace(IDFase=8)],
+            [
+                SimpleNamespace(
+                    IDFase=8,
+                    IDProcedimento=10,
+                    CodiceFase="NUOVA_FASE",
+                    Titolo="Nuova fase",
+                    Descrizione="Descrizione",
+                    Ordine=4,
+                    StatoFase="NON_AVVIATA",
+                    Responsabile=None,
+                    DataScadenza=None,
+                    DataAvvio=None,
+                    DataCompletamento=None,
+                    Obbligatoria=False,
+                    Bloccante=False,
+                    Attivo=True,
+                    DataCreazione=now,
+                    DataModifica=now,
+                )
+            ],
+        ]
+    )
+    connection = FakeConnection(cursor)
+    repository = WorkflowProcedimentoRepositoryForTest(connection)
+
+    created = repository.crea_fase_procedimento(
+        id_procedimento=10,
+        titolo="Nuova fase",
+        descrizione="Descrizione",
+        data_creazione=now,
+    )
+
+    assert created["id_fase"] == 8
+    assert created["titolo"] == "Nuova fase"
+    assert created["ordine"] == 4
+    assert "INSERT INTO T_ProcedimentoFasi" in cursor.executed_queries[1]
+    assert cursor.executed_params[1][0] == 10
+    assert cursor.executed_params[1][2] == "Nuova fase"
+    assert connection.committed is True
+
+
+def test_aggiorna_fase_procedimento_updates_title_and_description():
+    now = datetime(2026, 6, 1, 10, 36, 0)
+    cursor = FakeCursor(
+        [
+            [],
+            [
+                SimpleNamespace(
+                    IDFase=8,
+                    IDProcedimento=10,
+                    CodiceFase="NUOVA_FASE",
+                    Titolo="Titolo aggiornato",
+                    Descrizione="Descrizione aggiornata",
+                    Ordine=4,
+                    StatoFase="NON_AVVIATA",
+                    Responsabile=None,
+                    DataScadenza=None,
+                    DataAvvio=None,
+                    DataCompletamento=None,
+                    Obbligatoria=False,
+                    Bloccante=False,
+                    Attivo=True,
+                    DataCreazione=now,
+                    DataModifica=now,
+                )
+            ],
+        ]
+    )
+    connection = FakeConnection(cursor)
+    repository = WorkflowProcedimentoRepositoryForTest(connection)
+
+    updated = repository.aggiorna_fase_procedimento(
+        id_procedimento=10,
+        id_fase=8,
+        titolo="Titolo aggiornato",
+        descrizione="Descrizione aggiornata",
+        data_modifica=now,
+    )
+
+    assert updated["id_fase"] == 8
+    assert updated["titolo"] == "Titolo aggiornato"
+    assert "UPDATE T_ProcedimentoFasi" in cursor.executed_queries[0]
+    assert cursor.executed_params[0][0] == "Titolo aggiornato"
+    assert cursor.executed_params[0][3] == 8
+    assert cursor.executed_params[0][4] == 10
+    assert connection.committed is True
 
 
 def test_list_sottofasi_by_fase_returns_records():

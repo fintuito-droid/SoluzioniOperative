@@ -2,16 +2,24 @@ import pytest
 from fastapi import HTTPException
 
 from backend.api.routes.protocollo_monitor import (
+    ProcedimentoFasePayload,
+    aggiorna_procedimento_fase,
+    crea_procedimento_fase,
     get_catalogo_sottofasi,
     get_procedimento_fase_dettaglio,
     get_procedimento_fase_sottofasi,
     get_procedimento_fasi,
 )
+from backend.services.workflow_procedimento_service import (
+    WorkflowFaseNotFoundError,
+    WorkflowFaseValidationError,
+)
 
 
 class FakeWorkflowProcedimentoService:
-    def __init__(self, *, fase_detail=None):
+    def __init__(self, *, fase_detail=None, mode=None):
         self.fase_detail = fase_detail
+        self.mode = mode
 
     def list_fasi_by_procedimento(self, id_procedimento):
         return [{"id_procedimento": id_procedimento, "id_fase": 1}]
@@ -25,6 +33,32 @@ class FakeWorkflowProcedimentoService:
     def list_catalogo_sottofasi(self, attivo_only=True):
         return [{"codice_sottofase": "EMAIL", "attivo_only": attivo_only}]
 
+    def crea_fase_procedimento(self, *, id_procedimento, payload):
+        if self.mode == "validation":
+            raise WorkflowFaseValidationError("Titolo fase obbligatorio.")
+        if self.mode == "missing":
+            raise WorkflowFaseNotFoundError()
+
+        return {
+            "id_procedimento": id_procedimento,
+            "id_fase": 9,
+            "titolo": payload.Titolo,
+            "descrizione": payload.Descrizione,
+        }
+
+    def aggiorna_fase_procedimento(self, *, id_procedimento, id_fase, payload):
+        if self.mode == "validation":
+            raise WorkflowFaseValidationError("Titolo fase obbligatorio.")
+        if self.mode == "missing":
+            raise WorkflowFaseNotFoundError()
+
+        return {
+            "id_procedimento": id_procedimento,
+            "id_fase": id_fase,
+            "titolo": payload.Titolo,
+            "descrizione": payload.Descrizione,
+        }
+
 
 def test_get_procedimento_fasi_returns_list():
     response = get_procedimento_fasi(
@@ -33,6 +67,59 @@ def test_get_procedimento_fasi_returns_list():
     )
 
     assert response == [{"id_procedimento": 10, "id_fase": 1}]
+
+
+def test_crea_procedimento_fase_returns_created_record():
+    response = crea_procedimento_fase(
+        10,
+        ProcedimentoFasePayload(Titolo="Nuova fase", Descrizione="Desc"),
+        workflow_service=FakeWorkflowProcedimentoService(),
+    )
+
+    assert response == {
+        "id_procedimento": 10,
+        "id_fase": 9,
+        "titolo": "Nuova fase",
+        "descrizione": "Desc",
+    }
+
+
+def test_crea_procedimento_fase_returns_400_without_title():
+    with pytest.raises(HTTPException) as exc_info:
+        crea_procedimento_fase(
+            10,
+            ProcedimentoFasePayload(Titolo=None),
+            workflow_service=FakeWorkflowProcedimentoService(mode="validation"),
+        )
+
+    assert exc_info.value.status_code == 400
+    assert exc_info.value.detail == "Titolo fase obbligatorio."
+
+
+def test_aggiorna_procedimento_fase_returns_updated_record():
+    response = aggiorna_procedimento_fase(
+        10,
+        9,
+        ProcedimentoFasePayload(Titolo="Titolo aggiornato"),
+        workflow_service=FakeWorkflowProcedimentoService(),
+    )
+
+    assert response["id_procedimento"] == 10
+    assert response["id_fase"] == 9
+    assert response["titolo"] == "Titolo aggiornato"
+
+
+def test_aggiorna_procedimento_fase_returns_404_when_missing():
+    with pytest.raises(HTTPException) as exc_info:
+        aggiorna_procedimento_fase(
+            10,
+            999,
+            ProcedimentoFasePayload(Titolo="Titolo"),
+            workflow_service=FakeWorkflowProcedimentoService(mode="missing"),
+        )
+
+    assert exc_info.value.status_code == 404
+    assert exc_info.value.detail == "Fase non trovata"
 
 
 def test_get_procedimento_fase_dettaglio_returns_detail():

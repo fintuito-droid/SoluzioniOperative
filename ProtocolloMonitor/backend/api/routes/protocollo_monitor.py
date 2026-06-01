@@ -20,6 +20,10 @@ from backend.services.procedimento_service import (
     ProcedimentoProtocolloLinkAlreadyExistsError,
     ProtocolloNotFoundError,
 )
+from backend.services.workflow_procedimento_service import (
+    WorkflowFaseNotFoundError,
+    WorkflowFaseValidationError,
+)
 from backend.services.sottofase_workflow_action_service import (
     WorkflowActionValidationError,
 )
@@ -74,6 +78,13 @@ class ProcedimentoCreatePayload(BaseModel):
     Priorita: str | None = Field(default=None, max_length=50)
     DataScadenza: str | None = None
     NoteInterne: str | None = None
+
+
+class ProcedimentoFasePayload(BaseModel):
+    """Payload per creare o modificare una fase verticale."""
+
+    Titolo: str | None = Field(default=None, max_length=255)
+    Descrizione: str | None = None
 
 
 def get_container() -> DependencyContainer:
@@ -547,6 +558,42 @@ def get_procedimento_fasi(
     workflow_service: Any = Depends(get_workflow_procedimento_service),
 ):
     return workflow_service.list_fasi_by_procedimento(id_procedimento)
+
+
+@router.post("/protocollo-monitor/procedimenti/{id_procedimento}/fasi", status_code=201)
+def crea_procedimento_fase(
+    id_procedimento: int,
+    payload: ProcedimentoFasePayload,
+    workflow_service: Any = Depends(get_workflow_procedimento_service),
+):
+    try:
+        return workflow_service.crea_fase_procedimento(
+            id_procedimento=id_procedimento,
+            payload=payload,
+        )
+    except WorkflowFaseNotFoundError:
+        raise HTTPException(status_code=404, detail="Procedimento non trovato")
+    except WorkflowFaseValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.put("/protocollo-monitor/procedimenti/{id_procedimento}/fasi/{id_fase}")
+def aggiorna_procedimento_fase(
+    id_procedimento: int,
+    id_fase: int,
+    payload: ProcedimentoFasePayload,
+    workflow_service: Any = Depends(get_workflow_procedimento_service),
+):
+    try:
+        return workflow_service.aggiorna_fase_procedimento(
+            id_procedimento=id_procedimento,
+            id_fase=id_fase,
+            payload=payload,
+        )
+    except WorkflowFaseNotFoundError:
+        raise HTTPException(status_code=404, detail="Fase non trovata")
+    except WorkflowFaseValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 
 @router.get("/protocollo-monitor/procedimenti/fasi/{id_fase}")

@@ -8,11 +8,16 @@ sicuri e mantiene il backend pronto a una futura persistenza PostgreSQL.
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 
 
 class WorkflowFaseNotFoundError(Exception):
     """Errore applicativo per fase workflow inesistente."""
+
+
+class WorkflowFaseValidationError(ValueError):
+    """Payload fase non valido."""
 
 
 class WorkflowProcedimentoService:
@@ -22,8 +27,73 @@ class WorkflowProcedimentoService:
         self,
         *,
         workflow_procedimento_repository: Any | None = None,
+        now_factory: Any | None = None,
     ) -> None:
         self.workflow_procedimento_repository = workflow_procedimento_repository
+        self.now_factory = now_factory or datetime.now
+
+    def crea_fase_procedimento(
+        self,
+        *,
+        id_procedimento: int,
+        payload: Any,
+    ) -> dict[str, Any]:
+        """Crea una fase verticale del procedimento."""
+
+        if self.workflow_procedimento_repository is None:
+            raise WorkflowFaseNotFoundError()
+
+        if not self.workflow_procedimento_repository.procedimento_exists(
+            id_procedimento
+        ):
+            raise WorkflowFaseNotFoundError()
+
+        data = self._payload_to_dict(payload)
+        titolo = self._clean_required(data.get("Titolo"))
+        descrizione = self._clean_optional(data.get("Descrizione"))
+        now = self.now_factory()
+
+        return self.workflow_procedimento_repository.crea_fase_procedimento(
+            id_procedimento=id_procedimento,
+            titolo=titolo,
+            descrizione=descrizione,
+            data_creazione=now,
+        )
+
+    def aggiorna_fase_procedimento(
+        self,
+        *,
+        id_procedimento: int,
+        id_fase: int,
+        payload: Any,
+    ) -> dict[str, Any]:
+        """Aggiorna i campi editabili di una fase verticale."""
+
+        if self.workflow_procedimento_repository is None:
+            raise WorkflowFaseNotFoundError()
+
+        fase = self.workflow_procedimento_repository.get_fase_detail(id_fase)
+        if fase is None:
+            raise WorkflowFaseNotFoundError()
+
+        if int(fase.get("id_procedimento") or 0) != int(id_procedimento):
+            raise WorkflowFaseNotFoundError()
+
+        data = self._payload_to_dict(payload)
+        titolo = self._clean_required(data.get("Titolo"))
+        descrizione = self._clean_optional(data.get("Descrizione"))
+
+        updated = self.workflow_procedimento_repository.aggiorna_fase_procedimento(
+            id_procedimento=id_procedimento,
+            id_fase=id_fase,
+            titolo=titolo,
+            descrizione=descrizione,
+            data_modifica=self.now_factory(),
+        )
+        if updated is None:
+            raise WorkflowFaseNotFoundError()
+
+        return updated
 
     def list_fasi_by_procedimento(
         self,
@@ -110,3 +180,34 @@ class WorkflowProcedimentoService:
             return list_catalogo(attivo_only=attivo_only)
         except Exception:
             return []
+
+    @staticmethod
+    def _payload_to_dict(payload: Any) -> dict[str, Any]:
+        if payload is None:
+            return {}
+        if isinstance(payload, dict):
+            return payload
+
+        model_dump = getattr(payload, "model_dump", None)
+        if model_dump is not None:
+            return model_dump()
+
+        dict_method = getattr(payload, "dict", None)
+        if dict_method is not None:
+            return dict_method()
+
+        return {}
+
+    @staticmethod
+    def _clean_optional(value: Any) -> str | None:
+        if value is None:
+            return None
+        normalized = str(value).strip()
+        return normalized or None
+
+    @classmethod
+    def _clean_required(cls, value: Any) -> str:
+        normalized = cls._clean_optional(value)
+        if normalized is None:
+            raise WorkflowFaseValidationError("Titolo fase obbligatorio.")
+        return normalized

@@ -1,14 +1,61 @@
+from datetime import datetime
+
+import pytest
+
 from backend.services.workflow_procedimento_service import (
+    WorkflowFaseNotFoundError,
+    WorkflowFaseValidationError,
     WorkflowProcedimentoService,
 )
 
 
+FIXED_NOW = datetime(2026, 6, 1, 10, 36, 0)
+
+
 class FakeWorkflowProcedimentoRepository:
+    procedimento_exists_value = True
+
     def list_fasi_by_procedimento(self, id_procedimento):
         return [{"id_procedimento": id_procedimento, "id_fase": 1}]
 
     def get_fase_detail(self, id_fase):
-        return {"id_fase": id_fase}
+        return {"id_fase": id_fase, "id_procedimento": id_fase}
+
+    def procedimento_exists(self, id_procedimento):
+        return self.procedimento_exists_value
+
+    def crea_fase_procedimento(
+        self,
+        *,
+        id_procedimento,
+        titolo,
+        descrizione,
+        data_creazione,
+    ):
+        return {
+            "id_procedimento": id_procedimento,
+            "id_fase": 9,
+            "titolo": titolo,
+            "descrizione": descrizione,
+            "data_creazione": data_creazione,
+        }
+
+    def aggiorna_fase_procedimento(
+        self,
+        *,
+        id_procedimento,
+        id_fase,
+        titolo,
+        descrizione,
+        data_modifica,
+    ):
+        return {
+            "id_procedimento": id_procedimento,
+            "id_fase": id_fase,
+            "titolo": titolo,
+            "descrizione": descrizione,
+            "data_modifica": data_modifica,
+        }
 
     def list_sottofasi_by_fase(self, id_fase):
         return [{"id_fase": id_fase, "id_sottofase": 2}]
@@ -58,7 +105,90 @@ def test_get_fase_detail_delegates_to_repository():
         workflow_procedimento_repository=FakeWorkflowProcedimentoRepository()
     )
 
-    assert service.get_fase_detail(7) == {"id_fase": 7}
+    assert service.get_fase_detail(7) == {"id_fase": 7, "id_procedimento": 7}
+
+
+def test_crea_fase_procedimento_validates_and_delegates():
+    service = WorkflowProcedimentoService(
+        workflow_procedimento_repository=FakeWorkflowProcedimentoRepository(),
+        now_factory=lambda: FIXED_NOW,
+    )
+
+    result = service.crea_fase_procedimento(
+        id_procedimento=10,
+        payload={"Titolo": "Nuova fase", "Descrizione": "Descrizione"},
+    )
+
+    assert result == {
+        "id_procedimento": 10,
+        "id_fase": 9,
+        "titolo": "Nuova fase",
+        "descrizione": "Descrizione",
+        "data_creazione": FIXED_NOW,
+    }
+
+
+def test_crea_fase_procedimento_requires_title():
+    service = WorkflowProcedimentoService(
+        workflow_procedimento_repository=FakeWorkflowProcedimentoRepository(),
+        now_factory=lambda: FIXED_NOW,
+    )
+
+    with pytest.raises(WorkflowFaseValidationError):
+        service.crea_fase_procedimento(
+            id_procedimento=10,
+            payload={"Titolo": " "},
+        )
+
+
+def test_crea_fase_procedimento_raises_when_procedimento_missing():
+    repository = FakeWorkflowProcedimentoRepository()
+    repository.procedimento_exists_value = False
+    service = WorkflowProcedimentoService(
+        workflow_procedimento_repository=repository,
+        now_factory=lambda: FIXED_NOW,
+    )
+
+    with pytest.raises(WorkflowFaseNotFoundError):
+        service.crea_fase_procedimento(
+            id_procedimento=999,
+            payload={"Titolo": "Nuova fase"},
+        )
+
+
+def test_aggiorna_fase_procedimento_validates_membership_and_delegates():
+    service = WorkflowProcedimentoService(
+        workflow_procedimento_repository=FakeWorkflowProcedimentoRepository(),
+        now_factory=lambda: FIXED_NOW,
+    )
+
+    result = service.aggiorna_fase_procedimento(
+        id_procedimento=7,
+        id_fase=7,
+        payload={"Titolo": "Titolo aggiornato", "Descrizione": "Nuova"},
+    )
+
+    assert result == {
+        "id_procedimento": 7,
+        "id_fase": 7,
+        "titolo": "Titolo aggiornato",
+        "descrizione": "Nuova",
+        "data_modifica": FIXED_NOW,
+    }
+
+
+def test_aggiorna_fase_procedimento_raises_when_not_same_procedimento():
+    service = WorkflowProcedimentoService(
+        workflow_procedimento_repository=FakeWorkflowProcedimentoRepository(),
+        now_factory=lambda: FIXED_NOW,
+    )
+
+    with pytest.raises(WorkflowFaseNotFoundError):
+        service.aggiorna_fase_procedimento(
+            id_procedimento=999,
+            id_fase=7,
+            payload={"Titolo": "Titolo aggiornato"},
+        )
 
 
 def test_list_sottofasi_without_repository_returns_empty_list():

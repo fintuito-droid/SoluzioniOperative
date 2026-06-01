@@ -88,6 +88,23 @@ export function listFasiProcedimento(idProcedimento) {
   return fetchJson(`/protocollo-monitor/procedimenti/${idProcedimento}/fasi`)
 }
 
+export function createFaseProcedimento(idProcedimento, payload) {
+  return fetchJson(`/protocollo-monitor/procedimenti/${idProcedimento}/fasi`, {
+    method: 'POST',
+    body: JSON.stringify(payload || {})
+  })
+}
+
+export function updateFaseProcedimento(idProcedimento, idFase, payload) {
+  return fetchJson(
+    `/protocollo-monitor/procedimenti/${idProcedimento}/fasi/${idFase}`,
+    {
+      method: 'PUT',
+      body: JSON.stringify(payload || {})
+    }
+  )
+}
+
 export function getFaseWorkflow(idFase) {
   return fetchJson(`/protocollo-monitor/procedimenti/fasi/${idFase}`)
 }
