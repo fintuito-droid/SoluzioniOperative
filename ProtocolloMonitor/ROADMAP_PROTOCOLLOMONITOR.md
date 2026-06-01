@@ -74,6 +74,7 @@ Vista Vue
 | `L_CatalogoSottofasi` | Catalogo riusabile per aggiungere sottofasi. | `IDCatalogoSottofase`, `CodiceSottofase`, `Titolo`, `Descrizione`, `Icona`, `Colore`, `Categoria`, `OrdineDefault`, `Attivo`. | Riferimento opzionale da `T_ProcedimentoSottofasi.IDCatalogoSottofase`. | Gia usata per tendina/avatar e dati reali. |
 | `T_SottofaseDocumenti` | Storico versionato dei documenti collegati a una sottofase. | `IDDocumentoSottofase`, `IDSottofase`, `TipoDocumento`, `NomeFile`, `Estensione`, `PercorsoDocumento`, `MimeType`, `DimensioneBytes`, `HashFile`, `VersioneDocumento`, `DataCollegamento`, `UtenteCollegamento`, `Attivo`. | Figlia logica di `T_ProcedimentoSottofasi`; puo essere documento corrente della sottofase. | Gia usata in read-only, apertura documento e upload Word. |
 | `T_SottofaseStepOperativi` | Storico degli step interni della sottofase documentale. | `IDStepSottofase`, `IDSottofase`, `CodiceStep`, `Ordine`, `StatoStep`, `DataAvvio`, `DataCompletamento`, `NoteStep`, `UtenteAssegnato`, `UtenteCompletamento`, `IDDocumentoSottofase`, `VersioneDocumento`. | Figlia logica di `T_ProcedimentoSottofasi`; storico REDIGI/FIRMA/etc. | Gia usata per workflow e azioni reali. |
+| `T_SottofasePartecipanti` | Partecipanti assegnati a una sottofase. | `IDPartecipante`, `IDSottofase`, `IDUtente`, `NomeVisualizzato`, `Email`, `Ruolo`, `StatoPartecipante`, `Ordine`, `ColoreAvatar`, `Iniziali`, date, note, `Attivo`. | Figlia logica di `T_ProcedimentoSottofasi`; base per revisori, firmatari, protocollatori, approvatori, operatori e osservatori. | Creata Step 30L-22 con backup; backend GET/POST minimo. |
 | `T_Documenti` | Tabella documentale legacy/predisposta. | Dipende dallo schema Access esistente; usata in modo prudente da `DocumentoRepository`. | Relazione indiretta con protocolli tramite path documento. | Coinvolta ma non centrale nel nuovo workflow. |
 
 ## 4. Campi aggiunti o usati
@@ -120,6 +121,8 @@ Vista Vue
 | `GET` | `/protocollo-monitor/sottofasi/{id_sottofase}/step-operativi` | Step operativi storici. | Read-only | `SottofaseDocumentaleService`, `SottofaseDocumentaleRepository`. | Attivo. |
 | `GET` | `/protocollo-monitor/sottofase-documenti/{id_documento}/apri` | Apre/serve documento collegato Word/PDF/storico. | Read-only/filesystem | `SottofaseDocumentaleService`, `DocumentPathService`, `FileResponse`. | Attivo Step 30L-17, invariato lato backend. |
 | `GET` | `/protocollo-monitor/sottofase-documenti/{id_documento}/scarica` | Scarica documento collegato Word/PDF/storico con `Content-Disposition: attachment`. | Read-only/filesystem | `SottofaseDocumentaleService`, `DocumentPathService`, `FileResponse`. | Attivo Step 30L-18. |
+| `GET` | `/protocollo-monitor/sottofasi/{id_sottofase}/partecipanti` | Elenco partecipanti attivi collegati alla sottofase. | Read-only | `SottofasePartecipantiService`, `SottofasePartecipantiRepository`. | Attivo Step 30L-22. |
+| `POST` | `/protocollo-monitor/sottofasi/{id_sottofase}/partecipanti` | Inserisce un partecipante sottofase con backup Access e validazioni. | Scrittura controllata | `SottofasePartecipantiService`, `SottofasePartecipantiRepository`, backup Access. | Attivo Step 30L-22. |
 | `GET` | `/protocollo-monitor/sottofasi/{id_sottofase}/workflow` | Workflow operativo REDIGI/FINE. | Read-only | `SottofaseWorkflowService`, `SottofaseDocumentaleService`. | Attivo. |
 | `POST` | `/protocollo-monitor/sottofasi/{id_sottofase}/workflow/azioni` | Avanza workflow sottofase. | Scrittura controllata | `SottofaseWorkflowCommandService`, `SottofaseWorkflowActionRepository`, backup Access. | Attivo. |
 | `POST` | `http://127.0.0.1:8020/open-word` | Helper locale separato per aprire `.docx` con Word da `idDocumento`. | Read-only locale/filesystem | `Python/open_word_helper.py`, Access read-only, whitelist `DocumentiWorkflow`. | Attivo Step 30L-19, fuori dal backend principale. |
@@ -275,6 +278,7 @@ Test automatici principali:
 | Step 30L-18 | Distinzione Apri/Scarica/Apri con Word | Aggiunto endpoint read-only `/scarica`, UI con azioni separate per documento corrente e storico, download attachment, pulsante Apri con Word disabilitato/informativo. | Router, `SottofaseDocumentaleCard.vue`, `procedimentoApi.js`, test endpoint, roadmap. | Completato. | Da commit. |
 | Step 30L-19 | Helper locale Windows Apri con Word | Creato helper separato `POST /open-word` su `127.0.0.1:8020`, recupero path da `idDocumento`, whitelist `DocumentiWorkflow`, solo `.docx`, UI collegata e gestione helper non avviato. | `Python/open_word_helper.py`, `SottofaseDocumentaleCard.vue`, `procedimentoApi.js`, test helper, roadmap. | Completato. | Da commit. |
 | Step 30L-20 | Avvio automatico helper locali | Aggiornato batch locale per avviare backend FastAPI, frontend Vue, server Flask Grisu e helper Apri con Word; aggiunto health check helper. | `Python/Avvia_ProtocolloMonitor.bat`, `Python/open_word_helper.py`, roadmap. | Completato. | Da commit. |
+| Step 30L-22 | Partecipanti sottofase | Creata tabella `T_SottofasePartecipanti`, repository/service/schema Pydantic, endpoint GET/POST, validazioni e test. | `sottofase_partecipanti_*`, router, dependency container, test, roadmap. | Completato. | Da commit. |
 
 ## 13. Decisioni architetturali importanti
 
@@ -774,14 +778,875 @@ Stima motivata: circa 70% del lavoro svolto puo essere conservato.
 - Perdere il significato operativo delle azioni gia eseguite se non vengono mappate prima del refactoring.
 - Introdurre partecipanti senza regole chiare di completamento.
 
+## Step 30L-22 – Partecipanti sottofase
+
+Questo step introduce la prima base dati e backend per il concetto di
+`PartecipanteSottofase`, senza costruire ancora avatar a ventaglio e senza
+modificare il frontend.
+
+### Obiettivo
+
+Collegare alla sottofase partecipanti con ruolo, stato, dati visuali minimi,
+note e date operative, mantenendo compatibilita con Access oggi e con una
+futura migrazione PostgreSQL.
+
+### Ruoli e stati iniziali
+
+| Tipo | Valori |
+| --- | --- |
+| Ruoli | `OPERATORE`, `REVISORE`, `FIRMATARIO`, `PROTOCOLLATORE`, `APPROVATORE`, `OSSERVATORE` |
+| Stati | `ASSEGNATO`, `IN_ATTESA`, `IN_CORSO`, `COMPLETATO`, `RESPINTO`, `ANNULLATO` |
+
+### Database Access
+
+Tabella creata: `T_SottofasePartecipanti`.
+
+Campi:
+
+- `IDPartecipante` autoincrement primary key;
+- `IDSottofase`;
+- `IDUtente`;
+- `NomeVisualizzato`;
+- `Email`;
+- `Ruolo`;
+- `StatoPartecipante`;
+- `Ordine`;
+- `ColoreAvatar`;
+- `Iniziali`;
+- `DataAssegnazione`;
+- `DataAzione`;
+- `NotePartecipante`;
+- `Attivo`;
+- `DataCreazione`;
+- `DataModifica`.
+
+Indici creati:
+
+- `IX_T_SottofasePartecipanti_IDSottofase`;
+- `IX_T_SottofasePartecipanti_Ruolo`;
+- `IX_T_SottofasePartecipanti_Stato`;
+- `IX_T_SottofasePartecipanti_Attivo`.
+
+Backup Access creato prima della modifica schema:
+
+```text
+C:\Users\fintu\CloudVVF\Documents\Sviluppo\Grisu\Backup\ProtocolloMonitor_BACKUP_20260601_112002.accdb
+```
+
+La creazione schema e idempotente: tabella e indici vengono creati solo se non
+esistono.
+
+### Backend
+
+File creati:
+
+- `backend/schemas/sottofase_partecipanti.py`;
+- `backend/repositories/sottofase_partecipanti_repository.py`;
+- `backend/services/sottofase_partecipanti_service.py`;
+- `tests/test_sottofase_partecipanti_repository.py`;
+- `tests/test_sottofase_partecipanti_service.py`;
+- `tests/test_sottofase_partecipanti_endpoint.py`.
+
+File modificati:
+
+- `backend/api/routes/protocollo_monitor.py`;
+- `backend/core/dependency_container.py`;
+- `ROADMAP_PROTOCOLLOMONITOR.md`.
+
+Endpoint aggiunti:
+
+| Metodo | Endpoint | Scopo |
+| --- | --- | --- |
+| `GET` | `/protocollo-monitor/sottofasi/{id_sottofase}/partecipanti` | Restituisce i partecipanti attivi della sottofase. |
+| `POST` | `/protocollo-monitor/sottofasi/{id_sottofase}/partecipanti` | Inserisce un partecipante con backup Access e scrittura controllata. |
+
+Endpoint rimandato:
+
+- `PATCH /protocollo-monitor/sottofasi/{id_sottofase}/partecipanti/{id_partecipante}/stato`, da valutare in step successivo per non allargare troppo il perimetro.
+
+### Validazioni implementate
+
+- `nomeVisualizzato` obbligatorio e non vuoto;
+- `ruolo` obbligatorio e ammesso;
+- `statoPartecipante` obbligatorio e ammesso;
+- email opzionale con validazione semplice;
+- iniziali normalizzate se presenti;
+- iniziali calcolate se mancanti;
+- verifica esistenza `IDSottofase`;
+- controllo duplicato evidente su stessa sottofase, email e ruolo;
+- backup Access prima dell'insert;
+- insert transazionale con commit/rollback.
+
+### Test
+
+Test mirati aggiunti:
+
+- creazione tabella se assente;
+- non ricreazione tabella/indici se esistenti;
+- GET partecipanti vuoto;
+- POST partecipante valido;
+- ruolo non ammesso;
+- stato non ammesso;
+- nome mancante;
+- duplicato;
+- rollback su errore insert;
+- calcolo iniziali se mancanti;
+- backup prima della scrittura.
+
+Risultato test mirati:
+
+```text
+21 passed
+```
+
+### Vincoli rispettati
+
+- `Python/server_protocollo.py` non modificato.
+- Frontend non modificato.
+- Workflow legacy non modificato.
+- Nessun dato reale popolato automaticamente.
+- Nessun commit eseguito.
+
+## Step 30L-23 – Timeline operativa sottofase
+
+Questo step e esclusivamente architetturale e documentale. Non introduce
+modifiche a codice, database, schema Access, endpoint o frontend.
+
+### Nuova decisione architetturale
+
+Ogni sottofase contiene una timeline operativa composta da step ordinati
+cronologicamente. Gli step precaricati tipici possono essere:
+
+- `REDIGI`;
+- `REVISIONA`;
+- `FIRMA`;
+- `PROTOCOLLA`.
+
+Questi step compaiono inizialmente grigi e si colorano progressivamente quando
+vengono completati. La timeline non deve essere rigida: gli step possono essere
+eliminati se non servono, aggiunti, riordinati o sostituiti con step intermedi.
+
+Esempi di step/eventi operativi:
+
+- `CHIAMATA`;
+- `EMAIL`;
+- `APPUNTAMENTO`;
+- `PARERE`;
+- `SOPRALLUOGO`;
+- `ALTRO`.
+
+### Modello concettuale dello step timeline
+
+Ogni step della timeline puo avere:
+
+- codice step;
+- titolo;
+- tipo step;
+- ordine;
+- stato;
+- data prevista;
+- data completamento;
+- nota;
+- documento collegato opzionale;
+- partecipanti assegnati.
+
+La sottofase mantiene quindi il proprio stato complessivo, ma la timeline
+descrive il percorso operativo interno, flessibile e adattabile al caso reale.
+
+### Reinterpretazione di `T_SottofaseStepOperativi`
+
+`T_SottofaseStepOperativi` puo essere reinterpretata come tabella della timeline
+operativa della sottofase.
+
+Nel modello precedente conteneva gli step del workflow interno rigido
+`REDIGI -> REVISIONA -> FIRMA -> PROTOCOLLA -> FINE`. Nel modello aggiornato
+puo diventare la base per memorizzare step operativi ordinati, anche non
+standard, mantenendo compatibilita con i dati gia scritti.
+
+Mappatura concettuale:
+
+| Campo/concetto attuale | Nuovo significato possibile |
+| --- | --- |
+| `CodiceStep` | Codice dello step timeline, standard o personalizzato. |
+| `Ordine` | Posizione cronologica/visuale nella timeline. |
+| `StatoStep` | Stato dello step: non avviato, in corso, completato, respinto, annullato o equivalenti futuri. |
+| `DataAvvio` | Data di avvio o presa in carico dello step. |
+| `DataCompletamento` | Data di completamento dello step. |
+| `NoteStep` | Nota operativa dello step. |
+| `UtenteAssegnato` / `UtenteCompletamento` | Campi legacy utili, ma da superare con partecipanti assegnati allo step. |
+| `IDDocumentoSottofase` | Documento/versione collegata opzionalmente allo step. |
+| `VersioneDocumento` | Versione documento collegata allo step. |
+
+### Partecipanti collegati alla sottofase o allo step
+
+I partecipanti possono essere collegati:
+
+- alla sottofase in generale;
+- a uno specifico step della timeline.
+
+Esempi:
+
+- `REVISIONA`: revisori assegnati;
+- `FIRMA`: firmatari assegnati;
+- `PROTOCOLLA`: protocollatori assegnati;
+- `APPUNTAMENTO`: partecipanti all'appuntamento;
+- `EMAIL`: destinatari o referenti.
+
+`T_SottofasePartecipanti` oggi collega il partecipante alla sottofase tramite
+`IDSottofase`. In una fase futura potrebbe dover collegare il partecipante anche
+a uno step specifico tramite un futuro `IDStepSottofase`, senza perdere la
+possibilita di partecipanti generali della sottofase.
+
+### UI desiderata
+
+La UI futura dovra rappresentare la timeline in modo orizzontale:
+
+- step grigi se non completati;
+- step colorati se completati;
+- step attivo evidenziato;
+- avatar a ventaglio sopra lo step quando ci sono partecipanti assegnati;
+- possibilita futura di aggiungere uno step tra due step esistenti.
+
+La timeline orizzontale sostituisce gradualmente la lettura rigida del workflow
+interno, ma conserva l'idea gia realizzata di avanzamento visuale.
+
+### Cosa si conserva
+
+| Elemento | Decisione |
+| --- | --- |
+| `T_SottofaseStepOperativi` | Conservare e reinterpretare come timeline operativa. |
+| Partecipanti | Conservare `T_SottofasePartecipanti` come base per partecipanti di sottofase. |
+| Documento principale | Conservare il modello documentale corrente. |
+| Versionamento | Conservare storico versioni e documento corrente. |
+| Backup/rollback | Conservare come regola obbligatoria per ogni futura scrittura o modifica schema. |
+
+### Cosa va evoluto
+
+| Area | Evoluzione richiesta |
+| --- | --- |
+| Collegamento partecipanti-step | Valutare un futuro `IDStepSottofase` su partecipanti o una tabella ponte dedicata. |
+| UI timeline orizzontale | Progettare una visualizzazione compatta, leggibile e coerente con stati e partecipanti. |
+| Aggiunta/eliminazione step | Definire regole per inserire, eliminare e riordinare step senza perdere storico. |
+| Avatar a ventaglio | Collegare avatar allo step quando i partecipanti sono specifici della timeline. |
+| Tipi step | Distinguere step standard da eventi operativi personalizzati. |
+
+### Rischi architetturali
+
+- Confondere sottofase e step timeline: la sottofase resta il contenitore
+  operativo, la timeline ne descrive il percorso interno.
+- Sovraccaricare `T_SottofaseStepOperativi` senza chiarire quali campi sono
+  legacy e quali sono canonici.
+- Collegare partecipanti solo alla sottofase quando invece alcuni ruoli sono
+  specifici dello step.
+- Rendere la timeline troppo rigida, riproducendo il problema del workflow
+  precedente.
+- Introdurre riordino/eliminazione step senza una strategia di storico e audit.
+
+## Step 30L-23C – Timeline sequenziale dinamica con blocco di avanzamento
+
+Questo step e esclusivamente architetturale. Non introduce modifiche a codice,
+database, schema Access, endpoint o frontend.
+
+### Decisione definitiva
+
+La timeline operativa della sottofase non e libera. La timeline e:
+
+- sequenziale;
+- ordinata;
+- bloccante.
+
+Gli step possono essere aggiunti, eliminati e riordinati, ma l'esecuzione resta
+vincolata all'ordine della timeline.
+
+Regola fondamentale:
+
+```text
+Uno step puo essere eseguito soltanto se tutti gli step precedenti risultano completati.
+```
+
+Esempio standard:
+
+```text
+REDIGI -> REVISIONA -> FIRMA -> PROTOCOLLA
+```
+
+Se `REDIGI` non e completata, `REVISIONA`, `FIRMA` e `PROTOCOLLA` restano
+bloccate.
+
+Esempio con step aggiuntivi:
+
+```text
+REDIGI -> CHIAMATA -> EMAIL -> REVISIONA -> APPUNTAMENTO -> FIRMA -> PROTOCOLLA
+```
+
+Finche `CHIAMATA` non e completata, `EMAIL`, `REVISIONA`, `APPUNTAMENTO`,
+`FIRMA` e `PROTOCOLLA` restano bloccate.
+
+### Stati concettuali dello step
+
+| Stato | Significato | Visualizzazione desiderata |
+| --- | --- | --- |
+| `LOCKED` | Step bloccato perche uno o piu step precedenti non sono completati. | Grigio. |
+| `ACTIVE` | Primo step non completato, attualmente eseguibile. | Giallo o evidenziato. |
+| `COMPLETED` | Step completato. | Colore del tipo step. |
+| `REJECTED` | Step respinto o con esito negativo. | Rosso. |
+| `CANCELLED` | Step annullato e non piu operativo. | Grigio scuro. |
+
+### Regola di calcolo dello step attivo
+
+Lo step attivo e:
+
+```text
+il primo step non completato della timeline
+```
+
+Conseguenza architetturale:
+
+- `StepCorrente` non deve piu essere il concetto principale;
+- `StepCorrente` puo diventare dato derivato;
+- `StepCorrente` puo restare cache o ottimizzazione temporanea;
+- `StepCorrente` puo essere eliminato in futuro se la timeline diventa la fonte autorevole.
+
+La fonte concettuale primaria diventa l'elenco ordinato degli step con il loro
+stato.
+
+### Impatto su `T_SottofaseStepOperativi`
+
+`T_SottofaseStepOperativi` viene reinterpretata come timeline operativa della
+sottofase. Ogni record rappresenta uno step della timeline.
+
+Campi concettuali associati:
+
+- tipo step;
+- ordine;
+- stato;
+- data prevista;
+- data completamento;
+- note;
+- documento collegato;
+- partecipanti.
+
+Mappatura prudenziale:
+
+| Concetto timeline | Campo attuale o futuro |
+| --- | --- |
+| Tipo step | Oggi `CodiceStep`; in futuro possibile distinzione `TipoStep`/`CodiceStep`. |
+| Ordine | `Ordine`. |
+| Stato | `StatoStep`, da normalizzare verso stati concettuali `LOCKED`, `ACTIVE`, `COMPLETED`, `REJECTED`, `CANCELLED` o mapping equivalente. |
+| Data prevista | Campo futuro da valutare. |
+| Data completamento | `DataCompletamento`. |
+| Note | `NoteStep`. |
+| Documento collegato | `IDDocumentoSottofase` e `VersioneDocumento`. |
+| Partecipanti | Collegamento futuro con partecipanti generali o specifici dello step. |
+
+### Impatto sui partecipanti
+
+Un partecipante puo essere:
+
+- generale della sottofase;
+- collegato a uno specifico step della timeline.
+
+Esempi:
+
+- `REVISIONA`: revisori assegnati;
+- `FIRMA`: firmatari assegnati;
+- `PROTOCOLLA`: protocollatori assegnati.
+
+Il completamento dello step puo dipendere dai partecipanti. Per esempio:
+
+- uno step `REVISIONA` puo completarsi quando tutti i revisori richiesti hanno completato con esito positivo;
+- uno step `FIRMA` puo completarsi quando tutti i firmatari richiesti hanno firmato;
+- uno step `PROTOCOLLA` puo completarsi quando il protocollatore ha registrato la protocollazione.
+
+Il completamento automatico guidato dai partecipanti va trattato come regola
+dedicata futura, non come effetto implicito non documentato.
+
+### UI target
+
+La timeline target e orizzontale:
+
+```text
+○ REDIGI ─── ○ REVISIONA ─── ○ FIRMA ─── ○ PROTOCOLLA
+```
+
+Comportamenti UI desiderati:
+
+- step `LOCKED` grigi e non eseguibili;
+- step `ACTIVE` evidenziato;
+- step `COMPLETED` colorato in base al tipo step;
+- step `REJECTED` rosso;
+- step `CANCELLED` grigio scuro;
+- avatar a ventaglio sopra lo step quando ci sono partecipanti;
+- inserimento futuro di step tra due punti;
+- eliminazione step;
+- riordino controllato.
+
+### Regole documentate
+
+| Tema | Regola |
+| --- | --- |
+| Avanzamento | Solo il primo step non completato e attivo. |
+| Blocco | Tutti gli step successivi allo step attivo restano bloccati. |
+| Completamento | Il completamento di uno step sblocca il successivo primo non completato. |
+| Step aggiunti | Uno step inserito nella sequenza partecipa subito al blocco di avanzamento. |
+| Step eliminati | L'eliminazione deve essere controllata e non deve perdere storico rilevante. |
+| Step annullati | Uno step `CANCELLED` non dovrebbe bloccare la timeline se formalmente escluso dal percorso operativo. |
+| Step respinti | Uno step `REJECTED` blocca il proseguimento finche non viene risolto o annullato secondo regole future. |
+
+### Rischi architetturali
+
+- Usare `StepCorrente` come fonte primaria invece della timeline ordinata.
+- Introdurre stati UI senza un mapping chiaro con `StatoStep`.
+- Consentire eliminazioni fisiche di step gia eseguiti, perdendo storico.
+- Trattare `CANCELLED` e `REJECTED` come varianti estetiche invece che come stati con impatto sul blocco.
+- Collegare partecipanti allo step senza distinguere partecipanti generali della sottofase.
+- Automatizzare il completamento tramite partecipanti senza regole di quorum, obbligatorieta o esito.
+
+## Step 30L-24 – Avatar a ventaglio su timeline
+
+Questo step e di progettazione UI/UX. Non introduce modifiche a codice,
+database, schema Access, endpoint o frontend.
+
+### Obiettivo UX
+
+Gli avatar a ventaglio devono permettere all'utente di capire immediatamente:
+
+- chi deve intervenire;
+- chi ha gia completato;
+- chi e in ritardo o bloccato;
+- chi ha respinto;
+- dove si trova il blocco del procedimento.
+
+Gli avatar rappresentano visivamente i partecipanti collegati a uno step della
+timeline. I partecipanti generali della sottofase restano possibili, ma vanno
+visualizzati in un'area distinta per evitare confusione.
+
+### Layout desiderato
+
+La timeline resta orizzontale:
+
+```text
+REDIGI --- REVISIONA --- FIRMA --- PROTOCOLLA
+```
+
+Gli avatar dello step vengono disposti sopra il punto della timeline, con
+effetto a ventaglio e lieve sovrapposizione controllata.
+
+Esempio concettuale:
+
+```text
+             [MR]
+        [GB]      [LV]
+REDIGI --- REVISIONA --- FIRMA --- PROTOCOLLA
+```
+
+Regole layout:
+
+| Tema | Regola UX |
+| --- | --- |
+| Posizione | Avatar sopra lo step a cui sono collegati. |
+| Ventaglio | Primo avatar centrato, successivi sfalsati lateralmente. |
+| Sovrapposizione | Leggera sovrapposizione per ridurre ingombro, senza rendere illeggibili iniziali o bordo stato. |
+| Altezza | Area avatar riservata sopra la timeline per evitare collisioni con linea e label. |
+| Step attivo | Avatar dello step attivo piu evidenti rispetto agli step bloccati. |
+
+### Numero avatar visibili
+
+| Numero partecipanti | Visualizzazione |
+| --- | --- |
+| 1 | Un avatar centrato sopra lo step. |
+| 2 | Due avatar affiancati con lieve sovrapposizione. |
+| 3 | Ventaglio compatto: uno centrale, due laterali. |
+| 4-10 | Mostrare massimo 3 o 4 avatar principali piu aggregatore `+N`. |
+| Oltre 10 | Mostrare aggregatore prevalente, ad esempio `+10`, con dettaglio su click. |
+
+L'aggregatore deve indicare quanti partecipanti non sono visibili:
+
+- `+3`;
+- `+5`;
+- `+N`.
+
+L'espansione puo avvenire tramite popover, menu o pannello laterale futuro,
+mostrando l'elenco completo dei partecipanti dello step.
+
+### Stati avatar
+
+| Stato partecipante | Visualizzazione |
+| --- | --- |
+| `ASSEGNATO` | Grigio. |
+| `IN_CORSO` | Giallo. |
+| `COMPLETATO` | Colore personale/avatar. |
+| `RESPINTO` | Rosso. |
+| `ANNULLATO` | Grigio scuro. |
+
+Se non e disponibile un'immagine profilo, l'avatar mostra le iniziali. Le
+iniziali restano la fallback principale per garantire leggibilita anche senza
+anagrafica utenti completa.
+
+### Informazioni al passaggio mouse o click
+
+Tooltip o popover devono mostrare:
+
+- nome;
+- ruolo;
+- stato;
+- data ultima azione;
+- note sintetiche.
+
+Su desktop il passaggio mouse puo aprire un tooltip leggero. Su tablet e mobile
+il click/tap deve aprire una scheda compatta o un pannello con le stesse
+informazioni.
+
+### Ruoli e riconoscibilita
+
+Ruoli da rappresentare:
+
+- `OPERATORE`;
+- `REVISORE`;
+- `FIRMATARIO`;
+- `PROTOCOLLATORE`;
+- `APPROVATORE`;
+- `OSSERVATORE`.
+
+Possibili segnali visuali:
+
+| Segnale | Uso consigliato |
+| --- | --- |
+| Badge ruolo | Piccolo badge o sigla sul bordo dell'avatar. |
+| Icona ruolo | Utile nei dettagli/tooltip, da evitare se rende l'avatar troppo affollato. |
+| Colore ruolo | Da usare con prudenza: lo stato deve restare piu importante del ruolo. |
+
+Priorita visuale:
+
+1. Stato del partecipante.
+2. Identita del partecipante.
+3. Ruolo.
+
+### Relazione con lo step
+
+Un avatar puo rappresentare:
+
+- partecipante collegato allo step;
+- partecipante generale della sottofase.
+
+Regola UX:
+
+- gli avatar sopra la timeline rappresentano partecipanti dello step;
+- i partecipanti generali della sottofase vanno mostrati in una barra superiore
+  o in un'area dedicata della sottofase.
+
+Questa distinzione evita che un osservatore generale sembri responsabile di uno
+step specifico.
+
+### Partecipanti generali della sottofase
+
+Possibili collocazioni:
+
+| Opzione | Valutazione |
+| --- | --- |
+| Barra superiore della sottofase | Buona per mostrare operatori/osservatori generali sempre visibili. |
+| Area dedicata nel pannello sottofase | Buona per dettaglio completo senza affollare la timeline. |
+| Misto | Barra con pochi avatar principali e dettaglio espandibile. |
+
+La scelta consigliata e mista: barra superiore sintetica e dettaglio espandibile
+nel pannello sottofase.
+
+### Completamento automatico: preparazione Step 30L-28
+
+Gli avatar non sono solo decorazione: rappresentano stati che potranno guidare
+il completamento automatico dello step.
+
+Esempio:
+
+```text
+REVISIONA
+3 revisori assegnati
+tutti COMPLETATO -> step REVISIONA completato
+```
+
+Modelli possibili:
+
+| Modello | Descrizione |
+| --- | --- |
+| Tutti | Lo step si completa quando tutti i partecipanti richiesti completano. |
+| Maggioranza | Lo step si completa quando la maggioranza ha completato positivamente. |
+| Quorum configurabile | Lo step si completa al raggiungimento di una soglia definita. |
+
+Queste regole non vanno implementate nello step UI/UX: vanno documentate ora e
+formalizzate nello Step 30L-28.
+
+### Responsive
+
+| Contesto | Comportamento |
+| --- | --- |
+| Desktop | Avatar a ventaglio completi sopra ogni step, con tooltip al passaggio mouse. |
+| Tablet | Avatar piu compatti, massimo 2 o 3 visibili, aggregatore piu frequente. |
+| Mobile | Avatar aggregati, dettaglio su tap; timeline eventualmente scrollabile orizzontalmente. |
+
+La timeline deve restare leggibile anche quando molti step hanno molti
+partecipanti: in mobile la priorita e capire stato e blocco, non vedere tutti
+gli avatar contemporaneamente.
+
+### Rischi UX
+
+- Sovraffollamento visivo quando molti step hanno molti partecipanti.
+- Troppi avatar visibili sopra la timeline.
+- Confusione tra ruolo e stato se entrambi usano colori forti.
+- Collisione grafica tra avatar, label step e linea timeline.
+- Difficolta mobile se la timeline diventa troppo larga.
+- Prestazioni e rendering pesante se ogni step apre molte immagini o tooltip.
+- Ambiguita tra partecipanti generali della sottofase e partecipanti specifici dello step.
+
+## Step 30L-26 – Gestione aggiunta/eliminazione step timeline
+
+Questo step e di progettazione architetturale. Non introduce modifiche a
+codice, database, schema Access, endpoint o frontend.
+
+### Obiettivo
+
+Definire il comportamento definitivo della timeline operativa relativamente a:
+
+- inserimento step;
+- eliminazione step;
+- riordino step;
+- storico;
+- audit;
+- impatto sui partecipanti;
+- impatto sul documento.
+
+La timeline resta orizzontale, sequenziale, ordinata e bloccante.
+
+### Inserimento step
+
+Gli step possono essere inseriti:
+
+- prima del primo step;
+- tra due step esistenti;
+- dopo l'ultimo step.
+
+Regole consigliate:
+
+| Caso | Regola |
+| --- | --- |
+| Inserimento prima del primo step | Consentito solo se nessuno step e completato; altrimenti rischia di alterare il significato storico del percorso gia avviato. |
+| Inserimento tra due step | Consentito se il punto di inserimento e dopo step non completati o prima della parte ancora non eseguita della timeline. |
+| Inserimento dopo l'ultimo step | Sempre consentito se la sottofase non e chiusa; lo step entra in coda e partecipa al blocco sequenziale. |
+| Ricalcolo `Ordine` | Deve essere deterministico e non distruttivo; preferibile usare gap tra ordini o ricalcolo controllato in transazione. |
+| Effetto sullo step attivo | Dopo l'inserimento lo step attivo va ricalcolato come primo step non completato/non annullato della timeline. |
+| Storico | L'inserimento deve essere storicizzato come evento di timeline. |
+
+Principio: uno step inserito entra subito nella sequenza bloccante. Se viene
+inserito prima di step non ancora completati, puo diventare il nuovo step
+attivo.
+
+### Eliminazione step
+
+L'eliminazione fisica e rischiosa perche puo cancellare il significato storico
+della timeline. La scelta consigliata e:
+
+```text
+eliminazione fisica solo per step mai iniziati, senza partecipanti, documenti, allegati o note;
+annullamento logico in tutti gli altri casi.
+```
+
+Valutazione per stato/contenuto:
+
+| Caso | Regola consigliata |
+| --- | --- |
+| Step non iniziato | Eliminabile fisicamente solo se non ha partecipanti, documenti, allegati o note. |
+| Step attivo | Non eliminabile fisicamente; consentire solo annullamento controllato se non ha azioni sostanziali. |
+| Step completato | Non eliminabile; solo annullabile logicamente con motivazione e audit. |
+| Step con partecipanti | Non eliminabile fisicamente; annullamento logico preservando partecipanti e storico. |
+| Step con documento | Non eliminabile fisicamente; documento e collegamento devono restare tracciabili. |
+| Step con allegati | Non eliminabile fisicamente; allegati e storico devono restare consultabili. |
+| Step con note | Non eliminabile fisicamente; note da preservare come memoria operativa. |
+
+Vantaggi annullamento logico:
+
+- preserva storico;
+- evita perdita di documenti e partecipanti;
+- mantiene audit;
+- riduce rischi di incoerenza nella timeline.
+
+Rischi annullamento logico:
+
+- la UI deve distinguere chiaramente step annullati da step bloccati;
+- il calcolo dello step attivo deve sapere se `CANCELLED` blocca o no;
+- possono accumularsi step annullati, richiedendo filtri o vista storico.
+
+### Riordino step
+
+Il riordino futuro puo essere realizzato con drag and drop, ma deve essere
+controllato.
+
+Regole consigliate:
+
+| Tema | Regola |
+| --- | --- |
+| Step completati | Non spostabili. |
+| Step annullati | Non spostabili nella timeline operativa; restano nello storico. |
+| Step attivo | Spostabile solo se non ha partecipanti, documenti, allegati o note; in caso contrario non spostabile. |
+| Step futuri non iniziati | Spostabili se non rompono vincoli di step standard protetti. |
+| Partecipanti | Restano collegati allo step spostato. |
+| Stato | Lo stato resta collegato allo step; dopo il riordino si ricalcola `ACTIVE`/`LOCKED`. |
+| Storico | Ogni riordino deve essere storicizzato con ordine precedente e nuovo ordine. |
+
+Il riordino non deve mai produrre una timeline in cui uno step completato
+risulti successivo a uno step che dipendeva logicamente dal suo completamento.
+
+### Step standard
+
+Step standard:
+
+- `REDIGI`;
+- `REVISIONA`;
+- `FIRMA`;
+- `PROTOCOLLA`.
+
+Scelta consigliata:
+
+```text
+gli step standard non sono tutti obbligatori in assoluto, ma sono protetti quando generati da template o gia usati.
+```
+
+Regole:
+
+| Step standard | Regola |
+| --- | --- |
+| Non ancora iniziato e non vincolato | Puo essere annullato o rimosso se il tipo procedimento lo consente. |
+| Gia completato | Non eliminabile e non spostabile. |
+| Con partecipanti/documenti/note | Non eliminabile fisicamente. |
+| Richiesto dal template procedimento | Non eliminabile; eventualmente annullabile solo con motivazione. |
+
+Questa scelta conserva flessibilita senza trasformare la timeline in una lista
+arbitraria priva di garanzie.
+
+### Step personalizzati
+
+Step personalizzati iniziali:
+
+- `CHIAMATA`;
+- `EMAIL`;
+- `APPUNTAMENTO`;
+- `PARERE`;
+- `SOPRALLUOGO`;
+- `ALTRO`.
+
+Regole:
+
+- devono avere tipo step esplicito;
+- possono essere configurabili in futuro da catalogo;
+- partecipano al blocco sequenziale come gli step standard;
+- possono avere partecipanti, note, documento collegato e allegati;
+- se completati o collegati a contenuti non vanno eliminati fisicamente.
+
+### Storico e audit
+
+La timeline deve essere storicizzabile. Eventi da auditare:
+
+- aggiunta step;
+- eliminazione fisica consentita;
+- annullamento logico;
+- riordino step;
+- cambio stato;
+- cambio data prevista;
+- collegamento/scollegamento partecipanti;
+- collegamento documento o allegati;
+- modifica note.
+
+Esigenze future:
+
+| Tema | Esigenza |
+| --- | --- |
+| Audit utente | Tracciare chi ha eseguito l'operazione. |
+| Audit data | Tracciare quando e stata eseguita. |
+| Stato precedente | Conservare prima/dopo per riordino, stato e contenuti sensibili. |
+| Motivazione | Obbligatoria per annullamento di step completati o con contenuti. |
+| Ripristino | Valutare ripristino logico per step annullati. |
+
+### Impatto sui partecipanti
+
+| Operazione | Effetto sui partecipanti collegati allo step |
+| --- | --- |
+| Eliminazione fisica consentita | Ammessa solo se non ci sono partecipanti collegati. |
+| Annullamento step | Partecipanti restano collegati come storico; non devono piu bloccare la timeline. |
+| Riordino step | Partecipanti seguono lo step. |
+| Cambio stato step | Puo aggiornare stati visuali ma non deve sovrascrivere automaticamente stati partecipante senza regola dedicata. |
+
+Se un partecipante e generale della sottofase, non deve essere alterato da
+eliminazione, annullamento o riordino di uno step specifico.
+
+### Impatto sul documento
+
+| Elemento | Regola |
+| --- | --- |
+| Documento principale | Non viene eliminato se uno step viene eliminato o annullato. |
+| Versioni | Restano nello storico documentale. |
+| Documento collegato allo step | Blocca eliminazione fisica dello step; lo step puo solo essere annullato logicamente. |
+| Allegati | Bloccano eliminazione fisica; restano consultabili nello storico. |
+| Note documentali | Devono restare tracciabili se collegate allo step. |
+
+Principio: la timeline puo cambiare, ma non deve cancellare la memoria
+documentale del procedimento.
+
+### Regole definitive consigliate
+
+1. Step completati non eliminabili fisicamente.
+2. Step completati non riordinabili.
+3. Step attivo non eliminabile fisicamente.
+4. Step con partecipanti non eliminabile fisicamente.
+5. Step con documento o allegati non eliminabile fisicamente.
+6. Step con note non eliminabile fisicamente.
+7. Riordino consentito solo su step non completati e privi di vincoli sostanziali.
+8. Gli step standard sono protetti se richiesti dal template, completati o collegati a contenuti.
+9. Gli step personalizzati partecipano al blocco sequenziale come gli standard.
+10. L'annullamento logico e la scelta predefinita quando esiste qualunque traccia operativa.
+11. Ogni aggiunta, annullamento, eliminazione consentita, riordino e cambio stato deve essere auditabile.
+12. Dopo ogni modifica strutturale va ricalcolato lo step attivo.
+
+### UI futura
+
+Timeline orizzontale con punto di inserimento tra due step:
+
+```text
+REDIGI --- [+] --- REVISIONA --- [+] --- FIRMA --- [+] --- PROTOCOLLA
+```
+
+Ogni step avra un menu contestuale:
+
+- Modifica;
+- Inserisci prima;
+- Inserisci dopo;
+- Annulla;
+- Elimina;
+- Gestisci partecipanti.
+
+Regole UI:
+
+- mostrare `Elimina` solo quando l'eliminazione fisica e consentita;
+- mostrare `Annulla` quando lo step non e eliminabile ma puo essere escluso dal percorso;
+- disabilitare azioni non permesse spiegandone il motivo;
+- evidenziare se uno step ha partecipanti, documenti, allegati o note;
+- dopo inserimento/riordino mostrare la timeline ricalcolata.
+
+### Rischi architetturali
+
+- Eliminazione fisica usata dove serve annullamento logico.
+- Riordino che rompe il significato sequenziale e bloccante.
+- Perdita di partecipanti collegati allo step.
+- Perdita o oscuramento di documenti, allegati e note.
+- Mancanza di audit su modifiche strutturali.
+- UI troppo permissiva rispetto alle regole di dominio.
+- Accumulo di step annullati senza filtri o vista storico.
+
 ## 14. Prossima tabella di marcia
 
 | Prossimo step | Obiettivo | Note prudenziali |
 | --- | --- | --- |
-| Step 30L-22 | Partecipanti sottofase. | Progettare `PartecipanteSottofase` prima di introdurre tabelle o campi reali. |
-| Step 30L-23 | Avatar a ventaglio. | Prima modellare stati e ruoli, poi visualizzazione. |
-| Step 30L-24 | Allegati documento principale. | Distinguere documento principale, versioni e allegati. |
-| Step 30L-25 | Refactoring UI sottofase semplificata. | Conservare pannello documentale, storico versioni, backup e rollback; isolare la UI workflow legacy. |
+| Step 30L-27 | Partecipanti collegati allo step. | Definire relazione tra partecipanti generali della sottofase e partecipanti specifici della timeline. |
+| Step 30L-28 | Completamento automatico guidato dai partecipanti. | Definire quorum, obbligatorieta, respingimenti e richieste integrazione prima delle automazioni. |
+| Step 30L-29 | Audit e storico timeline. | Progettare eventi di audit prima di attivare modifiche strutturali reali. |
+| Step 30L-30 | Implementazione UI timeline dinamica. | Tradurre regole di inserimento, annullamento e riordino in controlli frontend sicuri. |
 
 ## 15. Punti non ricostruibili automaticamente
 
