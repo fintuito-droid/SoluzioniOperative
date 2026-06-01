@@ -358,118 +358,13 @@
             {{ errorePartecipanti }}
           </v-alert>
 
-          <div
-            v-if="quadro.stepOperativi.length"
-            class="step-operativi-list"
-          >
-            <div
-              v-for="step in quadro.stepOperativi"
-              :key="step.idStepSottofase || step.codiceStep"
-              class="step-operativo-row"
-            >
-              <v-avatar
-                :color="coloreStep(step.statoStep)"
-                size="28"
-              >
-                <v-icon color="white" size="18">
-                  {{ iconaStep(step.statoStep) }}
-                </v-icon>
-              </v-avatar>
-
-              <div class="partecipanti-step">
-                <template v-if="partecipantiStep(step).length">
-                  <div
-                    v-for="partecipante in partecipantiStep(step)"
-                    :key="partecipante.idPartecipante"
-                    class="partecipante-step-row"
-                  >
-                    <v-avatar
-                      :color="colorePartecipante(partecipante)"
-                      size="32"
-                      class="partecipante-avatar"
-                    >
-                      <span class="text-caption font-weight-bold">
-                        {{ partecipante.iniziali || inizialiPartecipante(partecipante.nomeVisualizzato) }}
-                      </span>
-                    </v-avatar>
-
-                    <div class="partecipante-step-main">
-                      <div class="partecipante-step-title">
-                        {{ partecipante.nomeVisualizzato || 'Partecipante' }}
-                      </div>
-                      <div class="partecipante-step-meta">
-                        {{ labelRuoloPartecipante(partecipante.ruolo) }}
-                        <span v-if="partecipante.dataAzione">
-                          Â· {{ formattaDataOra(partecipante.dataAzione) }}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div class="partecipante-step-chips">
-                      <v-chip
-                        :color="coloreStatoPartecipante(partecipante.statoPartecipante)"
-                        variant="tonal"
-                        size="x-small"
-                      >
-                        {{ labelStatoPartecipante(partecipante.statoPartecipante) }}
-                      </v-chip>
-                      <v-chip
-                        :color="partecipante.partecipanteObbligatorio ? 'deep-orange' : 'grey'"
-                        variant="tonal"
-                        size="x-small"
-                      >
-                        {{ partecipante.partecipanteObbligatorio ? 'Obbligatorio' : 'Facoltativo' }}
-                      </v-chip>
-                    </div>
-
-                    <v-btn
-                      v-if="partecipanteCompletabile(partecipante)"
-                      color="green"
-                      variant="tonal"
-                      size="small"
-                      prepend-icon="mdi-check"
-                      :loading="completamentoPartecipanteInCorso === partecipante.idPartecipante"
-                      :disabled="completamentoPartecipanteInCorso !== null"
-                      @click="completaPartecipante(step, partecipante)"
-                    >
-                      Completa
-                    </v-btn>
-                  </div>
-                </template>
-
-                <v-alert
-                  v-else-if="!loadingPartecipanti"
-                  type="info"
-                  variant="tonal"
-                  density="compact"
-                  class="mt-2"
-                >
-                  Nessun partecipante collegato a questo step.
-                </v-alert>
-              </div>
-
-              <div class="step-operativo-text">
-                <div class="font-weight-bold">
-                  {{ labelStep(step.codiceStep) }}
-                </div>
-                <div class="text-caption text-medium-emphasis">
-                  {{ labelStatoStep(step.statoStep) }}
-                  <span v-if="step.utenteAssegnato">
-                    · {{ step.utenteAssegnato }}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <v-alert
-            v-else
-            type="info"
-            variant="tonal"
-            density="compact"
-          >
-            Nessuno step operativo documentale registrato.
-          </v-alert>
+          <SottofaseTimelineOperativa
+            :steps="quadro.stepOperativi"
+            :partecipanti-per-step="partecipantiPerStep"
+            :loading-partecipanti="loadingPartecipanti"
+            :completamento-partecipante-in-corso="completamentoPartecipanteInCorso"
+            @completa-partecipante="completaPartecipante"
+          />
         </section>
       </template>
 
@@ -496,6 +391,7 @@ import {
   listPartecipantiStepSottofase,
   scaricaDocumentoSottofase
 } from '../../services/procedimentoApi'
+import SottofaseTimelineOperativa from './SottofaseTimelineOperativa.vue'
 
 const props = defineProps({
   idSottofase: {
@@ -688,6 +584,12 @@ function normalizzaStepOperativo(dato) {
     codiceStep: pick(dato, 'codice_step', 'CodiceStep', 'codiceStep'),
     ordine: pick(dato, 'ordine', 'Ordine') ?? 0,
     statoStep: pick(dato, 'stato_step', 'StatoStep', 'statoStep'),
+    dataCompletamento: pick(
+      dato,
+      'data_completamento',
+      'DataCompletamento',
+      'dataCompletamento'
+    ),
     utenteAssegnato: pick(
       dato,
       'utente_assegnato',
@@ -788,10 +690,6 @@ async function caricaPartecipantiStepOperativi() {
   }
 }
 
-function partecipantiStep(step) {
-  return partecipantiPerStep.value[step?.idStepSottofase] || []
-}
-
 async function completaPartecipante(step, partecipante) {
   const idStep = step?.idStepSottofase
   const idPartecipante = partecipante?.idPartecipante
@@ -816,6 +714,7 @@ async function completaPartecipante(step, partecipante) {
 
     if (response?.step_completato || response?.stepCompletato) {
       step.statoStep = 'COMPLETATO'
+      step.dataCompletamento = step.dataCompletamento || new Date().toISOString()
       messaggioPartecipanti.value =
         'Partecipante completato e step chiuso automaticamente.'
     } else {
@@ -917,113 +816,6 @@ function labelStep(value) {
   }
 
   return labels[value] || value || 'Non definito'
-}
-
-function labelStatoStep(value) {
-  const labels = {
-    NON_AVVIATO: 'Non avviato',
-    IN_CORSO: 'In corso',
-    COMPLETATO: 'Completato',
-    BLOCCATO: 'Bloccato'
-  }
-
-  return labels[value] || value || 'Non definito'
-}
-
-function coloreStep(value) {
-  switch (value) {
-    case 'COMPLETATO':
-      return 'green'
-    case 'IN_CORSO':
-      return 'blue'
-    case 'BLOCCATO':
-      return 'red'
-    default:
-      return 'grey'
-  }
-}
-
-function iconaStep(value) {
-  switch (value) {
-    case 'COMPLETATO':
-      return 'mdi-check'
-    case 'IN_CORSO':
-      return 'mdi-progress-clock'
-    case 'BLOCCATO':
-      return 'mdi-lock-outline'
-    default:
-      return 'mdi-circle-outline'
-  }
-}
-
-function labelRuoloPartecipante(value) {
-  const labels = {
-    OPERATORE: 'Operatore',
-    REVISORE: 'Revisore',
-    FIRMATARIO: 'Firmatario',
-    PROTOCOLLATORE: 'Protocollatore',
-    APPROVATORE: 'Approvatore',
-    OSSERVATORE: 'Osservatore'
-  }
-
-  return labels[value] || value || 'Ruolo non definito'
-}
-
-function labelStatoPartecipante(value) {
-  const labels = {
-    ASSEGNATO: 'Assegnato',
-    IN_ATTESA: 'In attesa',
-    IN_CORSO: 'In corso',
-    COMPLETATO: 'Completato',
-    RESPINTO: 'Respinto',
-    ANNULLATO: 'Annullato'
-  }
-
-  return labels[value] || value || 'Non definito'
-}
-
-function coloreStatoPartecipante(value) {
-  switch (value) {
-    case 'COMPLETATO':
-      return 'green'
-    case 'IN_CORSO':
-      return 'amber'
-    case 'RESPINTO':
-      return 'red'
-    case 'ANNULLATO':
-      return 'grey-darken-1'
-    case 'ASSEGNATO':
-    case 'IN_ATTESA':
-      return 'grey'
-    default:
-      return 'grey'
-  }
-}
-
-function colorePartecipante(partecipante) {
-  if (partecipante?.statoPartecipante === 'COMPLETATO') {
-    return partecipante.coloreAvatar || 'green'
-  }
-
-  return coloreStatoPartecipante(partecipante?.statoPartecipante)
-}
-
-function partecipanteCompletabile(partecipante) {
-  return ['ASSEGNATO', 'IN_ATTESA', 'IN_CORSO'].includes(
-    partecipante?.statoPartecipante
-  )
-}
-
-function inizialiPartecipante(nomeVisualizzato) {
-  const parts = String(nomeVisualizzato || '')
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-
-  if (!parts.length) return '?'
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
-
-  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
 }
 
 function iconaDocumento(documento) {
@@ -1303,93 +1095,4 @@ function messaggioErroreCompletaPartecipante(error) {
   justify-content: flex-end;
 }
 
-.step-operativi-list {
-  display: grid;
-  gap: 10px;
-}
-
-.step-operativo-row {
-  align-items: center;
-  border: 1px solid rgba(0, 0, 0, 0.07);
-  border-radius: 8px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  padding: 10px 12px;
-}
-
-.step-operativo-row > .v-avatar {
-  order: 1;
-}
-
-.step-operativo-text {
-  flex: 1 1 180px;
-  min-width: 0;
-  order: 2;
-}
-
-.partecipanti-step {
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
-  flex: 1 0 100%;
-  margin-left: 40px;
-  order: 3;
-  padding-top: 8px;
-}
-
-.partecipante-step-row {
-  align-items: center;
-  display: grid;
-  gap: 8px;
-  grid-template-columns: 32px minmax(130px, 1fr) auto auto;
-  min-height: 42px;
-  padding: 4px 0;
-}
-
-.partecipante-avatar {
-  color: #ffffff;
-}
-
-.partecipante-step-main {
-  min-width: 0;
-}
-
-.partecipante-step-title {
-  font-size: 0.88rem;
-  font-weight: 700;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.partecipante-step-meta {
-  color: #6b7280;
-  font-size: 0.74rem;
-}
-
-.partecipante-step-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  justify-content: flex-end;
-}
-
-@media (max-width: 700px) {
-  .partecipanti-step {
-    margin-left: 0;
-  }
-
-  .partecipante-step-row {
-    grid-template-columns: 32px minmax(0, 1fr);
-  }
-
-  .partecipante-step-chips {
-    grid-column: 1 / -1;
-    justify-content: flex-start;
-  }
-
-  .partecipante-step-row .v-btn {
-    grid-column: 1 / -1;
-    justify-self: start;
-  }
-}
 </style>
