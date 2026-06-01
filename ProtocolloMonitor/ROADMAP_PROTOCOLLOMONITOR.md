@@ -644,12 +644,140 @@ ma possono diventare sottofasi reali o tipi di sottofase.
 | Step 30L-24 | Allegati documento principale. |
 | Step 30L-25 | Refactoring UI sottofase semplificata. |
 
+## Step 30L-21C – Mappatura workflow attuale / nuovo modello
+
+Questo step e esclusivamente di analisi e progettazione. Non introduce
+modifiche a codice, database, schema Access, endpoint o frontend.
+
+### Obiettivo della mappatura
+
+Lo scopo e capire come riutilizzare il lavoro gia fatto senza perdere dati,
+funzionalita e investimenti. Il modello attuale vede `REDIGI`, `REVISIONA`,
+`FIRMA`, `PROTOCOLLA` e `FINE` come step interni del workflow di una sottofase.
+Il nuovo modello li reinterpreta come sottofasi vere e proprie, o come tipi di
+sottofase, attraversate dal documento principale.
+
+### Mappatura concettuale
+
+| Modello attuale | Nuovo modello | Esito | Note |
+| --- | --- | --- | --- |
+| `FASE` | `FASE` | Conservare | La fase resta il contenitore ordinato delle sottofasi. |
+| `SOTTOFASE` come contenitore del workflow | `SOTTOFASE` come unita operativa reale | Reinterpretare | La sottofase non e piu solo il contenitore di REDIGI/FIRMA/etc.; puo essere REDIGI, REVISIONA, FIRMA, PROTOCOLLA, FINE o altra sottofase. |
+| Workflow `REDIGI` | Sottofase o tipo sottofase `REDIGI` | Trasformare | Redazione come sottofase con stato, nota, documento principale, partecipanti/operatori e azioni proprie. |
+| Workflow `REVISIONA` | Sottofase o tipo sottofase `REVISIONA` | Trasformare | Revisione come sottofase con revisori, commenti, esito e versioni documento. |
+| Workflow `FIRMA` | Sottofase o tipo sottofase `FIRMA` | Trasformare | Firma come sottofase con firmatari, stato firma e data firma. |
+| Workflow `PROTOCOLLA` | Sottofase o tipo sottofase `PROTOCOLLA` | Trasformare | Protocollazione come sottofase con numero protocollo, data protocollo e operatori. |
+| Workflow `FINE` | Sottofase o stato conclusivo `FINE` | Reinterpretare | Puo restare una sottofase di chiusura oppure diventare stato finale della sequenza, da decidere nel refactoring. |
+| `StepCorrente` | Stato/posizione legacy nella migrazione | Congelare | Utile per leggere lo stato dei dati gia scritti, non per guidare il nuovo modello. |
+| `T_SottofaseStepOperativi` | Storico azioni/eventi legacy | Reinterpretare | Non e piu la fonte primaria del modello, ma conserva memoria operativa. |
+
+### Mappatura database
+
+| Tabella | Significato attuale | Significato futuro | Compatibilita | Necessita di migrazione | Riutilizzo stimato |
+| --- | --- | --- | --- | --- | --- |
+| `T_ProcedimentoSottofasi` | Record della sottofase, stato, ordine, campi documentali e `StepCorrente`. | Record della sottofase reale o del tipo sottofase attraversato dal documento. | Alta. | Migrazione logica: interpretare `CodiceSottofase`/catalogo come tipo sottofase e congelare `StepCorrente` come legacy. | 80% |
+| `T_SottofaseDocumenti` | Storico versionato dei documenti collegati a una sottofase. | Storico versioni del documento principale; base futura per distinguere versioni e allegati. | Molto alta. | Nessuna migrazione distruttiva; eventuale estensione futura per allegati. | 90% |
+| `T_SottofaseStepOperativi` | Storico degli step interni completati nel workflow della sottofase. | Storico azioni/eventi legacy utile per audit, mapping e continuita. | Media. | Richiede reinterpretazione: da motore workflow a log storico. | 60% |
+
+### Mappatura endpoint
+
+| Endpoint attuale | Decisione | Nuovo ruolo consigliato | Note |
+| --- | --- | --- | --- |
+| `GET /protocollo-monitor/sottofasi/{id_sottofase}/workflow` | Congelare e reinterpretare | Lettura stato legacy o azioni disponibili durante la transizione. | Da non eliminare finche la UI usa `WorkflowSottofaseCard.vue`. |
+| `POST /protocollo-monitor/sottofasi/{id_sottofase}/workflow/azioni` | Reinterpretare, poi sostituire | Futuro `POST /sottofasi/{id}/azioni`. | Le azioni devono dipendere dal tipo sottofase e dai partecipanti. |
+| `GET /protocollo-monitor/sottofasi/{id_sottofase}/documentale` | Conservare | Quadro documentale/sottofase. | Puo diventare il centro del nuovo pannello sottofase. |
+| `GET /protocollo-monitor/sottofasi/{id_sottofase}/documenti` | Conservare | Versioni documento principale. | In futuro distinguere da allegati. |
+| `POST /protocollo-monitor/sottofasi/{id_sottofase}/documenti` | Conservare e reinterpretare | Upload nuova versione documento principale. | La regola di abilitazione passera da step REDIGI/REVISIONA a tipo/stato sottofase. |
+| `GET /protocollo-monitor/sottofase-documenti/{id_documento}/apri` | Conservare | Apertura documento/versione. | Compatibile con nuovo modello. |
+| `GET /protocollo-monitor/sottofase-documenti/{id_documento}/scarica` | Conservare | Scarico documento/versione. | Compatibile con nuovo modello. |
+
+### Mappatura frontend
+
+| Componente | Cosa resta | Cosa cambia nome | Cosa cambia funzione | Cosa viene separato |
+| --- | --- | --- | --- | --- |
+| `WorkflowSottofaseCard.vue` | Dialog azione, gestione loading/errori, emit refresh, pattern upload. | Probabile rinomina in card azioni sottofase o congelamento come legacy. | Da stepper workflow interno a pannello azioni specifiche della sottofase. | Upload documento, lista azioni, storico legacy. |
+| `SottofaseDocumentaleCard.vue` | Documento corrente, storico versioni, apri/scarica, helper Word, normalizzazione dati. | Puo diventare `SottofaseDocumentoCard` o restare documentale. | Da pannello documentale piu step operativi a pannello documento principale/versioni/allegati. | Storico step operativi va spostato in storico azioni/audit. |
+| `ProcedimentoDettaglioView.vue` | Layout fase/sottofase, selezione sottofase, avatar, reload dopo aggiornamento. | Il linguaggio "workflow" va ridotto o sostituito con "fasi/sottofasi". | La sequenza REDIGI/FIRMA/etc. viene mostrata come sottofasi della fase, non come step dentro una card. | Timeline sottofasi, pannello documentale, partecipanti, azioni. |
+
+### Mappatura dati gia scritti
+
+| Categoria | Reinterpretazione senza perdita? | Motivazione |
+| --- | --- | --- |
+| `StepCorrente` | PARZIALMENTE | Indica dove si trovava il workflow interno; puo mappare la sottofase/tipo futuro, ma non contiene da solo partecipanti o funzionalita specifiche. |
+| Storico workflow | SI | I record in `T_SottofaseStepOperativi` conservano codice step, stato, date, note e utenti; possono diventare storico azioni legacy. |
+| Azioni eseguite | PARZIALMENTE | Sono ricostruibili dagli step completati e dalle note, ma il significato va tradotto in azioni sottofase o transizioni. |
+| Documenti caricati | SI | Path, hash, dimensione, tipo, utente e data restano validi. |
+| Versioni esistenti | SI | La numerazione versionata e coerente con il nuovo documento principale. |
+
+Conclusione sui dati: i dati gia presenti possono essere reinterpretati senza
+perdita sostanziale del contenuto documentale. La perdita potenziale riguarda
+solo il significato operativo fine delle azioni, perche oggi e codificato come
+avanzamento lineare e non come azione specifica di una sottofase reale.
+
+### Mappatura delle azioni
+
+| Azione attuale | Decisione | Nuova interpretazione possibile |
+| --- | --- | --- |
+| `AVVIA_REDAZIONE` | Trasformare | `COMPLETA_REDAZIONE`, `SALVA_BOZZA` o transizione da sottofase REDIGI a REVISIONA. |
+| `INVIA_REVISIONE` | Trasformare | `INVIA_A_REVISIONE`, `ESITO_REVISIONE_POSITIVO` o transizione da REVISIONA a FIRMA. |
+| `SEGNA_FIRMATO` | Trasformare | `REGISTRA_FIRMA` o completamento partecipante con ruolo `FIRMATARIO`. |
+| `SEGNA_PROTOCOLLATO` | Trasformare | `REGISTRA_PROTOCOLLO` con numero/data protocollo quando disponibili. |
+| `CHIUDI_SOTTOFASE` | Mantenere come concetto, trasformare come implementazione | Diventa `COMPLETA_SOTTOFASE` o completamento automatico quando regole documento/partecipanti sono soddisfatte. |
+
+### Compatibilita documentale
+
+| Elemento | Riutilizzo | Eventuali modifiche |
+| --- | --- | --- |
+| Documento principale | Alto | Mantenere `IDDocumentoCorrente` come puntatore alla versione corrente. |
+| Versioni | Molto alto | Conservare `T_SottofaseDocumenti.VersioneDocumento`; distinguere in futuro versioni da allegati. |
+| Documento corrente | Alto | Resta la versione attiva del documento principale della sottofase. |
+| Helper Word | Alto | Nessuna modifica concettuale; resta servizio locale di apertura Word. |
+| Apri | Alto | Endpoint e UI restano compatibili. |
+| Scarica | Alto | Endpoint e UI restano compatibili. |
+
+### Partecipanti: preparazione Step 30L-22
+
+| Ruolo | Dove si collega | Impatto sulla sottofase | Completamento automatico possibile |
+| --- | --- | --- | --- |
+| `REVISORE` | Sottofase `REVISIONA` o tipo revisione. | Determina esito revisione, note e richieste integrazione. | Si, quando tutti i revisori obbligatori hanno esito positivo; no se uno respinge o chiede integrazione. |
+| `FIRMATARIO` | Sottofase `FIRMA`. | Determina stato firma e data firma. | Si, quando tutti i firmatari obbligatori hanno firmato. |
+| `APPROVATORE` | Sottofase `APPROVAZIONE` o sottofase personalizzata. | Determina approvazione, rigetto o richiesta integrazione. | Si, secondo quorum o unanimita decisa dal tipo sottofase. |
+| `OPERATORE` | Qualsiasi sottofase operativa, in particolare REDIGI/PROTOCOLLA. | Esegue azioni pratiche e aggiorna stato/documento. | Si, se l'azione operatore richiesta e completata. |
+| `OSSERVATORE` | Qualsiasi sottofase. | Visibilita e tracciamento senza potere bloccante. | Di norma no, salvo regole future. |
+
+### Strategia di migrazione
+
+| Fase | Nome | Strategia | Obiettivo |
+| --- | --- | --- | --- |
+| Fase 1 | Convivenza | Mantenere workflow legacy e nuovo modello concettuale documentato. | Evitare rotture e preservare operativita esistente. |
+| Fase 2 | Reinterpretazione | Leggere `StepCorrente` e `T_SottofaseStepOperativi` come stato/storico legacy. | Rendere esplicito il mapping senza migrare fisicamente i dati. |
+| Fase 3 | Semplificazione | Separare UI documentale, azioni sottofase, partecipanti e storico. | Ridurre dipendenza da `WorkflowSottofaseCard.vue` e dalla sequenza interna. |
+| Fase 4 | Nuovo modello | Introdurre sottofasi/tipi sottofase, partecipanti, allegati e azioni specifiche. | Il documento attraversa sottofasi reali; il workflow interno non e piu il modello primario. |
+
+### Quanto lavoro si conserva
+
+Stima motivata: circa 70% del lavoro svolto puo essere conservato.
+
+| Area | Conservazione stimata | Motivo |
+| --- | --- | --- |
+| Documentale | 85-90% | Upload, versionamento, documento corrente, storico, apertura/scarico e helper Word restano centrali. |
+| Backend architetturale | 60-70% | Router, service, repository, backup e rollback restano validi; cambia il dominio workflow. |
+| Frontend | 50-60% | Layout fase/sottofase e card documentale restano; card workflow va trasformata. |
+| Database Access | 70-80% | Tabelle principali restano compatibili; `T_SottofaseStepOperativi` diventa storico legacy. |
+| Azioni workflow | 35-45% | Le azioni sono utili come intenzioni operative, ma vanno rinominate e spostate nel modello azioni sottofase. |
+
+### Rischi principali
+
+- Confondere la sottofase reale con lo step legacy durante la convivenza.
+- Usare `StepCorrente` come fonte primaria anche dopo l'introduzione dei tipi sottofase.
+- Mescolare versioni del documento principale e allegati futuri.
+- Perdere il significato operativo delle azioni gia eseguite se non vengono mappate prima del refactoring.
+- Introdurre partecipanti senza regole chiare di completamento.
+
 ## 14. Prossima tabella di marcia
 
 | Prossimo step | Obiettivo | Note prudenziali |
 | --- | --- | --- |
-| Step 30L-21B | Analisi impatto sul codice esistente. | Nessuna modifica applicativa: censire componenti, service, repository, endpoint e test coinvolti. |
-| Step 30L-21C | Mappatura tra workflow attuale e nuovo modello. | Definire corrispondenza tra `StepCorrente`/azioni esistenti e sottofasi reali. |
 | Step 30L-22 | Partecipanti sottofase. | Progettare `PartecipanteSottofase` prima di introdurre tabelle o campi reali. |
 | Step 30L-23 | Avatar a ventaglio. | Prima modellare stati e ruoli, poi visualizzazione. |
 | Step 30L-24 | Allegati documento principale. | Distinguere documento principale, versioni e allegati. |
