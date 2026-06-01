@@ -338,6 +338,26 @@
             Step operativi
           </div>
 
+          <v-alert
+            v-if="messaggioPartecipanti"
+            type="success"
+            variant="tonal"
+            density="compact"
+            class="mb-3"
+          >
+            {{ messaggioPartecipanti }}
+          </v-alert>
+
+          <v-alert
+            v-if="errorePartecipanti"
+            type="warning"
+            variant="tonal"
+            density="compact"
+            class="mb-3"
+          >
+            {{ errorePartecipanti }}
+          </v-alert>
+
           <div
             v-if="quadro.stepOperativi.length"
             class="step-operativi-list"
@@ -355,6 +375,78 @@
                   {{ iconaStep(step.statoStep) }}
                 </v-icon>
               </v-avatar>
+
+              <div class="partecipanti-step">
+                <template v-if="partecipantiStep(step).length">
+                  <div
+                    v-for="partecipante in partecipantiStep(step)"
+                    :key="partecipante.idPartecipante"
+                    class="partecipante-step-row"
+                  >
+                    <v-avatar
+                      :color="colorePartecipante(partecipante)"
+                      size="32"
+                      class="partecipante-avatar"
+                    >
+                      <span class="text-caption font-weight-bold">
+                        {{ partecipante.iniziali || inizialiPartecipante(partecipante.nomeVisualizzato) }}
+                      </span>
+                    </v-avatar>
+
+                    <div class="partecipante-step-main">
+                      <div class="partecipante-step-title">
+                        {{ partecipante.nomeVisualizzato || 'Partecipante' }}
+                      </div>
+                      <div class="partecipante-step-meta">
+                        {{ labelRuoloPartecipante(partecipante.ruolo) }}
+                        <span v-if="partecipante.dataAzione">
+                          Â· {{ formattaDataOra(partecipante.dataAzione) }}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div class="partecipante-step-chips">
+                      <v-chip
+                        :color="coloreStatoPartecipante(partecipante.statoPartecipante)"
+                        variant="tonal"
+                        size="x-small"
+                      >
+                        {{ labelStatoPartecipante(partecipante.statoPartecipante) }}
+                      </v-chip>
+                      <v-chip
+                        :color="partecipante.partecipanteObbligatorio ? 'deep-orange' : 'grey'"
+                        variant="tonal"
+                        size="x-small"
+                      >
+                        {{ partecipante.partecipanteObbligatorio ? 'Obbligatorio' : 'Facoltativo' }}
+                      </v-chip>
+                    </div>
+
+                    <v-btn
+                      v-if="partecipanteCompletabile(partecipante)"
+                      color="green"
+                      variant="tonal"
+                      size="small"
+                      prepend-icon="mdi-check"
+                      :loading="completamentoPartecipanteInCorso === partecipante.idPartecipante"
+                      :disabled="completamentoPartecipanteInCorso !== null"
+                      @click="completaPartecipante(step, partecipante)"
+                    >
+                      Completa
+                    </v-btn>
+                  </div>
+                </template>
+
+                <v-alert
+                  v-else-if="!loadingPartecipanti"
+                  type="info"
+                  variant="tonal"
+                  density="compact"
+                  class="mt-2"
+                >
+                  Nessun partecipante collegato a questo step.
+                </v-alert>
+              </div>
 
               <div class="step-operativo-text">
                 <div class="font-weight-bold">
@@ -399,7 +491,9 @@ import { computed, ref, watch } from 'vue'
 import {
   apriDocumentoSottofase,
   apriDocumentoConWord,
+  completaPartecipanteStepSottofase,
   getSottofaseDocumentale,
+  listPartecipantiStepSottofase,
   scaricaDocumentoSottofase
 } from '../../services/procedimentoApi'
 
@@ -418,6 +512,11 @@ const messaggioAzioneDocumento = ref('')
 const aperturaInCorsoId = ref(null)
 const downloadInCorsoId = ref(null)
 const wordInCorsoId = ref(null)
+const partecipantiPerStep = ref({})
+const loadingPartecipanti = ref(false)
+const errorePartecipanti = ref('')
+const messaggioPartecipanti = ref('')
+const completamentoPartecipanteInCorso = ref(null)
 
 const documentoPresente = computed(() => {
   return Boolean(
@@ -451,10 +550,13 @@ watch(
 async function caricaSottofaseDocumentale() {
   erroreApertura.value = ''
   messaggioAzioneDocumento.value = ''
+  errorePartecipanti.value = ''
+  messaggioPartecipanti.value = ''
 
   if (!props.idSottofase) {
     quadro.value = null
     errore.value = ''
+    partecipantiPerStep.value = {}
     return
   }
 
@@ -464,8 +566,10 @@ async function caricaSottofaseDocumentale() {
   try {
     const response = await getSottofaseDocumentale(props.idSottofase)
     quadro.value = normalizzaQuadroDocumentale(response)
+    await caricaPartecipantiStepOperativi()
   } catch (error) {
     quadro.value = null
+    partecipantiPerStep.value = {}
     errore.value =
       error.status === 404
         ? 'Sottofase non trovata.'
@@ -593,6 +697,160 @@ function normalizzaStepOperativo(dato) {
   }
 }
 
+function normalizzaPartecipante(dato) {
+  if (!dato) return null
+
+  return {
+    idPartecipante: pick(
+      dato,
+      'id_partecipante',
+      'IDPartecipante',
+      'idPartecipante'
+    ),
+    idSottofase: pick(dato, 'id_sottofase', 'IDSottofase', 'idSottofase'),
+    idStepOperativo: pick(
+      dato,
+      'id_step_operativo',
+      'IDStepOperativo',
+      'idStepOperativo'
+    ),
+    nomeVisualizzato: pick(
+      dato,
+      'nome_visualizzato',
+      'NomeVisualizzato',
+      'nomeVisualizzato'
+    ),
+    email: pick(dato, 'email', 'Email'),
+    ruolo: pick(dato, 'ruolo', 'Ruolo'),
+    statoPartecipante: pick(
+      dato,
+      'stato_partecipante',
+      'StatoPartecipante',
+      'statoPartecipante'
+    ),
+    partecipanteObbligatorio: normalizzaBoolean(
+      pick(
+        dato,
+        'partecipante_obbligatorio',
+        'PartecipanteObbligatorio',
+        'partecipanteObbligatorio'
+      ) ?? true
+    ),
+    ordine: pick(dato, 'ordine', 'Ordine') ?? 0,
+    coloreAvatar: pick(dato, 'colore_avatar', 'ColoreAvatar', 'coloreAvatar'),
+    iniziali: pick(dato, 'iniziali', 'Iniziali'),
+    dataAzione: pick(dato, 'data_azione', 'DataAzione', 'dataAzione'),
+    notePartecipante: pick(
+      dato,
+      'note_partecipante',
+      'NotePartecipante',
+      'notePartecipante'
+    )
+  }
+}
+
+async function caricaPartecipantiStepOperativi() {
+  const steps = quadro.value?.stepOperativi || []
+  const idSottofase = props.idSottofase
+  partecipantiPerStep.value = {}
+
+  if (!idSottofase || !steps.length) return
+
+  loadingPartecipanti.value = true
+  errorePartecipanti.value = ''
+
+  try {
+    const entries = await Promise.all(
+      steps.map(async (step) => {
+        if (!step.idStepSottofase) return [null, []]
+
+        const response = await listPartecipantiStepSottofase(
+          idSottofase,
+          step.idStepSottofase
+        )
+        const partecipanti = normalizzaLista(response)
+          .map(normalizzaPartecipante)
+          .filter(Boolean)
+          .sort(confrontaOrdine)
+
+        return [step.idStepSottofase, partecipanti]
+      })
+    )
+
+    partecipantiPerStep.value = Object.fromEntries(
+      entries.filter(([idStep]) => idStep !== null)
+    )
+  } catch {
+    errorePartecipanti.value =
+      'Impossibile caricare i partecipanti collegati agli step.'
+  } finally {
+    loadingPartecipanti.value = false
+  }
+}
+
+function partecipantiStep(step) {
+  return partecipantiPerStep.value[step?.idStepSottofase] || []
+}
+
+async function completaPartecipante(step, partecipante) {
+  const idStep = step?.idStepSottofase
+  const idPartecipante = partecipante?.idPartecipante
+
+  if (!props.idSottofase || !idStep || !idPartecipante) {
+    errorePartecipanti.value =
+      'Partecipante non completabile: identificativi mancanti.'
+    return
+  }
+
+  errorePartecipanti.value = ''
+  messaggioPartecipanti.value = ''
+  completamentoPartecipanteInCorso.value = idPartecipante
+
+  try {
+    const response = await completaPartecipanteStepSottofase(
+      props.idSottofase,
+      idStep,
+      idPartecipante
+    )
+    aggiornaPartecipanteStep(idStep, idPartecipante, response?.partecipante)
+
+    if (response?.step_completato || response?.stepCompletato) {
+      step.statoStep = 'COMPLETATO'
+      messaggioPartecipanti.value =
+        'Partecipante completato e step chiuso automaticamente.'
+    } else {
+      messaggioPartecipanti.value = 'Partecipante completato.'
+    }
+  } catch (error) {
+    errorePartecipanti.value = messaggioErroreCompletaPartecipante(error)
+  } finally {
+    completamentoPartecipanteInCorso.value = null
+  }
+}
+
+function aggiornaPartecipanteStep(idStep, idPartecipante, datoPartecipante) {
+  const partecipanti = partecipantiPerStep.value[idStep] || []
+  const index = partecipanti.findIndex(
+    (item) => String(item.idPartecipante) === String(idPartecipante)
+  )
+  const aggiornato = normalizzaPartecipante(datoPartecipante) || {
+    ...partecipanti[index],
+    statoPartecipante: 'COMPLETATO',
+    dataAzione: new Date().toISOString()
+  }
+
+  if (index === -1) return
+
+  partecipantiPerStep.value = {
+    ...partecipantiPerStep.value,
+    [idStep]: [
+      ...partecipanti.slice(0, index),
+      aggiornato,
+      ...partecipanti.slice(index + 1)
+    ]
+  }
+}
+
 function pick(source, ...keys) {
   if (!source) return null
 
@@ -696,6 +954,76 @@ function iconaStep(value) {
     default:
       return 'mdi-circle-outline'
   }
+}
+
+function labelRuoloPartecipante(value) {
+  const labels = {
+    OPERATORE: 'Operatore',
+    REVISORE: 'Revisore',
+    FIRMATARIO: 'Firmatario',
+    PROTOCOLLATORE: 'Protocollatore',
+    APPROVATORE: 'Approvatore',
+    OSSERVATORE: 'Osservatore'
+  }
+
+  return labels[value] || value || 'Ruolo non definito'
+}
+
+function labelStatoPartecipante(value) {
+  const labels = {
+    ASSEGNATO: 'Assegnato',
+    IN_ATTESA: 'In attesa',
+    IN_CORSO: 'In corso',
+    COMPLETATO: 'Completato',
+    RESPINTO: 'Respinto',
+    ANNULLATO: 'Annullato'
+  }
+
+  return labels[value] || value || 'Non definito'
+}
+
+function coloreStatoPartecipante(value) {
+  switch (value) {
+    case 'COMPLETATO':
+      return 'green'
+    case 'IN_CORSO':
+      return 'amber'
+    case 'RESPINTO':
+      return 'red'
+    case 'ANNULLATO':
+      return 'grey-darken-1'
+    case 'ASSEGNATO':
+    case 'IN_ATTESA':
+      return 'grey'
+    default:
+      return 'grey'
+  }
+}
+
+function colorePartecipante(partecipante) {
+  if (partecipante?.statoPartecipante === 'COMPLETATO') {
+    return partecipante.coloreAvatar || 'green'
+  }
+
+  return coloreStatoPartecipante(partecipante?.statoPartecipante)
+}
+
+function partecipanteCompletabile(partecipante) {
+  return ['ASSEGNATO', 'IN_ATTESA', 'IN_CORSO'].includes(
+    partecipante?.statoPartecipante
+  )
+}
+
+function inizialiPartecipante(nomeVisualizzato) {
+  const parts = String(nomeVisualizzato || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+
+  if (!parts.length) return '?'
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
 }
 
 function iconaDocumento(documento) {
@@ -918,6 +1246,24 @@ function messaggioErroreApriConWord(error) {
 
   return 'Impossibile aprire il documento con Word.'
 }
+
+function messaggioErroreCompletaPartecipante(error) {
+  const dettaglio = error?.payload?.detail || error?.payload?.error
+
+  if (error?.status === 400) {
+    return dettaglio || 'Partecipante gia completato o non completabile.'
+  }
+
+  if (error?.status === 404) {
+    return dettaglio || 'Partecipante non coerente con lo step selezionato.'
+  }
+
+  if (error?.status >= 500) {
+    return dettaglio || 'Errore backend durante il completamento partecipante.'
+  }
+
+  return 'Impossibile completare il partecipante.'
+}
 </script>
 
 <style scoped>
@@ -967,11 +1313,83 @@ function messaggioErroreApriConWord(error) {
   border: 1px solid rgba(0, 0, 0, 0.07);
   border-radius: 8px;
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
   padding: 10px 12px;
 }
 
+.step-operativo-row > .v-avatar {
+  order: 1;
+}
+
 .step-operativo-text {
+  flex: 1 1 180px;
   min-width: 0;
+  order: 2;
+}
+
+.partecipanti-step {
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  flex: 1 0 100%;
+  margin-left: 40px;
+  order: 3;
+  padding-top: 8px;
+}
+
+.partecipante-step-row {
+  align-items: center;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 32px minmax(130px, 1fr) auto auto;
+  min-height: 42px;
+  padding: 4px 0;
+}
+
+.partecipante-avatar {
+  color: #ffffff;
+}
+
+.partecipante-step-main {
+  min-width: 0;
+}
+
+.partecipante-step-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.partecipante-step-meta {
+  color: #6b7280;
+  font-size: 0.74rem;
+}
+
+.partecipante-step-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
+@media (max-width: 700px) {
+  .partecipanti-step {
+    margin-left: 0;
+  }
+
+  .partecipante-step-row {
+    grid-template-columns: 32px minmax(0, 1fr);
+  }
+
+  .partecipante-step-chips {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+
+  .partecipante-step-row .v-btn {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
 }
 </style>

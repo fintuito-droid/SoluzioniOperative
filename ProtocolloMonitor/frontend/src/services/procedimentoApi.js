@@ -109,6 +109,23 @@ export function listStepOperativiSottofase(idSottofase) {
   return fetchJson(`/protocollo-monitor/sottofasi/${idSottofase}/step-operativi`)
 }
 
+export function listPartecipantiStepSottofase(idSottofase, idStep) {
+  return fetchJson(
+    `/protocollo-monitor/sottofasi/${idSottofase}/step-operativi/${idStep}/partecipanti`
+  )
+}
+
+export function completaPartecipanteStepSottofase(
+  idSottofase,
+  idStep,
+  idPartecipante
+) {
+  return fetchJson(
+    `/protocollo-monitor/sottofasi/${idSottofase}/step/${idStep}/partecipanti/${idPartecipante}/completa`,
+    { method: 'POST' }
+  )
+}
+
 export function apriDocumentoSottofase(idDocumento) {
   return fetchBlob(`/protocollo-monitor/sottofase-documenti/${idDocumento}/apri`)
 }
