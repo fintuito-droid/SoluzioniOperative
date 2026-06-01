@@ -3,7 +3,10 @@ from fastapi import HTTPException
 
 from backend.api.routes.protocollo_monitor import (
     ProcedimentoFasePayload,
+    ProcedimentoSottofasePayload,
+    aggiorna_procedimento_fase_sottofase,
     aggiorna_procedimento_fase,
+    crea_procedimento_fase_sottofase,
     crea_procedimento_fase,
     get_catalogo_sottofasi,
     get_procedimento_fase_dettaglio,
@@ -13,6 +16,8 @@ from backend.api.routes.protocollo_monitor import (
 from backend.services.workflow_procedimento_service import (
     WorkflowFaseNotFoundError,
     WorkflowFaseValidationError,
+    WorkflowSottofaseNotFoundError,
+    WorkflowSottofaseValidationError,
 )
 
 
@@ -55,6 +60,41 @@ class FakeWorkflowProcedimentoService:
         return {
             "id_procedimento": id_procedimento,
             "id_fase": id_fase,
+            "titolo": payload.Titolo,
+            "descrizione": payload.Descrizione,
+        }
+
+    def crea_sottofase_fase(self, *, id_procedimento, id_fase, payload):
+        if self.mode == "sottofase_validation":
+            raise WorkflowSottofaseValidationError("Titolo sottofase obbligatorio.")
+        if self.mode == "sottofase_missing":
+            raise WorkflowSottofaseNotFoundError()
+
+        return {
+            "id_procedimento": id_procedimento,
+            "id_fase": id_fase,
+            "id_sottofase": 12,
+            "titolo": payload.Titolo,
+            "descrizione": payload.Descrizione,
+        }
+
+    def aggiorna_sottofase_fase(
+        self,
+        *,
+        id_procedimento,
+        id_fase,
+        id_sottofase,
+        payload,
+    ):
+        if self.mode == "sottofase_validation":
+            raise WorkflowSottofaseValidationError("Titolo sottofase obbligatorio.")
+        if self.mode == "sottofase_missing":
+            raise WorkflowSottofaseNotFoundError()
+
+        return {
+            "id_procedimento": id_procedimento,
+            "id_fase": id_fase,
+            "id_sottofase": id_sottofase,
             "titolo": payload.Titolo,
             "descrizione": payload.Descrizione,
         }
@@ -153,6 +193,80 @@ def test_get_procedimento_fase_sottofasi_returns_list():
     )
 
     assert response == [{"id_fase": 1, "id_sottofase": 2}]
+
+
+def test_crea_procedimento_fase_sottofase_returns_created_record():
+    response = crea_procedimento_fase_sottofase(
+        10,
+        9,
+        ProcedimentoSottofasePayload(Titolo="Sottofase", Descrizione="Desc"),
+        workflow_service=FakeWorkflowProcedimentoService(),
+    )
+
+    assert response == {
+        "id_procedimento": 10,
+        "id_fase": 9,
+        "id_sottofase": 12,
+        "titolo": "Sottofase",
+        "descrizione": "Desc",
+    }
+
+
+def test_crea_procedimento_fase_sottofase_returns_400_without_title():
+    with pytest.raises(HTTPException) as exc_info:
+        crea_procedimento_fase_sottofase(
+            10,
+            9,
+            ProcedimentoSottofasePayload(Titolo=None),
+            workflow_service=FakeWorkflowProcedimentoService(
+                mode="sottofase_validation"
+            ),
+        )
+
+    assert exc_info.value.status_code == 400
+    assert exc_info.value.detail == "Titolo sottofase obbligatorio."
+
+
+def test_crea_procedimento_fase_sottofase_returns_404_when_fase_missing():
+    with pytest.raises(HTTPException) as exc_info:
+        crea_procedimento_fase_sottofase(
+            10,
+            999,
+            ProcedimentoSottofasePayload(Titolo="Sottofase"),
+            workflow_service=FakeWorkflowProcedimentoService(mode="sottofase_missing"),
+        )
+
+    assert exc_info.value.status_code == 404
+    assert exc_info.value.detail == "Fase non trovata"
+
+
+def test_aggiorna_procedimento_fase_sottofase_returns_updated_record():
+    response = aggiorna_procedimento_fase_sottofase(
+        10,
+        9,
+        12,
+        ProcedimentoSottofasePayload(Titolo="Sottofase aggiornata"),
+        workflow_service=FakeWorkflowProcedimentoService(),
+    )
+
+    assert response["id_procedimento"] == 10
+    assert response["id_fase"] == 9
+    assert response["id_sottofase"] == 12
+    assert response["titolo"] == "Sottofase aggiornata"
+
+
+def test_aggiorna_procedimento_fase_sottofase_returns_404_when_missing():
+    with pytest.raises(HTTPException) as exc_info:
+        aggiorna_procedimento_fase_sottofase(
+            10,
+            9,
+            999,
+            ProcedimentoSottofasePayload(Titolo="Sottofase"),
+            workflow_service=FakeWorkflowProcedimentoService(mode="sottofase_missing"),
+        )
+
+    assert exc_info.value.status_code == 404
+    assert exc_info.value.detail == "Sottofase non trovata"
 
 
 def test_get_procedimento_fase_sottofasi_returns_404_when_fase_missing():

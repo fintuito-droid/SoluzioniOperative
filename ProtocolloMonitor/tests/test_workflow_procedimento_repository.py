@@ -1,4 +1,5 @@
 from datetime import datetime
+from datetime import datetime
 from types import SimpleNamespace
 
 from backend.repositories.workflow_procedimento_repository import (
@@ -256,6 +257,137 @@ def test_list_sottofasi_by_fase_returns_records():
     assert records[0]["codice_sottofase"] == "EMAIL"
     assert records[0]["attivo"] is True
     assert "FROM T_ProcedimentoSottofasi" in cursor.executed_queries[0]
+
+
+def test_crea_sottofase_fase_inserts_with_progressive_order():
+    now = datetime(2026, 6, 1, 10, 36, 0)
+    cursor = FakeCursor(
+        [
+            [SimpleNamespace(NuovoOrdine=3)],
+            [],
+            [SimpleNamespace(IDSottofase=12)],
+            [
+                SimpleNamespace(
+                    IDSottofase=12,
+                    IDFase=8,
+                    IDCatalogoSottofase=None,
+                    CodiceSottofase="SF-TEST",
+                    Titolo="Sottofase",
+                    Descrizione="Descrizione",
+                    Ordine=3,
+                    StatoSottofase="NON_AVVIATA",
+                    Icona="mdi-checkbox-blank-circle-outline",
+                    Colore="grey",
+                    Responsabile="Mario Rossi",
+                    DataScadenza=None,
+                    DataAvvio=None,
+                    DataCompletamento=None,
+                    NoteInterne=None,
+                    Attivo=True,
+                    DataCreazione=now,
+                    DataModifica=now,
+                )
+            ],
+        ]
+    )
+    connection = FakeConnection(cursor)
+    repository = WorkflowProcedimentoRepositoryForTest(connection)
+
+    created = repository.crea_sottofase_fase(
+        id_fase=8,
+        codice_sottofase="SF-TEST",
+        titolo="Sottofase",
+        descrizione="Descrizione",
+        responsabile="Mario Rossi",
+        data_scadenza=None,
+        data_creazione=now,
+    )
+
+    assert created["id_sottofase"] == 12
+    assert created["codice_sottofase"] == "SF-TEST"
+    assert created["titolo"] == "Sottofase"
+    assert created["ordine"] == 3
+    assert "INSERT INTO T_ProcedimentoSottofasi" in cursor.executed_queries[1]
+    assert cursor.executed_params[1][0] == 8
+    assert cursor.executed_params[1][2] == "SF-TEST"
+    assert cursor.executed_params[1][3] == "Sottofase"
+    assert connection.committed is True
+
+
+def test_aggiorna_sottofase_fase_updates_editable_fields():
+    now = datetime(2026, 6, 1, 10, 36, 0)
+    cursor = FakeCursor(
+        [
+            [
+                SimpleNamespace(
+                    IDSottofase=12,
+                    IDFase=8,
+                    IDCatalogoSottofase=None,
+                    CodiceSottofase="SF-OLD",
+                    Titolo="Sottofase vecchia",
+                    Descrizione="Old",
+                    Ordine=3,
+                    StatoSottofase="NON_AVVIATA",
+                    Icona="mdi-checkbox-blank-circle-outline",
+                    Colore="grey",
+                    Responsabile=None,
+                    DataScadenza=None,
+                    DataAvvio=None,
+                    DataCompletamento=None,
+                    NoteInterne=None,
+                    Attivo=True,
+                    DataCreazione=now,
+                    DataModifica=now,
+                )
+            ],
+            [],
+            [
+                SimpleNamespace(
+                    IDSottofase=12,
+                    IDFase=8,
+                    IDCatalogoSottofase=None,
+                    CodiceSottofase="SF-UPD",
+                    Titolo="Sottofase aggiornata",
+                    Descrizione="Nuova",
+                    Ordine=3,
+                    StatoSottofase="NON_AVVIATA",
+                    Icona="mdi-checkbox-blank-circle-outline",
+                    Colore="grey",
+                    Responsabile="Mario Rossi",
+                    DataScadenza=None,
+                    DataAvvio=None,
+                    DataCompletamento=None,
+                    NoteInterne=None,
+                    Attivo=True,
+                    DataCreazione=now,
+                    DataModifica=now,
+                )
+            ],
+        ]
+    )
+    connection = FakeConnection(cursor)
+    repository = WorkflowProcedimentoRepositoryForTest(connection)
+
+    updated = repository.aggiorna_sottofase_fase(
+        id_fase=8,
+        id_sottofase=12,
+        codice_sottofase="SF-UPD",
+        titolo="Sottofase aggiornata",
+        descrizione="Nuova",
+        responsabile="Mario Rossi",
+        data_scadenza=None,
+        data_modifica=now,
+    )
+
+    assert updated["id_sottofase"] == 12
+    assert updated["codice_sottofase"] == "SF-UPD"
+    assert updated["titolo"] == "Sottofase aggiornata"
+    assert "UPDATE T_ProcedimentoSottofasi" in cursor.executed_queries[1]
+    assert cursor.executed_params[1][0] == "SF-UPD"
+    assert cursor.executed_params[1][1] == "Sottofase aggiornata"
+    assert cursor.executed_params[1][6] == 12
+    assert cursor.executed_params[1][7] == 8
+    assert connection.committed is True
 
 
 def test_list_catalogo_sottofasi_filters_active_by_default():

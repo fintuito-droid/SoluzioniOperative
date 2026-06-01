@@ -23,6 +23,8 @@ from backend.services.procedimento_service import (
 from backend.services.workflow_procedimento_service import (
     WorkflowFaseNotFoundError,
     WorkflowFaseValidationError,
+    WorkflowSottofaseNotFoundError,
+    WorkflowSottofaseValidationError,
 )
 from backend.services.sottofase_workflow_action_service import (
     WorkflowActionValidationError,
@@ -85,6 +87,18 @@ class ProcedimentoFasePayload(BaseModel):
 
     Titolo: str | None = Field(default=None, max_length=255)
     Descrizione: str | None = None
+
+
+class ProcedimentoSottofasePayload(BaseModel):
+    """Payload per creare o modificare una sottofase della fase."""
+
+    Titolo: str | None = Field(default=None, max_length=255)
+    Descrizione: str | None = None
+    CodiceSottofase: str | None = Field(default=None, max_length=50)
+    Responsabile: str | None = Field(default=None, max_length=255)
+    DataScadenza: str | None = None
+    Obbligatoria: bool | None = None
+    Bloccante: bool | None = None
 
 
 def get_container() -> DependencyContainer:
@@ -620,6 +634,52 @@ def get_procedimento_fase_sottofasi(
         raise HTTPException(status_code=404, detail="Fase non trovata")
 
     return workflow_service.list_sottofasi_by_fase(id_fase)
+
+
+@router.post(
+    "/protocollo-monitor/procedimenti/{id_procedimento}/fasi/{id_fase}/sottofasi",
+    status_code=201,
+)
+def crea_procedimento_fase_sottofase(
+    id_procedimento: int,
+    id_fase: int,
+    payload: ProcedimentoSottofasePayload,
+    workflow_service: Any = Depends(get_workflow_procedimento_service),
+):
+    try:
+        return workflow_service.crea_sottofase_fase(
+            id_procedimento=id_procedimento,
+            id_fase=id_fase,
+            payload=payload,
+        )
+    except WorkflowSottofaseNotFoundError:
+        raise HTTPException(status_code=404, detail="Fase non trovata")
+    except WorkflowSottofaseValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.put(
+    "/protocollo-monitor/procedimenti/{id_procedimento}/fasi/{id_fase}/"
+    "sottofasi/{id_sottofase}"
+)
+def aggiorna_procedimento_fase_sottofase(
+    id_procedimento: int,
+    id_fase: int,
+    id_sottofase: int,
+    payload: ProcedimentoSottofasePayload,
+    workflow_service: Any = Depends(get_workflow_procedimento_service),
+):
+    try:
+        return workflow_service.aggiorna_sottofase_fase(
+            id_procedimento=id_procedimento,
+            id_fase=id_fase,
+            id_sottofase=id_sottofase,
+            payload=payload,
+        )
+    except WorkflowSottofaseNotFoundError:
+        raise HTTPException(status_code=404, detail="Sottofase non trovata")
+    except WorkflowSottofaseValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 
 @router.get("/protocollo-monitor/catalogo-sottofasi")

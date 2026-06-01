@@ -252,14 +252,15 @@ class WorkflowProcedimentoRepository(BaseRepository):
         try:
             cursor.execute(
                 """
-                SELECT COALESCE(MAX(Ordine), 0) + 1 AS NuovoOrdine
+                SELECT MAX(Ordine) AS MaxOrdine
                 FROM T_ProcedimentoFasi
                 WHERE IDProcedimento = ?
                 """,
                 (id_procedimento,),
             )
             row = cursor.fetchone()
-            ordine = int(self._get(row, "NuovoOrdine", 1) or 1)
+            max_ordine = self._get(row, "MaxOrdine")
+            ordine = 1 if max_ordine is None else int(max_ordine) + 1
 
             cursor.execute(
                 """
@@ -427,6 +428,212 @@ class WorkflowProcedimentoRepository(BaseRepository):
         finally:
             cursor.close()
             conn.close()
+
+    def get_sottofase_detail(self, id_sottofase: int) -> dict[str, Any] | None:
+        """Legge il dettaglio di una sottofase, oppure `None` se non esiste."""
+
+        query = """
+            SELECT
+                IDSottofase,
+                IDFase,
+                IDCatalogoSottofase,
+                CodiceSottofase,
+                Titolo,
+                Descrizione,
+                Ordine,
+                StatoSottofase,
+                Icona,
+                Colore,
+                Responsabile,
+                DataScadenza,
+                DataAvvio,
+                DataCompletamento,
+                NoteInterne,
+                Attivo,
+                DataCreazione,
+                DataModifica
+            FROM T_ProcedimentoSottofasi
+            WHERE IDSottofase = ?
+        """
+
+        conn = self._open_access_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute(query, (id_sottofase,))
+            row = cursor.fetchone()
+            if not row:
+                return None
+
+            return self._sottofase_row_to_dict(row)
+        finally:
+            cursor.close()
+            conn.close()
+
+    def crea_sottofase_fase(
+        self,
+        *,
+        id_fase: int,
+        codice_sottofase: str,
+        titolo: str,
+        descrizione: str | None,
+        responsabile: str | None,
+        data_scadenza: Any,
+        data_creazione: datetime,
+    ) -> dict[str, Any]:
+        """Inserisce una sottofase dentro una fase e restituisce il record."""
+
+        conn = self._open_access_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute(
+                """
+                SELECT MAX(Ordine) AS MaxOrdine
+                FROM T_ProcedimentoSottofasi
+                WHERE IDFase = ?
+                """,
+                (id_fase,),
+            )
+            row = cursor.fetchone()
+            max_ordine = self._get(row, "MaxOrdine")
+            ordine = 1 if max_ordine is None else int(max_ordine) + 1
+
+            cursor.execute(
+                """
+                INSERT INTO T_ProcedimentoSottofasi (
+                    IDFase,
+                    IDCatalogoSottofase,
+                    CodiceSottofase,
+                    Titolo,
+                    Descrizione,
+                    Ordine,
+                    StatoSottofase,
+                    Icona,
+                    Colore,
+                    Responsabile,
+                    DataScadenza,
+                    DataAvvio,
+                    DataCompletamento,
+                    NoteInterne,
+                    Attivo,
+                    DataCreazione,
+                    DataModifica,
+                    StepCorrente,
+                    TestoOperatore,
+                    HaDocumentoCollegato,
+                    IDDocumentoCorrente,
+                    DataUltimaAzione,
+                    UtenteUltimaAzione,
+                    VersioneDocumento
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    id_fase,
+                    None,
+                    codice_sottofase,
+                    titolo,
+                    descrizione,
+                    ordine,
+                    "NON_AVVIATA",
+                    "mdi-checkbox-blank-circle-outline",
+                    "grey",
+                    responsabile,
+                    data_scadenza,
+                    None,
+                    None,
+                    None,
+                    True,
+                    data_creazione,
+                    data_creazione,
+                    None,
+                    None,
+                    False,
+                    None,
+                    None,
+                    None,
+                    None,
+                ),
+            )
+            cursor.execute("SELECT @@IDENTITY AS IDSottofase")
+            identity_row = cursor.fetchone()
+            id_sottofase = self._identity_from_row(
+                identity_row,
+                field_name="IDSottofase",
+            )
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            cursor.close()
+            conn.close()
+
+        created = self.get_sottofase_detail(id_sottofase)
+        if created is None:
+            raise RuntimeError("Sottofase creata ma non rileggibile.")
+
+        return created
+
+    def aggiorna_sottofase_fase(
+        self,
+        *,
+        id_fase: int,
+        id_sottofase: int,
+        codice_sottofase: str | None,
+        titolo: str,
+        descrizione: str | None,
+        responsabile: str | None,
+        data_scadenza: Any,
+        data_modifica: datetime,
+    ) -> dict[str, Any] | None:
+        """Aggiorna i campi editabili di una sottofase."""
+
+        query = """
+            UPDATE T_ProcedimentoSottofasi
+            SET CodiceSottofase = ?,
+                Titolo = ?,
+                Descrizione = ?,
+                Responsabile = ?,
+                DataScadenza = ?,
+                DataModifica = ?
+            WHERE IDSottofase = ? AND IDFase = ?
+        """
+
+        conn = self._open_access_connection()
+        cursor = conn.cursor()
+
+        try:
+            existing = self.get_sottofase_detail(id_sottofase)
+            if existing is None:
+                return None
+
+            cursor.execute(
+                query,
+                (
+                    codice_sottofase or existing.get("codice_sottofase"),
+                    titolo,
+                    descrizione,
+                    responsabile,
+                    data_scadenza,
+                    data_modifica,
+                    id_sottofase,
+                    id_fase,
+                ),
+            )
+            if getattr(cursor, "rowcount", 1) == 0:
+                conn.rollback()
+                return None
+
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            cursor.close()
+            conn.close()
+
+        return self.get_sottofase_detail(id_sottofase)
 
     def list_catalogo_sottofasi(
         self,

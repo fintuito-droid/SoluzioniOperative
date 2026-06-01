@@ -439,62 +439,15 @@
                   Torna alle fasi
                 </v-btn>
 
-                <v-autocomplete
-                  v-model="sottofaseDaAggiungere"
-                  :items="catalogoSottofasi"
-                  item-title="titolo"
-                  item-value="codice"
-                  label="Aggiungi sottofase"
-                  return-object
-                  clearable
-                  variant="outlined"
-                  density="comfortable"
-                  hide-details
-                  class="combo-sottofase"
-                  :loading="loadingCatalogo"
-                  :disabled="!catalogoSottofasi.length"
-                  @update:model-value="aggiungiSottofaseDaCatalogo"
+                <v-btn
+                  color="primary"
+                  variant="flat"
+                  prepend-icon="mdi-plus"
+                  :disabled="!faseSelezionata"
+                  @click="apriDialogNuovaSottofase"
                 >
-                  <template #item="{ props, item }">
-                    <v-list-item v-bind="props">
-                      <template #prepend>
-                        <v-avatar
-                          size="38"
-                          :color="catalogoItem(item).colore"
-                          class="mr-3"
-                        >
-                          <v-icon color="white" size="22">
-                            {{ catalogoItem(item).icona }}
-                          </v-icon>
-                        </v-avatar>
-                      </template>
-
-                      <v-list-item-title>
-                        {{ catalogoItem(item).titolo }}
-                      </v-list-item-title>
-
-                      <v-list-item-subtitle>
-                        {{ catalogoItem(item).descrizione }}
-                      </v-list-item-subtitle>
-                    </v-list-item>
-                  </template>
-
-                  <template #selection="{ item }">
-                    <div class="d-flex align-center">
-                      <v-avatar
-                        size="28"
-                        :color="catalogoItem(item).colore"
-                        class="mr-2"
-                      >
-                        <v-icon color="white" size="18">
-                          {{ catalogoItem(item).icona }}
-                        </v-icon>
-                      </v-avatar>
-
-                      {{ catalogoItem(item).titolo }}
-                    </div>
-                  </template>
-                </v-autocomplete>
+                  Aggiungi sottofase
+                </v-btn>
               </div>
 
               <v-card class="pa-4" rounded="xl" elevation="1">
@@ -536,6 +489,14 @@
                       {{ sottofase.titolo }}
                     </div>
 
+                    <v-btn
+                      icon="mdi-pencil"
+                      size="x-small"
+                      variant="text"
+                      class="mt-1"
+                      @click="apriDialogModificaSottofase(sottofase)"
+                    />
+
                     <v-chip
                       size="x-small"
                       :color="coloreStatoWorkflow(sottofase.stato)"
@@ -553,8 +514,7 @@
                   variant="tonal"
                   class="mt-2"
                 >
-                  Questa fase non ha ancora sottofasi. Puoi aggiungerne una dal catalogo:
-                  l'operazione resta locale finche il backend workflow rimane read-only.
+                  Questa fase non ha ancora sottofasi.
                 </v-alert>
 
                 <v-divider class="my-4" />
@@ -571,12 +531,21 @@
                       {{ sottofaseSelezionata.titolo }}
                     </h3>
 
-                    <v-chip
-                      :color="coloreStatoWorkflow(sottofaseSelezionata.stato)"
-                      variant="flat"
-                    >
-                      {{ labelStatoWorkflow(sottofaseSelezionata.stato) }}
-                    </v-chip>
+                    <div class="d-flex align-center ga-2">
+                      <v-btn
+                        icon="mdi-pencil"
+                        size="small"
+                        variant="text"
+                        @click="apriDialogModificaSottofase(sottofaseSelezionata)"
+                      />
+
+                      <v-chip
+                        :color="coloreStatoWorkflow(sottofaseSelezionata.stato)"
+                        variant="flat"
+                      >
+                        {{ labelStatoWorkflow(sottofaseSelezionata.stato) }}
+                      </v-chip>
+                    </div>
                   </div>
 
                   <p class="mt-3">
@@ -703,12 +672,117 @@
       </v-card>
     </v-dialog>
 
+    <v-dialog
+      v-model="dialogSottofase"
+      max-width="760"
+      persistent
+    >
+      <v-card rounded="xl">
+        <v-card-title class="text-subtitle-1 font-weight-bold">
+          {{ sottofaseDialogMode === 'create' ? 'Aggiungi sottofase' : 'Modifica sottofase' }}
+        </v-card-title>
+
+        <v-card-text>
+          <v-alert
+            v-if="erroreSottofaseDialog"
+            type="error"
+            variant="tonal"
+            density="compact"
+            class="mb-4"
+          >
+            {{ erroreSottofaseDialog }}
+          </v-alert>
+
+          <v-form ref="sottofaseFormRef">
+            <v-row>
+              <v-col cols="12" md="8">
+                <v-text-field
+                  v-model="sottofaseForm.Titolo"
+                  label="Titolo sottofase"
+                  variant="outlined"
+                  density="compact"
+                  :rules="[regoleSottofase.titolo]"
+                  autofocus
+                />
+              </v-col>
+
+              <v-col cols="12" md="4">
+                <v-text-field
+                  v-model="sottofaseForm.CodiceSottofase"
+                  label="Codice sottofase"
+                  variant="outlined"
+                  density="compact"
+                  hint="Opzionale"
+                  persistent-hint
+                />
+              </v-col>
+
+              <v-col cols="12" md="6">
+                <v-text-field
+                  v-model="sottofaseForm.Responsabile"
+                  label="Responsabile"
+                  variant="outlined"
+                  density="compact"
+                />
+              </v-col>
+
+              <v-col cols="12" md="6">
+                <v-text-field
+                  v-model="sottofaseForm.DataScadenza"
+                  label="Data scadenza"
+                  type="date"
+                  variant="outlined"
+                  density="compact"
+                />
+              </v-col>
+
+              <v-col cols="12">
+                <v-textarea
+                  v-model="sottofaseForm.Descrizione"
+                  label="Descrizione"
+                  variant="outlined"
+                  rows="3"
+                  auto-grow
+                />
+              </v-col>
+            </v-row>
+          </v-form>
+        </v-card-text>
+
+        <v-card-actions class="justify-end">
+          <v-btn
+            variant="text"
+            :disabled="salvataggioSottofaseInCorso"
+            @click="chiudiDialogSottofase"
+          >
+            Annulla
+          </v-btn>
+          <v-btn
+            color="primary"
+            variant="flat"
+            :loading="salvataggioSottofaseInCorso"
+            @click="salvaSottofase"
+          >
+            Salva
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <v-snackbar
       v-model="snackbarFase"
       color="success"
       timeout="3000"
     >
       {{ messaggioFase }}
+    </v-snackbar>
+
+    <v-snackbar
+      v-model="snackbarSottofase"
+      color="success"
+      timeout="3000"
+    >
+      {{ messaggioSottofase }}
     </v-snackbar>
 
     <v-dialog
@@ -759,12 +833,14 @@ import { useRoute, useRouter } from 'vue-router'
 import {
   countProtocolliProcedimento,
   createFaseProcedimento,
+  createSottofaseProcedimento,
   getProcedimento,
   listCatalogoSottofasi,
   listFasiProcedimento,
   listProtocolliProcedimento,
   listSottofasiFase,
-  updateFaseProcedimento
+  updateFaseProcedimento,
+  updateSottofaseProcedimento
 } from '../services/procedimentoApi'
 import SottofaseDocumentaleCard from '../components/procedimenti/SottofaseDocumentaleCard.vue'
 import WorkflowSottofaseCard from '../components/procedimenti/WorkflowSottofaseCard.vue'
@@ -804,9 +880,30 @@ const faseForm = reactive({
   Titolo: '',
   Descrizione: ''
 })
+const dialogSottofase = ref(false)
+const sottofaseDialogMode = ref('create')
+const sottofaseInModificaId = ref(null)
+const sottofaseFormRef = ref(null)
+const salvataggioSottofaseInCorso = ref(false)
+const erroreSottofaseDialog = ref('')
+const snackbarSottofase = ref(false)
+const messaggioSottofase = ref('')
+const sottofaseForm = reactive({
+  Titolo: '',
+  CodiceSottofase: '',
+  Descrizione: '',
+  Responsabile: '',
+  DataScadenza: '',
+  Obbligatoria: false,
+  Bloccante: false
+})
 
 const regoleFase = {
   titolo: (value) => Boolean(String(value || '').trim()) || 'Titolo fase obbligatorio'
+}
+
+const regoleSottofase = {
+  titolo: (value) => Boolean(String(value || '').trim()) || 'Titolo sottofase obbligatorio'
 }
 
 const headersProtocolli = [
@@ -1042,11 +1139,14 @@ function normalizzaFaseWorkflow(dato) {
 function normalizzaSottofaseWorkflow(dato) {
   return {
     id: dato.id_sottofase ?? dato.IDSottofase,
+    codice: dato.codice_sottofase ?? dato.CodiceSottofase ?? '',
     ordine: dato.ordine ?? dato.Ordine ?? 0,
     titolo: dato.titolo ?? dato.Titolo ?? 'Sottofase',
     descrizione: dato.descrizione ?? dato.Descrizione ?? '',
     stato: dato.stato_sottofase ?? dato.StatoSottofase ?? 'NON_AVVIATA',
-    icona: dato.icona ?? dato.Icona ?? 'mdi-checkbox-blank-circle-outline'
+    icona: dato.icona ?? dato.Icona ?? 'mdi-checkbox-blank-circle-outline',
+    responsabile: dato.responsabile ?? dato.Responsabile ?? '',
+    dataScadenza: dato.data_scadenza ?? dato.DataScadenza ?? ''
   }
 }
 
@@ -1174,6 +1274,108 @@ function chiudiLavorazioneFase() {
 
 function selezionaSottofase(idSottofase) {
   sottofaseSelezionataId.value = idSottofase
+}
+
+function apriDialogNuovaSottofase() {
+  if (!faseSelezionata.value) return
+
+  sottofaseDialogMode.value = 'create'
+  sottofaseInModificaId.value = null
+  sottofaseForm.Titolo = ''
+  sottofaseForm.CodiceSottofase = ''
+  sottofaseForm.Descrizione = ''
+  sottofaseForm.Responsabile = ''
+  sottofaseForm.DataScadenza = ''
+  sottofaseForm.Obbligatoria = false
+  sottofaseForm.Bloccante = false
+  erroreSottofaseDialog.value = ''
+  dialogSottofase.value = true
+}
+
+function apriDialogModificaSottofase(sottofase) {
+  if (!sottofase) return
+
+  sottofaseDialogMode.value = 'edit'
+  sottofaseInModificaId.value = sottofase.id
+  sottofaseForm.Titolo = sottofase.titolo || ''
+  sottofaseForm.CodiceSottofase = sottofase.codice || ''
+  sottofaseForm.Descrizione = sottofase.descrizione || ''
+  sottofaseForm.Responsabile = sottofase.responsabile || ''
+  sottofaseForm.DataScadenza = formattaDataInput(sottofase.dataScadenza)
+  sottofaseForm.Obbligatoria = false
+  sottofaseForm.Bloccante = false
+  erroreSottofaseDialog.value = ''
+  dialogSottofase.value = true
+}
+
+function chiudiDialogSottofase() {
+  if (salvataggioSottofaseInCorso.value) return
+
+  dialogSottofase.value = false
+  erroreSottofaseDialog.value = ''
+}
+
+async function salvaSottofase() {
+  const validation = await sottofaseFormRef.value?.validate()
+  if (validation && !validation.valid) return
+  if (!faseSelezionata.value) return
+
+  salvataggioSottofaseInCorso.value = true
+  erroreSottofaseDialog.value = ''
+
+  try {
+    const payload = pulisciPayloadSottofase(sottofaseForm)
+    const salvata = sottofaseDialogMode.value === 'create'
+      ? await createSottofaseProcedimento(
+        idProcedimento.value,
+        faseSelezionata.value.id,
+        payload
+      )
+      : await updateSottofaseProcedimento(
+        idProcedimento.value,
+        faseSelezionata.value.id,
+        sottofaseInModificaId.value,
+        payload
+      )
+
+    const normalizzata = normalizzaSottofaseWorkflow(salvata)
+    await ricaricaSottofasiFaseCorrente()
+    sottofaseSelezionataId.value = normalizzata.id
+    dialogSottofase.value = false
+    messaggioSottofase.value = sottofaseDialogMode.value === 'create'
+      ? 'Sottofase creata.'
+      : 'Sottofase aggiornata.'
+    snackbarSottofase.value = true
+  } catch (error) {
+    erroreSottofaseDialog.value = messaggioErroreSottofase(error)
+  } finally {
+    salvataggioSottofaseInCorso.value = false
+  }
+}
+
+function pulisciPayloadSottofase(payload) {
+  return {
+    Titolo: String(payload.Titolo || '').trim() || null,
+    CodiceSottofase: String(payload.CodiceSottofase || '').trim() || null,
+    Descrizione: String(payload.Descrizione || '').trim() || null,
+    Responsabile: String(payload.Responsabile || '').trim() || null,
+    DataScadenza: String(payload.DataScadenza || '').trim() || null,
+    Obbligatoria: Boolean(payload.Obbligatoria),
+    Bloccante: Boolean(payload.Bloccante)
+  }
+}
+
+function messaggioErroreSottofase(error) {
+  const dettaglio = error?.payload?.detail
+  if (typeof dettaglio === 'string') return dettaglio
+
+  if (error?.status === 404) return 'Sottofase non trovata.'
+  return 'Impossibile salvare la sottofase.'
+}
+
+function formattaDataInput(value) {
+  if (!value || value === '-') return ''
+  return String(value).slice(0, 10)
 }
 
 function aggiungiSottofaseDaCatalogo(template) {

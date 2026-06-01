@@ -113,6 +113,31 @@ export function listSottofasiFase(idFase) {
   return fetchJson(`/protocollo-monitor/procedimenti/fasi/${idFase}/sottofasi`)
 }
 
+export function createSottofaseProcedimento(idProcedimento, idFase, payload) {
+  return fetchJson(
+    `/protocollo-monitor/procedimenti/${idProcedimento}/fasi/${idFase}/sottofasi`,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload || {})
+    }
+  )
+}
+
+export function updateSottofaseProcedimento(
+  idProcedimento,
+  idFase,
+  idSottofase,
+  payload
+) {
+  return fetchJson(
+    `/protocollo-monitor/procedimenti/${idProcedimento}/fasi/${idFase}/sottofasi/${idSottofase}`,
+    {
+      method: 'PUT',
+      body: JSON.stringify(payload || {})
+    }
+  )
+}
+
 export function listCatalogoSottofasi(attivoOnly = true) {
   const params = new URLSearchParams({
     attivo_only: String(attivoOnly)

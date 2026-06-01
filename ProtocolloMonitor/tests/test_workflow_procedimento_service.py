@@ -5,6 +5,8 @@ import pytest
 from backend.services.workflow_procedimento_service import (
     WorkflowFaseNotFoundError,
     WorkflowFaseValidationError,
+    WorkflowSottofaseNotFoundError,
+    WorkflowSottofaseValidationError,
     WorkflowProcedimentoService,
 )
 
@@ -59,6 +61,54 @@ class FakeWorkflowProcedimentoRepository:
 
     def list_sottofasi_by_fase(self, id_fase):
         return [{"id_fase": id_fase, "id_sottofase": 2}]
+
+    def get_sottofase_detail(self, id_sottofase):
+        return {"id_sottofase": id_sottofase, "id_fase": id_sottofase}
+
+    def crea_sottofase_fase(
+        self,
+        *,
+        id_fase,
+        codice_sottofase,
+        titolo,
+        descrizione,
+        responsabile,
+        data_scadenza,
+        data_creazione,
+    ):
+        return {
+            "id_fase": id_fase,
+            "id_sottofase": 12,
+            "codice_sottofase": codice_sottofase,
+            "titolo": titolo,
+            "descrizione": descrizione,
+            "responsabile": responsabile,
+            "data_scadenza": data_scadenza,
+            "data_creazione": data_creazione,
+        }
+
+    def aggiorna_sottofase_fase(
+        self,
+        *,
+        id_fase,
+        id_sottofase,
+        codice_sottofase,
+        titolo,
+        descrizione,
+        responsabile,
+        data_scadenza,
+        data_modifica,
+    ):
+        return {
+            "id_fase": id_fase,
+            "id_sottofase": id_sottofase,
+            "codice_sottofase": codice_sottofase,
+            "titolo": titolo,
+            "descrizione": descrizione,
+            "responsabile": responsabile,
+            "data_scadenza": data_scadenza,
+            "data_modifica": data_modifica,
+        }
 
     def list_catalogo_sottofasi(self, attivo_only=True):
         return [{"codice_sottofase": "EMAIL", "attivo_only": attivo_only}]
@@ -205,6 +255,107 @@ def test_list_sottofasi_delegates_to_repository():
     assert service.list_sottofasi_by_fase(3) == [
         {"id_fase": 3, "id_sottofase": 2}
     ]
+
+
+def test_crea_sottofase_fase_validates_and_delegates():
+    service = WorkflowProcedimentoService(
+        workflow_procedimento_repository=FakeWorkflowProcedimentoRepository(),
+        now_factory=lambda: FIXED_NOW,
+    )
+
+    result = service.crea_sottofase_fase(
+        id_procedimento=7,
+        id_fase=7,
+        payload={"Titolo": "Sottofase", "Descrizione": "Desc"},
+    )
+
+    assert result["id_sottofase"] == 12
+    assert result["codice_sottofase"] == "SF-20260601-103600"
+    assert result["titolo"] == "Sottofase"
+    assert result["descrizione"] == "Desc"
+    assert result["data_creazione"] == FIXED_NOW
+
+
+def test_crea_sottofase_fase_uses_manual_code():
+    service = WorkflowProcedimentoService(
+        workflow_procedimento_repository=FakeWorkflowProcedimentoRepository(),
+        now_factory=lambda: FIXED_NOW,
+    )
+
+    result = service.crea_sottofase_fase(
+        id_procedimento=7,
+        id_fase=7,
+        payload={"Titolo": "Sottofase", "CodiceSottofase": "SF-MANUALE"},
+    )
+
+    assert result["codice_sottofase"] == "SF-MANUALE"
+
+
+def test_crea_sottofase_fase_requires_title():
+    service = WorkflowProcedimentoService(
+        workflow_procedimento_repository=FakeWorkflowProcedimentoRepository(),
+        now_factory=lambda: FIXED_NOW,
+    )
+
+    with pytest.raises(WorkflowSottofaseValidationError):
+        service.crea_sottofase_fase(
+            id_procedimento=7,
+            id_fase=7,
+            payload={"Titolo": " "},
+        )
+
+
+def test_crea_sottofase_fase_raises_when_fase_not_in_procedimento():
+    service = WorkflowProcedimentoService(
+        workflow_procedimento_repository=FakeWorkflowProcedimentoRepository(),
+        now_factory=lambda: FIXED_NOW,
+    )
+
+    with pytest.raises(WorkflowSottofaseNotFoundError):
+        service.crea_sottofase_fase(
+            id_procedimento=999,
+            id_fase=7,
+            payload={"Titolo": "Sottofase"},
+        )
+
+
+def test_aggiorna_sottofase_fase_validates_membership_and_delegates():
+    service = WorkflowProcedimentoService(
+        workflow_procedimento_repository=FakeWorkflowProcedimentoRepository(),
+        now_factory=lambda: FIXED_NOW,
+    )
+
+    result = service.aggiorna_sottofase_fase(
+        id_procedimento=7,
+        id_fase=7,
+        id_sottofase=7,
+        payload={
+            "Titolo": "Sottofase aggiornata",
+            "CodiceSottofase": "SF-UPD",
+            "Descrizione": "Nuova",
+        },
+    )
+
+    assert result["id_sottofase"] == 7
+    assert result["codice_sottofase"] == "SF-UPD"
+    assert result["titolo"] == "Sottofase aggiornata"
+    assert result["descrizione"] == "Nuova"
+    assert result["data_modifica"] == FIXED_NOW
+
+
+def test_aggiorna_sottofase_fase_raises_when_not_same_fase():
+    service = WorkflowProcedimentoService(
+        workflow_procedimento_repository=FakeWorkflowProcedimentoRepository(),
+        now_factory=lambda: FIXED_NOW,
+    )
+
+    with pytest.raises(WorkflowSottofaseNotFoundError):
+        service.aggiorna_sottofase_fase(
+            id_procedimento=7,
+            id_fase=7,
+            id_sottofase=8,
+            payload={"Titolo": "Sottofase"},
+        )
 
 
 def test_list_catalogo_without_repository_returns_empty_list():
