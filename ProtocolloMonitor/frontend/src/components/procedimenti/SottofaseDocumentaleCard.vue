@@ -333,6 +333,17 @@
 
         <v-divider class="my-4" />
 
+        <section v-if="quadro.assegnazioniAutoReport">
+          <SottofaseAssegnazioniReport
+            :report="quadro.assegnazioniAutoReport"
+          />
+        </section>
+
+        <v-divider
+          v-if="quadro.assegnazioniAutoReport"
+          class="my-4"
+        />
+
         <section>
           <div class="text-subtitle-2 font-weight-bold mb-3">
             Step operativi
@@ -391,6 +402,7 @@ import {
   listPartecipantiStepSottofase,
   scaricaDocumentoSottofase
 } from '../../services/procedimentoApi'
+import SottofaseAssegnazioniReport from './SottofaseAssegnazioniReport.vue'
 import SottofaseTimelineOperativa from './SottofaseTimelineOperativa.vue'
 
 const props = defineProps({
@@ -532,7 +544,13 @@ function normalizzaQuadroDocumentale(dato = {}) {
     )
       .map(normalizzaStepOperativo)
       .filter(Boolean)
-      .sort(confrontaOrdine)
+      .sort(confrontaOrdine),
+    assegnazioniAutoReport: pick(
+      dato,
+      'assegnazioni_auto_report',
+      'assegnazioniAutoReport',
+      'AssegnazioniAutoReport'
+    )
   }
 }
 
