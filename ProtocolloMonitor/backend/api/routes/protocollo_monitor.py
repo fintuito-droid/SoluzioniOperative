@@ -10,7 +10,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import FileResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from backend.core.dependency_container import DependencyContainer, create_container
 from backend.schemas.sottofase_partecipanti import SottofasePartecipantePayload
@@ -59,6 +59,21 @@ class ProtocolloProcedimentoLinkPayload(BaseModel):
     RuoloProtocollo: str | None = "COLLEGATO"
     Principale: bool = False
     NoteCollegamento: str | None = None
+
+
+class ProcedimentoCreatePayload(BaseModel):
+    """Payload minimo per creare un nuovo procedimento."""
+
+    CodiceProcedimento: str | None = Field(default=None, max_length=50)
+    Titolo: str | None = Field(default=None, max_length=255)
+    Descrizione: str | None = None
+    AziendaSoggetto: str | None = Field(default=None, max_length=255)
+    ComandoCompetenza: str | None = Field(default=None, max_length=50)
+    SettoreCompetenza: str | None = Field(default=None, max_length=100)
+    TipologiaProcedimento: str | None = Field(default=None, max_length=100)
+    Priorita: str | None = Field(default=None, max_length=50)
+    DataScadenza: str | None = None
+    NoteInterne: str | None = None
 
 
 def get_container() -> DependencyContainer:
@@ -465,6 +480,17 @@ def get_procedimenti(
     procedimento_service: Any = Depends(get_procedimento_service),
 ):
     return procedimento_service.list_procedimenti()
+
+
+@router.post("/protocollo-monitor/procedimenti", status_code=201)
+def crea_procedimento(
+    payload: ProcedimentoCreatePayload,
+    procedimento_service: Any = Depends(get_procedimento_service),
+):
+    try:
+        return procedimento_service.crea_procedimento(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 
 @router.get("/protocollo-monitor/procedimenti/{id_procedimento}")

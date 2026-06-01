@@ -51,6 +51,13 @@ export function listProcedimenti() {
   return fetchJson('/protocollo-monitor/procedimenti')
 }
 
+export function createProcedimento(payload) {
+  return fetchJson('/protocollo-monitor/procedimenti', {
+    method: 'POST',
+    body: JSON.stringify(payload || {})
+  })
+}
+
 export function getProcedimento(idProcedimento) {
   return fetchJson(`/protocollo-monitor/procedimenti/${idProcedimento}`)
 }

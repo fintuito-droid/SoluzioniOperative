@@ -12,6 +12,7 @@ Responsabilita:
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 
 
@@ -35,8 +36,63 @@ class ProcedimentoService:
     sostituire Access con PostgreSQL mantenendo stabile il contratto.
     """
 
-    def __init__(self, *, procedimento_repository: Any | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        procedimento_repository: Any | None = None,
+        now_factory: Any | None = None,
+    ) -> None:
         self.procedimento_repository = procedimento_repository
+        self.now_factory = now_factory or datetime.now
+
+    def crea_procedimento(self, payload: Any) -> dict[str, Any]:
+        """Valida e crea un procedimento principale senza workflow collegato."""
+
+        if self.procedimento_repository is None:
+            raise ValueError("Repository procedimento non configurato.")
+
+        data = self._payload_to_dict(payload)
+        titolo = str(data.get("Titolo") or "").strip()
+        if not titolo:
+            raise ValueError("Titolo obbligatorio.")
+
+        now = self.now_factory()
+        codice = str(data.get("CodiceProcedimento") or "").strip()
+        if not codice:
+            codice = now.strftime("PM-%Y%m%d-%H%M%S")
+
+        priorita = str(data.get("Priorita") or "").strip() or "NORMALE"
+        tipologia = str(data.get("TipologiaProcedimento") or "").strip() or "GENERICO"
+
+        create = getattr(self.procedimento_repository, "crea_procedimento", None)
+        if create is None:
+            raise ValueError("Creazione procedimento non disponibile.")
+
+        return create(
+            {
+                "CodiceProcedimento": codice,
+                "Titolo": titolo,
+                "Descrizione": self._clean_optional(data.get("Descrizione")),
+                "AziendaSoggetto": self._clean_optional(data.get("AziendaSoggetto")),
+                "ComandoCompetenza": self._clean_optional(
+                    data.get("ComandoCompetenza")
+                ),
+                "SettoreCompetenza": self._clean_optional(
+                    data.get("SettoreCompetenza")
+                ),
+                "TipologiaProcedimento": tipologia,
+                "StatoProcedimento": "APERTO",
+                "Priorita": priorita,
+                "DataApertura": now,
+                "DataUltimoAggiornamento": now,
+                "DataScadenza": self._clean_date(data.get("DataScadenza")),
+                "DataChiusura": None,
+                "NoteInterne": self._clean_optional(data.get("NoteInterne")),
+                "Attivo": True,
+                "DataCreazione": now,
+                "DataModifica": now,
+            }
+        )
 
     def list_procedimenti(self) -> list[dict[str, Any]]:
         """Restituisce l'elenco procedimenti.
@@ -61,6 +117,43 @@ class ProcedimentoService:
             return list_procedimenti()
         except Exception:
             return []
+
+    @staticmethod
+    def _payload_to_dict(payload: Any) -> dict[str, Any]:
+        if payload is None:
+            return {}
+        if isinstance(payload, dict):
+            return payload
+
+        model_dump = getattr(payload, "model_dump", None)
+        if model_dump is not None:
+            return model_dump()
+
+        dict_method = getattr(payload, "dict", None)
+        if dict_method is not None:
+            return dict_method()
+
+        return {}
+
+    @staticmethod
+    def _clean_optional(value: Any) -> Any:
+        if value is None:
+            return None
+        if isinstance(value, str):
+            normalized = value.strip()
+            return normalized or None
+        return value
+
+    @staticmethod
+    def _clean_date(value: Any) -> Any:
+        normalized = ProcedimentoService._clean_optional(value)
+        if not isinstance(normalized, str):
+            return normalized
+
+        try:
+            return datetime.fromisoformat(normalized)
+        except ValueError:
+            return normalized
 
     def get_procedimento_detail(self, id_procedimento: int) -> dict[str, Any] | None:
         """Restituisce il dettaglio procedimento oppure `None`.

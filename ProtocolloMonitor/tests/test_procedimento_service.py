@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import pytest
 
 from backend.services.procedimento_service import (
@@ -6,6 +8,9 @@ from backend.services.procedimento_service import (
     ProcedimentoService,
     ProtocolloNotFoundError,
 )
+
+
+FIXED_NOW = datetime(2026, 6, 1, 10, 36, 0)
 
 
 class FakeProcedimentoRepository:
@@ -24,6 +29,9 @@ class FakeProcedimentoRepository:
 
     def count_protocolli_collegati(self, id_procedimento):
         return 2
+
+    def crea_procedimento(self, payload):
+        return {**payload, "id_procedimento": 10}
 
     def list_procedimenti_by_protocollo_id(self, id_protocollo):
         return [{"id_protocollo": id_protocollo, "id_procedimento": 1}]
@@ -81,6 +89,59 @@ def test_list_procedimenti_delegates_to_repository():
     )
 
     assert service.list_procedimenti() == [{"id_procedimento": 1}]
+
+
+def test_crea_procedimento_valida_payload_e_default():
+    service = ProcedimentoService(
+        procedimento_repository=FakeProcedimentoRepository(),
+        now_factory=lambda: FIXED_NOW,
+    )
+
+    result = service.crea_procedimento({"Titolo": "Nuovo procedimento"})
+
+    assert result["id_procedimento"] == 10
+    assert result["CodiceProcedimento"] == "PM-20260601-103600"
+    assert result["Titolo"] == "Nuovo procedimento"
+    assert result["StatoProcedimento"] == "APERTO"
+    assert result["Priorita"] == "NORMALE"
+    assert result["TipologiaProcedimento"] == "GENERICO"
+    assert result["Attivo"] is True
+    assert result["DataApertura"] == FIXED_NOW
+    assert result["DataCreazione"] == FIXED_NOW
+    assert result["DataModifica"] == FIXED_NOW
+    assert result["DataUltimoAggiornamento"] == FIXED_NOW
+
+
+def test_crea_procedimento_usa_codice_e_default_parziali():
+    service = ProcedimentoService(
+        procedimento_repository=FakeProcedimentoRepository(),
+        now_factory=lambda: FIXED_NOW,
+    )
+
+    result = service.crea_procedimento(
+        {
+            "Titolo": "Nuovo procedimento",
+            "CodiceProcedimento": "PM-MANUALE",
+            "Priorita": "ALTA",
+            "TipologiaProcedimento": "SCIA",
+        }
+    )
+
+    assert result["CodiceProcedimento"] == "PM-MANUALE"
+    assert result["Priorita"] == "ALTA"
+    assert result["TipologiaProcedimento"] == "SCIA"
+
+
+def test_crea_procedimento_richiede_titolo():
+    service = ProcedimentoService(
+        procedimento_repository=FakeProcedimentoRepository(),
+        now_factory=lambda: FIXED_NOW,
+    )
+
+    with pytest.raises(ValueError) as exc_info:
+        service.crea_procedimento({"Titolo": "  "})
+
+    assert str(exc_info.value) == "Titolo obbligatorio."
 
 
 def test_get_procedimento_detail_without_repository_returns_none():

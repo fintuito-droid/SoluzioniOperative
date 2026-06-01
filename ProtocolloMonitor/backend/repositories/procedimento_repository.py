@@ -404,6 +404,95 @@ class ProcedimentoRepository(BaseRepository):
             cursor.close()
             conn.close()
 
+    def crea_procedimento(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Inserisce un procedimento principale e restituisce il record creato."""
+
+        insert_query = """
+            INSERT INTO T_Procedimenti (
+                CodiceProcedimento,
+                Titolo,
+                Descrizione,
+                AziendaSoggetto,
+                ComandoCompetenza,
+                SettoreCompetenza,
+                TipologiaProcedimento,
+                StatoProcedimento,
+                Priorita,
+                DataApertura,
+                DataUltimoAggiornamento,
+                DataScadenza,
+                DataChiusura,
+                NoteInterne,
+                Attivo,
+                DataCreazione,
+                DataModifica
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """
+
+        conn = self._open_access_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute(
+                insert_query,
+                (
+                    payload.get("CodiceProcedimento"),
+                    payload.get("Titolo"),
+                    payload.get("Descrizione"),
+                    payload.get("AziendaSoggetto"),
+                    payload.get("ComandoCompetenza"),
+                    payload.get("SettoreCompetenza"),
+                    payload.get("TipologiaProcedimento"),
+                    payload.get("StatoProcedimento"),
+                    payload.get("Priorita"),
+                    payload.get("DataApertura"),
+                    payload.get("DataUltimoAggiornamento"),
+                    payload.get("DataScadenza"),
+                    payload.get("DataChiusura"),
+                    payload.get("NoteInterne"),
+                    bool(payload.get("Attivo", True)),
+                    payload.get("DataCreazione"),
+                    payload.get("DataModifica"),
+                ),
+            )
+            cursor.execute("SELECT @@IDENTITY AS IDProcedimento")
+            row = cursor.fetchone()
+            id_procedimento = self._identity_from_row(
+                row,
+                field_name="IDProcedimento",
+            )
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            cursor.close()
+            conn.close()
+
+        created = self.get_procedimento_detail(id_procedimento)
+        if created is None:
+            raise RuntimeError("Procedimento creato ma non rileggibile.")
+
+        return created
+
+    @staticmethod
+    def _identity_from_row(row: Any, *, field_name: str = "IDProcedimento") -> int:
+        if row is None:
+            raise RuntimeError("ID non restituito da Access.")
+
+        if isinstance(row, (tuple, list)):
+            value = row[0]
+        else:
+            try:
+                value = row[0]
+            except (TypeError, IndexError):
+                value = getattr(row, field_name, None)
+
+        if value is None:
+            raise RuntimeError("ID non leggibile da Access.")
+
+        return int(value)
+
     def list_procedimenti_by_protocollo_id(
         self,
         id_protocollo: int,

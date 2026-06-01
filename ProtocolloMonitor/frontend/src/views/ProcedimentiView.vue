@@ -72,9 +72,21 @@
           Procedimenti
         </span>
 
-        <v-chip color="primary" variant="tonal">
-          {{ procedimentiFiltrati.length }} record
-        </v-chip>
+        <div class="d-flex align-center ga-2">
+          <v-chip color="primary" variant="tonal">
+            {{ procedimentiFiltrati.length }} record
+          </v-chip>
+
+          <v-btn
+            color="primary"
+            variant="flat"
+            size="small"
+            prepend-icon="mdi-plus"
+            @click="apriDialogNuovoProcedimento"
+          >
+            Nuovo procedimento
+          </v-btn>
+        </div>
       </v-card-title>
 
       <v-data-table
@@ -127,6 +139,158 @@
         </template>
       </v-data-table>
     </v-card>
+
+    <v-dialog
+      v-model="dialogNuovoProcedimento"
+      max-width="780"
+      persistent
+    >
+      <v-card rounded="xl">
+        <v-card-title class="text-subtitle-1 font-weight-bold">
+          Nuovo procedimento
+        </v-card-title>
+
+        <v-card-text>
+          <v-alert
+            v-if="erroreCreazione"
+            type="error"
+            variant="tonal"
+            density="compact"
+            class="mb-4"
+          >
+            {{ erroreCreazione }}
+          </v-alert>
+
+          <v-form ref="formNuovoProcedimentoRef">
+            <v-row>
+              <v-col cols="12" md="8">
+                <v-text-field
+                  v-model="nuovoProcedimento.Titolo"
+                  label="Titolo"
+                  variant="outlined"
+                  density="compact"
+                  :rules="[regole.obbligatorio]"
+                  autofocus
+                />
+              </v-col>
+
+              <v-col cols="12" md="4">
+                <v-text-field
+                  v-model="nuovoProcedimento.CodiceProcedimento"
+                  label="Codice procedimento"
+                  variant="outlined"
+                  density="compact"
+                  hint="Opzionale"
+                  persistent-hint
+                />
+              </v-col>
+
+              <v-col cols="12" md="6">
+                <v-text-field
+                  v-model="nuovoProcedimento.AziendaSoggetto"
+                  label="Azienda/Soggetto"
+                  variant="outlined"
+                  density="compact"
+                />
+              </v-col>
+
+              <v-col cols="12" md="3">
+                <v-text-field
+                  v-model="nuovoProcedimento.ComandoCompetenza"
+                  label="Comando competenza"
+                  variant="outlined"
+                  density="compact"
+                />
+              </v-col>
+
+              <v-col cols="12" md="3">
+                <v-text-field
+                  v-model="nuovoProcedimento.SettoreCompetenza"
+                  label="Settore competenza"
+                  variant="outlined"
+                  density="compact"
+                />
+              </v-col>
+
+              <v-col cols="12" md="4">
+                <v-text-field
+                  v-model="nuovoProcedimento.TipologiaProcedimento"
+                  label="Tipologia procedimento"
+                  variant="outlined"
+                  density="compact"
+                />
+              </v-col>
+
+              <v-col cols="12" md="4">
+                <v-select
+                  v-model="nuovoProcedimento.Priorita"
+                  :items="prioritaCreazione"
+                  label="Priorita"
+                  variant="outlined"
+                  density="compact"
+                />
+              </v-col>
+
+              <v-col cols="12" md="4">
+                <v-text-field
+                  v-model="nuovoProcedimento.DataScadenza"
+                  label="Data scadenza"
+                  type="date"
+                  variant="outlined"
+                  density="compact"
+                />
+              </v-col>
+
+              <v-col cols="12">
+                <v-textarea
+                  v-model="nuovoProcedimento.Descrizione"
+                  label="Descrizione"
+                  variant="outlined"
+                  rows="3"
+                  auto-grow
+                />
+              </v-col>
+
+              <v-col cols="12">
+                <v-textarea
+                  v-model="nuovoProcedimento.NoteInterne"
+                  label="Note interne"
+                  variant="outlined"
+                  rows="2"
+                  auto-grow
+                />
+              </v-col>
+            </v-row>
+          </v-form>
+        </v-card-text>
+
+        <v-card-actions class="justify-end">
+          <v-btn
+            variant="text"
+            :disabled="creazioneInCorso"
+            @click="chiudiDialogNuovoProcedimento"
+          >
+            Annulla
+          </v-btn>
+          <v-btn
+            color="primary"
+            variant="flat"
+            :loading="creazioneInCorso"
+            @click="creaNuovoProcedimento"
+          >
+            Crea
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <v-snackbar
+      v-model="snackbarCreazione"
+      color="success"
+      timeout="3500"
+    >
+      Procedimento creato.
+    </v-snackbar>
   </v-container>
 </template>
 
@@ -134,19 +298,31 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
-import { listProcedimenti } from '../services/procedimentoApi'
+import { createProcedimento, listProcedimenti } from '../services/procedimentoApi'
 
 const router = useRouter()
 
 const procedimenti = ref([])
 const loading = ref(false)
 const errore = ref('')
+const dialogNuovoProcedimento = ref(false)
+const formNuovoProcedimentoRef = ref(null)
+const creazioneInCorso = ref(false)
+const erroreCreazione = ref('')
+const snackbarCreazione = ref(false)
+
+const nuovoProcedimento = reactive(creaModelloNuovoProcedimento())
 
 const filtri = reactive({
   testo: '',
   stato: null,
   priorita: null
 })
+
+const prioritaCreazione = ['NORMALE', 'BASSA', 'MEDIA', 'ALTA', 'URGENTE']
+const regole = {
+  obbligatorio: (value) => Boolean(String(value || '').trim()) || 'Campo obbligatorio'
+}
 
 const headers = [
   { title: 'CodiceProcedimento', key: 'CodiceProcedimento' },
@@ -264,6 +440,81 @@ async function caricaProcedimenti() {
   } finally {
     loading.value = false
   }
+}
+
+function creaModelloNuovoProcedimento() {
+  return {
+    Titolo: '',
+    CodiceProcedimento: '',
+    AziendaSoggetto: '',
+    ComandoCompetenza: '',
+    SettoreCompetenza: '',
+    TipologiaProcedimento: '',
+    Priorita: 'NORMALE',
+    DataScadenza: '',
+    Descrizione: '',
+    NoteInterne: ''
+  }
+}
+
+function resetNuovoProcedimento() {
+  Object.assign(nuovoProcedimento, creaModelloNuovoProcedimento())
+}
+
+function apriDialogNuovoProcedimento() {
+  erroreCreazione.value = ''
+  resetNuovoProcedimento()
+  dialogNuovoProcedimento.value = true
+}
+
+function chiudiDialogNuovoProcedimento() {
+  if (creazioneInCorso.value) return
+
+  dialogNuovoProcedimento.value = false
+  erroreCreazione.value = ''
+}
+
+async function creaNuovoProcedimento() {
+  const validation = await formNuovoProcedimentoRef.value?.validate()
+  if (validation && !validation.valid) return
+
+  creazioneInCorso.value = true
+  erroreCreazione.value = ''
+
+  try {
+    const creato = await createProcedimento(pulisciPayloadProcedimento(
+      nuovoProcedimento
+    ))
+    dialogNuovoProcedimento.value = false
+    snackbarCreazione.value = true
+    await caricaProcedimenti()
+
+    const idProcedimento =
+      creato?.id_procedimento ?? creato?.IDProcedimento ?? creato?.idProcedimento
+    if (idProcedimento) {
+      router.push(`/protocollo-monitor/procedimenti/${idProcedimento}`)
+    }
+  } catch (error) {
+    erroreCreazione.value = messaggioErroreCreazione(error)
+  } finally {
+    creazioneInCorso.value = false
+  }
+}
+
+function pulisciPayloadProcedimento(payload) {
+  return Object.fromEntries(
+    Object.entries(payload).map(([key, value]) => [
+      key,
+      typeof value === 'string' ? value.trim() || null : value
+    ])
+  )
+}
+
+function messaggioErroreCreazione(error) {
+  const dettaglio = error?.payload?.detail
+  if (typeof dettaglio === 'string') return dettaglio
+
+  return 'Impossibile creare il procedimento.'
 }
 
 function apriDettaglio(event, row) {

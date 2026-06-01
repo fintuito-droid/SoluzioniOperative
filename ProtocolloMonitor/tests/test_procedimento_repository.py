@@ -1,3 +1,4 @@
+from datetime import datetime
 from types import SimpleNamespace
 
 from backend.repositories.procedimento_repository import ProcedimentoRepository
@@ -33,6 +34,7 @@ class FakeConnection:
     def __init__(self, cursor):
         self.cursor_instance = cursor
         self.committed = False
+        self.rolled_back = False
         self.closed = False
 
     def cursor(self):
@@ -40,6 +42,9 @@ class FakeConnection:
 
     def commit(self):
         self.committed = True
+
+    def rollback(self):
+        self.rolled_back = True
 
     def close(self):
         self.closed = True
@@ -271,4 +276,70 @@ def test_link_protocollo_to_procedimento_inserts_and_returns_link():
     assert link["id_protocollo"] == 123
     assert link["id_procedimento"] == 1
     assert "INSERT INTO T_ProcedimentoProtocolli" in cursor.executed_queries[0]
+    assert connection.committed is True
+
+
+def test_crea_procedimento_inserts_and_returns_created_record():
+    now = datetime(2026, 6, 1, 10, 36, 0)
+    cursor = FakeCursor(
+        [
+            [],
+            [SimpleNamespace(IDProcedimento=12)],
+            [
+                SimpleNamespace(
+                    IDProcedimento=12,
+                    CodiceProcedimento="PM-TEST",
+                    Titolo="Nuovo procedimento",
+                    Descrizione=None,
+                    AziendaSoggetto="Azienda",
+                    ComandoCompetenza=None,
+                    SettoreCompetenza=None,
+                    TipologiaProcedimento="GENERICO",
+                    StatoProcedimento="APERTO",
+                    Priorita="NORMALE",
+                    DataApertura=now,
+                    DataUltimoAggiornamento=now,
+                    DataScadenza=None,
+                    DataChiusura=None,
+                    NoteInterne=None,
+                    Attivo=True,
+                    DataCreazione=now,
+                    DataModifica=now,
+                    ProtocolliCollegati=0,
+                )
+            ],
+        ]
+    )
+    connection = FakeConnection(cursor)
+    repository = ProcedimentoRepositoryForTest(connection)
+
+    created = repository.crea_procedimento(
+        {
+            "CodiceProcedimento": "PM-TEST",
+            "Titolo": "Nuovo procedimento",
+            "Descrizione": None,
+            "AziendaSoggetto": "Azienda",
+            "ComandoCompetenza": None,
+            "SettoreCompetenza": None,
+            "TipologiaProcedimento": "GENERICO",
+            "StatoProcedimento": "APERTO",
+            "Priorita": "NORMALE",
+            "DataApertura": now,
+            "DataUltimoAggiornamento": now,
+            "DataScadenza": None,
+            "DataChiusura": None,
+            "NoteInterne": None,
+            "Attivo": True,
+            "DataCreazione": now,
+            "DataModifica": now,
+        }
+    )
+
+    assert created["id_procedimento"] == 12
+    assert created["codice_procedimento"] == "PM-TEST"
+    assert created["titolo"] == "Nuovo procedimento"
+    assert created["stato_procedimento"] == "APERTO"
+    assert "INSERT INTO T_Procedimenti" in cursor.executed_queries[0]
+    assert cursor.executed_params[0][0] == "PM-TEST"
+    assert cursor.executed_params[0][1] == "Nuovo procedimento"
     assert connection.committed is True

@@ -7,8 +7,10 @@ from backend.services.procedimento_service import (
     ProtocolloNotFoundError,
 )
 from backend.api.routes.protocollo_monitor import (
+    ProcedimentoCreatePayload,
     ProtocolloProcedimentoLinkPayload,
     collega_protocollo_a_procedimento,
+    crea_procedimento,
     get_procedimenti_by_protocollo,
     get_procedimenti,
     get_procedimento_dettaglio,
@@ -33,6 +35,15 @@ class FakeProcedimentoService:
 
     def count_protocolli_collegati(self, id_procedimento):
         return 1
+
+    def crea_procedimento(self, payload):
+        if self.mode == "validation_error":
+            raise ValueError("Titolo obbligatorio.")
+        return {
+            "id_procedimento": 10,
+            "titolo": payload.Titolo,
+            "codice_procedimento": payload.CodiceProcedimento or "AUTO",
+        }
 
     def list_procedimenti_by_protocollo_id(self, id_protocollo):
         if self.mode == "protocollo_missing":
@@ -70,6 +81,30 @@ def test_get_procedimenti_returns_list():
     )
 
     assert response == [{"id_procedimento": 1, "titolo": "Procedimento test"}]
+
+
+def test_crea_procedimento_returns_created_record():
+    response = crea_procedimento(
+        ProcedimentoCreatePayload(Titolo="Nuovo procedimento"),
+        procedimento_service=FakeProcedimentoService(),
+    )
+
+    assert response == {
+        "id_procedimento": 10,
+        "titolo": "Nuovo procedimento",
+        "codice_procedimento": "AUTO",
+    }
+
+
+def test_crea_procedimento_returns_400_when_invalid():
+    with pytest.raises(HTTPException) as exc_info:
+        crea_procedimento(
+            ProcedimentoCreatePayload(Titolo=None),
+            procedimento_service=FakeProcedimentoService(mode="validation_error"),
+        )
+
+    assert exc_info.value.status_code == 400
+    assert exc_info.value.detail == "Titolo obbligatorio."
 
 
 def test_get_procedimento_dettaglio_returns_detail():
