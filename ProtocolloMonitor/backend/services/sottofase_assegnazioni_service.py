@@ -35,6 +35,129 @@ class SottofaseAssegnazioniService:
         self.backup_factory = backup_factory or create_access_backup
         self.now_factory = now_factory or datetime.now
 
+    DEFAULT_STEP_ROLE_MAP = {
+        "REDIGI": "OPERATORE",
+        "REVISIONA": "REVISORE",
+        "VERIFICA": "REVISORE",
+        "APPROVA": "APPROVATORE",
+        "FIRMA": "FIRMATARIO",
+        "PROTOCOLLA": "PROTOCOLLATORE",
+    }
+
+    def popola_regole_assegnazione_default(self) -> dict[str, Any]:
+        """Popola regole default usando solo step e utenti reali."""
+
+        if self.assegnazioni_repository is None:
+            raise SottofaseAssegnazioniWriteError(
+                "Repository assegnazioni non configurato."
+            )
+
+        codici_step = self.assegnazioni_repository.list_codici_step_presenti()
+        utenti = self.assegnazioni_repository.list_utenti_attivi()
+
+        report = {
+            "success": True,
+            "codici_step_presenti": codici_step,
+            "utenti_attivi": len(utenti),
+            "regole_create": [],
+            "regole_gia_presenti": [],
+            "regole_saltate": [],
+            "anomalie": [],
+            "backup_creato": None,
+        }
+
+        proposte = []
+        for index, codice_step in enumerate(codici_step, start=1):
+            ruolo = self.DEFAULT_STEP_ROLE_MAP.get(codice_step)
+            if ruolo is None:
+                report["regole_saltate"].append(
+                    {
+                        "codice_step": codice_step,
+                        "motivo": "Nessun ruolo default prudente previsto.",
+                    }
+                )
+                continue
+
+            utente = self._scegli_utente_default(
+                utenti=utenti,
+                codice_step=codice_step,
+            )
+            if utente is None:
+                report["regole_saltate"].append(
+                    {
+                        "codice_step": codice_step,
+                        "ruolo": ruolo,
+                        "motivo": "Nessun utente attivo disponibile.",
+                    }
+                )
+                continue
+
+            id_utente = self._safe_int(utente.get("id_utente"))
+            email = self._normalize_email(utente.get("email"))
+            if self.assegnazioni_repository.exists_regola_default(
+                codice_step=codice_step,
+                ruolo_richiesto=ruolo,
+                id_utente=id_utente,
+                id_gruppo=None,
+                email=email,
+            ):
+                report["regole_gia_presenti"].append(
+                    self._default_rule_report_item(
+                        codice_step=codice_step,
+                        ruolo=ruolo,
+                        utente=utente,
+                    )
+                )
+                continue
+
+            proposte.append(
+                {
+                    "codice_step": codice_step,
+                    "ruolo": ruolo,
+                    "utente": utente,
+                    "priorita": index,
+                }
+            )
+
+        if proposte:
+            report["backup_creato"] = str(self._create_backup_or_raise())
+
+        for proposta in proposte:
+            utente = proposta["utente"]
+            try:
+                id_regola = self.assegnazioni_repository.inserisci_regola_default(
+                    codice_step=proposta["codice_step"],
+                    ruolo_richiesto=proposta["ruolo"],
+                    id_utente=self._safe_int(utente.get("id_utente")),
+                    id_gruppo=None,
+                    nome_visualizzato=utente.get("nome_visualizzato"),
+                    email=self._normalize_email(utente.get("email")),
+                    obbligatorio=True,
+                    priorita=proposta["priorita"],
+                    data_creazione=self.now_factory(),
+                )
+                report["regole_create"].append(
+                    {
+                        **self._default_rule_report_item(
+                            codice_step=proposta["codice_step"],
+                            ruolo=proposta["ruolo"],
+                            utente=utente,
+                        ),
+                        "id_regola": id_regola,
+                        "obbligatorio": True,
+                    }
+                )
+            except Exception as exc:
+                report["anomalie"].append(
+                    {
+                        "codice_step": proposta["codice_step"],
+                        "ruolo": proposta["ruolo"],
+                        "motivo": str(exc),
+                    }
+                )
+
+        return report
+
     def applica_regole_assegnazione_sottofase(
         self,
         id_sottofase: int,
@@ -232,6 +355,38 @@ class SottofaseAssegnazioniService:
     def _normalize_email(value: Any) -> str | None:
         normalized = str(value or "").strip()
         return normalized or None
+
+    @staticmethod
+    def _scegli_utente_default(
+        *,
+        utenti: list[dict[str, Any]],
+        codice_step: str,
+    ) -> dict[str, Any] | None:
+        if not utenti:
+            return None
+
+        if len(utenti) == 1:
+            return utenti[0]
+
+        if codice_step in {"REVISIONA", "FIRMA", "APPROVA", "VERIFICA"}:
+            return utenti[1]
+
+        return utenti[0]
+
+    @staticmethod
+    def _default_rule_report_item(
+        *,
+        codice_step: str,
+        ruolo: str,
+        utente: dict[str, Any],
+    ) -> dict[str, Any]:
+        return {
+            "codice_step": codice_step,
+            "ruolo": ruolo,
+            "id_utente": utente.get("id_utente"),
+            "nome_visualizzato": utente.get("nome_visualizzato"),
+            "email": utente.get("email"),
+        }
 
     def _create_backup_or_raise(self) -> Path:
         try:

@@ -17,13 +17,20 @@ class FakeRepository:
         regole=None,
         utenti_by_rule=None,
         existing=None,
+        codici_step=None,
+        utenti_attivi=None,
+        existing_rules=None,
     ):
         self.context = context
         self.steps = steps or []
         self.regole = regole or []
         self.utenti_by_rule = utenti_by_rule or {}
         self.existing = existing or set()
+        self.codici_step = codici_step or []
+        self.utenti_attivi = utenti_attivi or []
+        self.existing_rules = existing_rules or set()
         self.inserted = []
+        self.inserted_rules = []
 
     def get_sottofase_context(self, id_sottofase):
         return self.context
@@ -61,6 +68,37 @@ class FakeRepository:
             )
         )
         return 100 + len(self.inserted)
+
+    def list_codici_step_presenti(self):
+        return self.codici_step
+
+    def list_utenti_attivi(self):
+        return self.utenti_attivi
+
+    def exists_regola_default(
+        self,
+        *,
+        codice_step,
+        ruolo_richiesto,
+        id_utente,
+        id_gruppo,
+        email,
+    ):
+        key = (codice_step, ruolo_richiesto, id_utente, id_gruppo, email)
+        return key in self.existing_rules
+
+    def inserisci_regola_default(self, **kwargs):
+        self.inserted_rules.append(kwargs)
+        self.existing_rules.add(
+            (
+                kwargs["codice_step"],
+                kwargs["ruolo_richiesto"],
+                kwargs["id_utente"],
+                kwargs["id_gruppo"],
+                kwargs["email"],
+            )
+        )
+        return 200 + len(self.inserted_rules)
 
 
 def _service(repository, backups=None):
@@ -212,3 +250,85 @@ def test_requires_existing_sottofase():
 
     with pytest.raises(SottofaseAssegnazioniNotFoundError):
         service.applica_regole_assegnazione_sottofase(999)
+
+
+def test_default_population_creates_rules_for_existing_supported_steps():
+    backups = []
+    repository = FakeRepository(
+        codici_step=["FINE", "REDIGI", "REVISIONA"],
+        utenti_attivi=[
+            {
+                "id_utente": 1,
+                "nome_visualizzato": "Francesco Matranga",
+                "email": "francesco@example.it",
+            },
+            {
+                "id_utente": 2,
+                "nome_visualizzato": "Claudio Pieri",
+                "email": "claudio@example.it",
+            },
+        ],
+    )
+    service = _service(repository, backups)
+
+    report = service.popola_regole_assegnazione_default()
+
+    assert [item["codice_step"] for item in report["regole_create"]] == [
+        "REDIGI",
+        "REVISIONA",
+    ]
+    assert report["regole_saltate"][0]["codice_step"] == "FINE"
+    assert repository.inserted_rules[0]["ruolo_richiesto"] == "OPERATORE"
+    assert repository.inserted_rules[1]["ruolo_richiesto"] == "REVISORE"
+    assert backups == ["backup.accdb"]
+
+
+def test_default_population_is_idempotent():
+    repository = FakeRepository(
+        codici_step=["REDIGI"],
+        utenti_attivi=[
+            {
+                "id_utente": 1,
+                "nome_visualizzato": "Francesco Matranga",
+                "email": "francesco@example.it",
+            }
+        ],
+    )
+    service = _service(repository)
+
+    first = service.popola_regole_assegnazione_default()
+    second = service.popola_regole_assegnazione_default()
+
+    assert len(first["regole_create"]) == 1
+    assert second["regole_create"] == []
+    assert len(second["regole_gia_presenti"]) == 1
+    assert len(repository.inserted_rules) == 1
+
+
+def test_default_population_handles_missing_users_without_error():
+    repository = FakeRepository(codici_step=["REDIGI"], utenti_attivi=[])
+    service = _service(repository)
+
+    report = service.popola_regole_assegnazione_default()
+
+    assert report["regole_create"] == []
+    assert report["regole_saltate"][0]["motivo"] == "Nessun utente attivo disponibile."
+
+
+def test_default_population_uses_only_existing_step_codes():
+    repository = FakeRepository(
+        codici_step=["NON_ESISTE"],
+        utenti_attivi=[
+            {
+                "id_utente": 1,
+                "nome_visualizzato": "Francesco Matranga",
+                "email": "francesco@example.it",
+            }
+        ],
+    )
+    service = _service(repository)
+
+    report = service.popola_regole_assegnazione_default()
+
+    assert report["regole_create"] == []
+    assert report["regole_saltate"][0]["codice_step"] == "NON_ESISTE"

@@ -730,6 +730,18 @@ def applica_regole_assegnazione_sottofase(
         raise HTTPException(status_code=500, detail=str(exc))
 
 
+@router.post("/protocollo-monitor/assegnazioni/popola-regole-default")
+def popola_regole_assegnazione_default(
+    assegnazioni_service: Any = Depends(get_sottofase_assegnazioni_service),
+):
+    try:
+        return assegnazioni_service.popola_regole_assegnazione_default()
+    except SottofaseAssegnazioniBackupError as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    except SottofaseAssegnazioniWriteError as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
 @router.get("/protocollo-monitor/sottofase-documenti/{id_documento}/apri")
 def apri_sottofase_documento(
     id_documento: int,

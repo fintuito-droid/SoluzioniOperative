@@ -252,6 +252,161 @@ class SottofaseAssegnazioniRepository(BaseRepository):
             cursor.close()
             conn.close()
 
+    def list_codici_step_presenti(self) -> list[str]:
+        """Restituisce i codici step realmente presenti nella timeline."""
+
+        query = """
+            SELECT CodiceStep
+            FROM T_SottofaseStepOperativi
+            WHERE CodiceStep IS NOT NULL
+            GROUP BY CodiceStep
+            ORDER BY CodiceStep
+        """
+
+        conn = self._open_access_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute(query)
+            return [
+                str(self._get(row, "CodiceStep") or "").strip().upper()
+                for row in cursor.fetchall()
+                if str(self._get(row, "CodiceStep") or "").strip()
+            ]
+        finally:
+            cursor.close()
+            conn.close()
+
+    def list_utenti_attivi(self) -> list[dict[str, Any]]:
+        """Restituisce utenti attivi disponibili per regole default."""
+
+        query = """
+            SELECT id_utente, username, nome, cognome, email
+            FROM t_utenti
+            WHERE attivo = ?
+            ORDER BY id_utente ASC
+        """
+
+        conn = self._open_access_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute(query, (True,))
+            return [self._row_to_utente(row) for row in cursor.fetchall()]
+        finally:
+            cursor.close()
+            conn.close()
+
+    def exists_regola_default(
+        self,
+        *,
+        codice_step: str,
+        ruolo_richiesto: str,
+        id_utente: int | None,
+        id_gruppo: int | None,
+        email: str | None,
+    ) -> bool:
+        """Evita duplicati per la regola default proposta."""
+
+        query = """
+            SELECT TOP 1 IDRegola
+            FROM T_RegoleAssegnazioneStep
+            WHERE CodiceStep = ?
+              AND RuoloRichiesto = ?
+              AND Attiva = ?
+        """
+        params: list[Any] = [codice_step, ruolo_richiesto, True]
+
+        if id_utente:
+            query += " AND IDUtente = ?"
+            params.append(id_utente)
+        elif id_gruppo:
+            query += " AND IDGruppo = ?"
+            params.append(id_gruppo)
+        elif email:
+            query += " AND Email = ?"
+            params.append(email)
+        else:
+            return False
+
+        conn = self._open_access_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute(query, tuple(params))
+            return cursor.fetchone() is not None
+        finally:
+            cursor.close()
+            conn.close()
+
+    def inserisci_regola_default(
+        self,
+        *,
+        codice_step: str,
+        ruolo_richiesto: str,
+        id_utente: int | None,
+        id_gruppo: int | None,
+        nome_visualizzato: str | None,
+        email: str | None,
+        obbligatorio: bool,
+        priorita: int,
+        data_creazione: datetime,
+    ) -> int:
+        """Inserisce una regola default con commit/rollback."""
+
+        query = """
+            INSERT INTO T_RegoleAssegnazioneStep (
+                TipoProcedimento,
+                CodiceSottofase,
+                CodiceStep,
+                RuoloRichiesto,
+                IDUtente,
+                IDGruppo,
+                NomeVisualizzato,
+                Email,
+                Obbligatorio,
+                Attiva,
+                Priorita,
+                DataCreazione,
+                DataModifica
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """
+
+        conn = self._open_access_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute(
+                query,
+                (
+                    None,
+                    None,
+                    codice_step,
+                    ruolo_richiesto,
+                    id_utente,
+                    id_gruppo,
+                    nome_visualizzato,
+                    email,
+                    obbligatorio,
+                    True,
+                    priorita,
+                    data_creazione,
+                    data_creazione,
+                ),
+            )
+            cursor.execute("SELECT @@IDENTITY AS IDRegola")
+            row = cursor.fetchone()
+            id_regola = self._identity_from_row(row, field_name="IDRegola")
+            conn.commit()
+            return id_regola
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            cursor.close()
+            conn.close()
+
     def list_regole_attive(
         self,
         *,
@@ -498,9 +653,9 @@ class SottofaseAssegnazioniRepository(BaseRepository):
             conn.close()
 
     @staticmethod
-    def _identity_from_row(row: Any) -> int:
+    def _identity_from_row(row: Any, *, field_name: str = "IDPartecipante") -> int:
         if row is None:
-            raise RuntimeError("ID partecipante non restituito da Access.")
+            raise RuntimeError("ID non restituito da Access.")
 
         if isinstance(row, (tuple, list)):
             value = row[0]
@@ -508,9 +663,9 @@ class SottofaseAssegnazioniRepository(BaseRepository):
             try:
                 value = row[0]
             except (TypeError, IndexError):
-                value = getattr(row, "IDPartecipante", None)
+                value = getattr(row, field_name, None)
 
         if value is None:
-            raise RuntimeError("ID partecipante non leggibile da Access.")
+            raise RuntimeError("ID non leggibile da Access.")
 
         return int(value)
