@@ -128,6 +128,7 @@
 
         <!-- HEADER PAGINA -->
         <v-card
+          v-if="mostraHeaderPagina"
           class="mb-5 header-card"
           rounded="xl"
           elevation="1"
@@ -174,6 +175,10 @@ const route = useRoute()
 
 const titoloPagina = computed(() => {
   return route.meta.title || 'SoluzioniOperative'
+})
+
+const mostraHeaderPagina = computed(() => {
+  return route.name !== 'ProtocolloMonitorProcedimentoDettaglio'
 })
 </script>
 
