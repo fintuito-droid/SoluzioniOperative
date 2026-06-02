@@ -1,6 +1,6 @@
 <template>
-  <v-container fluid class="pa-4 dettaglio-procedimento-page">
-    <div class="page-header">
+  <v-container fluid class="procedimento-page">
+    <header class="procedimento-header">
       <v-btn
         class="btn-torna-procedimenti"
         variant="outlined"
@@ -15,226 +15,335 @@
           Elenco procedimenti
         </span>
       </v-btn>
-    </div>
+    </header>
 
-    <div class="procedimento-layout">
-      <section class="fasi-section">
-        <div class="fasi-header">
-          <div>
-            <div class="text-subtitle-1 font-weight-bold">
-              Fasi del procedimento
-            </div>
-            <div class="text-caption text-medium-emphasis">
-              Stepper verticale delle fasi configurate
-            </div>
-          </div>
-
-          <v-btn
-            color="primary"
-            variant="flat"
-            density="comfortable"
-            prepend-icon="mdi-plus"
-            @click="apriDialogNuovaFase"
-          >
-            Aggiungi fase
-          </v-btn>
+    <main class="procedimento-shell">
+      <aside class="procedimento-rail">
+        <div class="procedimento-title-vertical">
+          {{ titoloProcedimentoVerticale }}
         </div>
+      </aside>
 
-        <v-alert
-          v-if="loadingWorkflow"
-          type="info"
-          variant="tonal"
-          class="mt-4"
+      <section class="work-area">
+        <v-window
+          v-model="modalitaVista"
+          class="work-window"
         >
-          Caricamento fasi in corso...
-        </v-alert>
-
-        <v-alert
-          v-else-if="erroreWorkflow"
-          type="warning"
-          variant="tonal"
-          class="mt-4"
-        >
-          {{ erroreWorkflow }}
-        </v-alert>
-
-        <div
-          v-else-if="fasiWorkflow.length"
-          class="fasi-stepper-shell"
-        >
-          <div class="procedimento-title-rail">
-            <div class="procedimento-title-vertical">
-              {{ titoloProcedimentoVerticale }}
-            </div>
-          </div>
-
-          <div class="fasi-stepper-scroll">
-            <div class="fasi-stepper">
-              <div
-                v-for="(fase, index) in fasiWorkflow"
-                :key="fase.id"
-                class="fase-step"
-                :class="{ 'fase-selezionata': fase.id === faseSelezionataId }"
-                @click="selezionaFase(fase.id)"
-              >
-                <div class="step-rail">
-                  <div
-                    class="step-dot"
-                    :style="{ backgroundColor: coloreFaseDot(fase.stato) }"
-                  >
-                    {{ fase.ordine }}
+          <v-window-item value="fasi-verticali">
+            <div class="fasi-verticali-view">
+              <section class="fasi-panel">
+                <div class="fasi-header">
+                  <div>
+                    <div class="text-subtitle-1 font-weight-bold">
+                      Fasi del procedimento
+                    </div>
+                    <div class="text-caption text-medium-emphasis">
+                      Stepper verticale delle fasi configurate
+                    </div>
                   </div>
-                  <div
-                    v-if="index < fasiWorkflow.length - 1"
-                    class="step-line"
-                  />
+
+                  <v-btn
+                    color="primary"
+                    variant="flat"
+                    density="comfortable"
+                    prepend-icon="mdi-plus"
+                    @click="apriDialogNuovaFase"
+                  >
+                    Aggiungi fase
+                  </v-btn>
                 </div>
 
-                <v-card
-                  rounded="lg"
-                  variant="outlined"
-                  class="fase-box"
+                <v-alert
+                  v-if="loadingWorkflow"
+                  type="info"
+                  variant="tonal"
+                  class="mt-4"
                 >
-                  <v-card-text class="fase-box-content">
-                    <div class="fase-main">
-                      <div class="fase-title-row">
-                        <div class="fase-heading">
-                          {{ fase.titolo }}
-                        </div>
+                  Caricamento fasi in corso...
+                </v-alert>
 
-                        <v-btn
-                          icon="mdi-pencil"
-                          size="small"
-                          variant="text"
-                          class="fase-edit-btn"
-                          @click.stop="apriDialogModificaFase(fase)"
+                <v-alert
+                  v-else-if="erroreWorkflow"
+                  type="warning"
+                  variant="tonal"
+                  class="mt-4"
+                >
+                  {{ erroreWorkflow }}
+                </v-alert>
+
+                <div
+                  v-else-if="fasiWorkflow.length"
+                  class="fasi-stepper-scroll"
+                >
+                  <div class="fasi-stepper">
+                    <div
+                      v-for="(fase, index) in fasiWorkflow"
+                      :key="fase.id"
+                      class="fase-step"
+                      :class="{ 'fase-selezionata': fase.id === faseSelezionataId }"
+                      @click="selezionaFase(fase.id)"
+                    >
+                      <div class="step-rail">
+                        <div
+                          class="step-dot"
+                          :style="{ backgroundColor: coloreFaseDot(fase.stato) }"
+                        >
+                          {{ fase.ordine }}
+                        </div>
+                        <div
+                          v-if="index < fasiWorkflow.length - 1"
+                          class="step-line"
                         />
                       </div>
 
-                      <div class="fase-description">
-                        {{ fase.descrizione || 'Nessuna descrizione.' }}
+                      <v-card
+                        rounded="lg"
+                        variant="outlined"
+                        class="fase-box"
+                      >
+                        <v-card-text class="fase-box-content">
+                          <div class="fase-title-row">
+                            <div class="fase-heading">
+                              {{ fase.titolo }}
+                            </div>
+
+                            <v-btn
+                              icon="mdi-pencil"
+                              size="small"
+                              variant="text"
+                              class="fase-edit-btn"
+                              @click.stop="apriDialogModificaFase(fase)"
+                            />
+                          </div>
+
+                          <div class="fase-description">
+                            {{ fase.descrizione || 'Nessuna descrizione.' }}
+                          </div>
+
+                          <div class="fase-meta">
+                            <v-chip
+                              :color="coloreStatoWorkflow(fase.stato)"
+                              size="x-small"
+                              variant="tonal"
+                            >
+                              {{ labelStatoWorkflow(fase.stato) }}
+                            </v-chip>
+                          </div>
+                        </v-card-text>
+                      </v-card>
+                    </div>
+                  </div>
+                </div>
+
+                <v-alert
+                  v-else
+                  type="info"
+                  variant="tonal"
+                  class="mt-4"
+                >
+                  Nessuna fase configurata per questo procedimento.
+                </v-alert>
+              </section>
+
+              <section class="fase-detail-section">
+                <v-alert
+                  v-if="!faseSelezionata"
+                  type="info"
+                  variant="tonal"
+                >
+                  Seleziona una fase per visualizzare il dettaglio.
+                </v-alert>
+
+                <v-card
+                  v-else
+                  rounded="lg"
+                  elevation="1"
+                  class="fase-detail-card"
+                >
+                  <v-card-title class="fase-detail-title">
+                    <div>
+                      <div class="text-caption text-medium-emphasis">
+                        Fase selezionata
+                      </div>
+                      <div class="fase-detail-heading">
+                        {{ faseSelezionata.titolo }}
+                      </div>
+                    </div>
+
+                    <div class="d-flex align-center ga-2">
+                      <v-chip
+                        :color="coloreStatoWorkflow(faseSelezionata.stato)"
+                        variant="tonal"
+                      >
+                        {{ labelStatoWorkflow(faseSelezionata.stato) }}
+                      </v-chip>
+
+                      <v-btn
+                        icon="mdi-pencil"
+                        size="small"
+                        variant="text"
+                        @click="apriDialogModificaFase(faseSelezionata)"
+                      />
+                    </div>
+                  </v-card-title>
+
+                  <v-divider />
+
+                  <v-card-text>
+                    <div class="detail-label">Descrizione</div>
+                    <div class="detail-description-box">
+                      {{ faseSelezionata.descrizione || '-' }}
+                    </div>
+
+                    <div class="detail-grid">
+                      <div class="detail-field">
+                        <div class="detail-label">Ordine</div>
+                        <div class="detail-value">
+                          {{ valoreDettaglio(faseSelezionata.ordine) }}
+                        </div>
                       </div>
 
-                      <div class="fase-meta">
-                        <v-chip
-                          :color="coloreStatoWorkflow(fase.stato)"
-                          size="x-small"
-                          variant="tonal"
-                        >
-                          {{ labelStatoWorkflow(fase.stato) }}
-                        </v-chip>
+                      <div class="detail-field">
+                        <div class="detail-label">Stato</div>
+                        <div class="detail-value">
+                          {{ labelStatoWorkflow(faseSelezionata.stato) }}
+                        </div>
+                      </div>
 
-                        <span v-if="fase.responsabile && fase.responsabile !== '-'">
-                          Responsabile: {{ fase.responsabile }}
-                        </span>
+                      <div class="detail-field">
+                        <div class="detail-label">Responsabile</div>
+                        <div class="detail-value">
+                          {{ valoreDettaglio(faseSelezionata.responsabile) }}
+                        </div>
+                      </div>
 
-                        <span v-if="fase.dataScadenza && fase.dataScadenza !== '-'">
-                          Scadenza: {{ fase.dataScadenza }}
-                        </span>
+                      <div class="detail-field">
+                        <div class="detail-label">Data scadenza</div>
+                        <div class="detail-value">
+                          {{ valoreDettaglio(faseSelezionata.dataScadenza) }}
+                        </div>
+                      </div>
+
+                      <div class="detail-field">
+                        <div class="detail-label">Data avvio</div>
+                        <div class="detail-value">
+                          {{ valoreDettaglio(faseSelezionata.dataAvvio) }}
+                        </div>
+                      </div>
+
+                      <div class="detail-field">
+                        <div class="detail-label">Data completamento</div>
+                        <div class="detail-value">
+                          {{ valoreDettaglio(faseSelezionata.dataCompletamento) }}
+                        </div>
                       </div>
                     </div>
                   </v-card-text>
+
+                  <v-card-actions class="detail-actions">
+                    <v-btn
+                      color="primary"
+                      variant="flat"
+                      size="large"
+                      prepend-icon="mdi-pencil-box-outline"
+                      @click="entraLavorazioneFase(faseSelezionata)"
+                    >
+                      Redigi Fase {{ faseSelezionata.ordine }}
+                    </v-btn>
+                  </v-card-actions>
                 </v-card>
-              </div>
+              </section>
             </div>
-          </div>
-        </div>
+          </v-window-item>
 
-        <v-alert
-          v-else
-          type="info"
-          variant="tonal"
-          class="mt-4"
-        >
-          Nessuna fase configurata per questo procedimento.
-        </v-alert>
-      </section>
+          <v-window-item value="lavorazione-fase">
+            <div class="lavorazione-view">
+              <div class="lavorazione-toolbar">
+                <v-btn
+                  class="btn-torna-fasi"
+                  color="grey"
+                  variant="tonal"
+                  prepend-icon="mdi-arrow-left"
+                  @click="tornaAlleFasiVerticali"
+                >
+                  Torna alle fasi verticali
+                </v-btn>
 
-      <section class="fase-detail-section">
-        <v-alert
-          v-if="!faseSelezionata"
-          type="info"
-          variant="tonal"
-        >
-          Seleziona una fase per visualizzare il dettaglio.
-        </v-alert>
-
-        <v-card
-          v-else
-          rounded="lg"
-          elevation="1"
-          class="fase-detail-card"
-        >
-          <v-card-title class="fase-detail-title">
-            <div>
-              <div class="text-caption text-medium-emphasis">
-                Fase selezionata
+                <h1 class="lavorazione-title">
+                  {{ faseSelezionata?.titolo || 'Fase selezionata' }}
+                </h1>
               </div>
-              <div class="fase-detail-heading">
-                {{ faseSelezionata.titolo }}
-              </div>
-            </div>
 
-            <div class="d-flex align-center ga-2">
-              <v-chip
-                :color="coloreStatoWorkflow(faseSelezionata.stato)"
+              <v-alert
+                v-if="erroreStepOrizzontali"
+                type="warning"
                 variant="tonal"
+                class="mb-4"
               >
-                {{ labelStatoWorkflow(faseSelezionata.stato) }}
-              </v-chip>
+                {{ erroreStepOrizzontali }}
+              </v-alert>
 
-              <v-btn
-                icon="mdi-pencil"
-                size="small"
-                variant="text"
-                @click="apriDialogModificaFase(faseSelezionata)"
+              <v-progress-linear
+                v-if="loadingStepOrizzontali"
+                color="primary"
+                indeterminate
+                rounded
+                class="mb-4"
               />
+
+              <div class="lavorazione-content-card">
+                <div
+                  v-if="stepOrizzontali.length"
+                  class="stepper-orizzontale"
+                >
+                  <div
+                    v-for="(step, index) in stepOrizzontali"
+                    :key="step.id || step.codiceStep"
+                    class="step-orizzontale-item"
+                  >
+                    <div class="step-orizzontale-node-wrap">
+                      <div
+                        class="step-orizzontale-node"
+                        :class="classeStepOrizzontale(step.statoStep)"
+                      >
+                        {{ index + 1 }}
+                      </div>
+
+                      <div
+                        v-if="index < stepOrizzontali.length - 1"
+                        class="step-orizzontale-line"
+                      />
+                    </div>
+
+                    <div class="step-orizzontale-title">
+                      {{ step.titoloStep }}
+                    </div>
+                  </div>
+                </div>
+
+                <v-alert
+                  v-else-if="!loadingStepOrizzontali"
+                  type="info"
+                  variant="tonal"
+                  class="stepper-empty"
+                >
+                  Selezionare una fase per iniziare.
+                </v-alert>
+
+                <div class="work-content-placeholder">
+                  <div class="placeholder-title">
+                    Area contenuto fase
+                  </div>
+                  <div class="placeholder-subtitle">
+                    Selezionare uno step per iniziare.
+                  </div>
+                </div>
+              </div>
             </div>
-          </v-card-title>
-
-          <v-divider />
-
-          <v-card-text>
-            <div class="detail-label">Descrizione</div>
-            <div class="detail-description-box">
-              {{ faseSelezionata.descrizione || '-' }}
-            </div>
-
-            <div class="detail-grid">
-              <div class="detail-field">
-                <div class="detail-label">Ordine</div>
-                <div class="detail-value">{{ valoreDettaglio(faseSelezionata.ordine) }}</div>
-              </div>
-
-              <div class="detail-field">
-                <div class="detail-label">Stato</div>
-                <div class="detail-value">{{ labelStatoWorkflow(faseSelezionata.stato) }}</div>
-              </div>
-
-              <div class="detail-field">
-                <div class="detail-label">Responsabile</div>
-                <div class="detail-value">{{ valoreDettaglio(faseSelezionata.responsabile) }}</div>
-              </div>
-
-              <div class="detail-field">
-                <div class="detail-label">Data scadenza</div>
-                <div class="detail-value">{{ valoreDettaglio(faseSelezionata.dataScadenza) }}</div>
-              </div>
-
-              <div class="detail-field">
-                <div class="detail-label">Data avvio</div>
-                <div class="detail-value">{{ valoreDettaglio(faseSelezionata.dataAvvio) }}</div>
-              </div>
-
-              <div class="detail-field">
-                <div class="detail-label">Data completamento</div>
-                <div class="detail-value">{{ valoreDettaglio(faseSelezionata.dataCompletamento) }}</div>
-              </div>
-            </div>
-          </v-card-text>
-        </v-card>
+          </v-window-item>
+        </v-window>
       </section>
-    </div>
+    </main>
 
     <v-dialog
       v-model="dialogFase"
@@ -314,7 +423,9 @@ import { useRoute, useRouter } from 'vue-router'
 import {
   createFaseProcedimento,
   getProcedimento,
+  inizializzaStepOrizzontaliFase,
   listFasiProcedimento,
+  listStepOrizzontaliFase,
   updateFaseProcedimento
 } from '../services/procedimentoApi'
 import { statiWorkflow } from '../mock/procedimentoWorkflowMock'
@@ -324,10 +435,14 @@ const route = useRoute()
 const router = useRouter()
 
 const procedimento = ref(null)
+const modalitaVista = ref('fasi-verticali')
 const loadingWorkflow = ref(false)
 const erroreWorkflow = ref('')
 const fasiWorkflow = ref([])
 const faseSelezionataId = ref(null)
+const stepOrizzontali = ref([])
+const loadingStepOrizzontali = ref(false)
+const erroreStepOrizzontali = ref('')
 const dialogFase = ref(false)
 const faseDialogMode = ref('create')
 const faseInModificaId = ref(null)
@@ -380,9 +495,15 @@ async function caricaWorkflow() {
       .map(normalizzaFaseWorkflow)
       .sort(confrontaOrdine)
 
+    const faseSelezionataAncoraPresente = fasiNormalizzate.some(
+      (fase) => fase.id === faseSelezionataId.value
+    )
+
     fasiWorkflow.value = fasiNormalizzate
-    faseSelezionataId.value = fasiNormalizzate[0]?.id ?? null
-  } catch (error) {
+    faseSelezionataId.value = faseSelezionataAncoraPresente
+      ? faseSelezionataId.value
+      : fasiNormalizzate[0]?.id ?? null
+  } catch {
     erroreWorkflow.value = 'Impossibile caricare le fasi da FastAPI.'
     fasiWorkflow.value = []
     faseSelezionataId.value = null
@@ -391,10 +512,9 @@ async function caricaWorkflow() {
   }
 }
 
-function normalizzaFaseWorkflow(dato) {
+function normalizzaFaseWorkflow(dato = {}) {
   return {
     id: dato.id_fase ?? dato.IDFase,
-    idProcedimento: dato.id_procedimento ?? dato.IDProcedimento,
     ordine: dato.ordine ?? dato.Ordine ?? 0,
     titolo: dato.titolo ?? dato.Titolo ?? 'Fase senza titolo',
     descrizione: dato.descrizione ?? dato.Descrizione ?? '',
@@ -403,10 +523,120 @@ function normalizzaFaseWorkflow(dato) {
     dataScadenza: dato.data_scadenza ?? dato.DataScadenza ?? '-',
     dataAvvio: dato.data_avvio ?? dato.DataAvvio ?? '-',
     dataCompletamento:
-      dato.data_completamento ??
-      dato.DataCompletamento ??
-      '-'
+      dato.data_completamento ?? dato.DataCompletamento ?? '-'
   }
+}
+
+function normalizzaStepOrizzontale(dato = {}) {
+  const codiceStep =
+    dato.codice_step ??
+    dato.CodiceStep ??
+    dato.codiceStep ??
+    ''
+  const titoloRaw =
+    dato.titolo_step ??
+    dato.TitoloStep ??
+    dato.titoloStep ??
+    labelStepOrizzontale(codiceStep)
+
+  return {
+    id:
+      dato.id_step_orizzontale ??
+      dato.IDStepOrizzontale ??
+      dato.idStepOrizzontale ??
+      dato.id,
+    codiceStep,
+    titoloStep: normalizzaTitoloStepOrizzontale(titoloRaw, codiceStep),
+    ordine: dato.ordine ?? dato.Ordine ?? 0,
+    statoStep:
+      dato.stato_step ??
+      dato.StatoStep ??
+      dato.statoStep ??
+      'NON_AVVIATO'
+  }
+}
+
+function labelStepOrizzontale(codice) {
+  const labels = {
+    REDIGI: 'Redigi',
+    REVISIONA: 'Revisiona',
+    FIRMA: 'Firma',
+    PROTOCOLLA: 'Protocolla',
+    FINE: 'Fine'
+  }
+  return labels[String(codice || '').toUpperCase()] || 'Step'
+}
+
+function normalizzaTitoloStepOrizzontale(titolo, codice) {
+  const titoloString = String(titolo || '').trim()
+  const titoloUpper = titoloString.toUpperCase()
+  const labelCodice = labelStepOrizzontale(codice)
+
+  if (!titoloString || titoloUpper === String(codice || '').toUpperCase()) {
+    return labelCodice
+  }
+
+  if (['REDIGI', 'REVISIONA', 'FIRMA', 'PROTOCOLLA', 'FINE'].includes(titoloUpper)) {
+    return labelStepOrizzontale(titoloUpper)
+  }
+
+  return titoloString
+}
+
+async function entraLavorazioneFase(fase) {
+  if (!fase) return
+
+  faseSelezionataId.value = fase.id
+  modalitaVista.value = 'lavorazione-fase'
+  await caricaStepOrizzontaliFase(fase)
+}
+
+function tornaAlleFasiVerticali() {
+  modalitaVista.value = 'fasi-verticali'
+  erroreStepOrizzontali.value = ''
+}
+
+async function caricaStepOrizzontaliFase(fase) {
+  if (!fase?.id) return
+
+  loadingStepOrizzontali.value = true
+  erroreStepOrizzontali.value = ''
+  stepOrizzontali.value = []
+
+  try {
+    let step = await listStepOrizzontaliFase(idProcedimento.value, fase.id)
+
+    if (!Array.isArray(step) || step.length === 0) {
+      await inizializzaStepOrizzontaliFase(idProcedimento.value, fase.id)
+      step = await listStepOrizzontaliFase(idProcedimento.value, fase.id)
+    }
+
+    stepOrizzontali.value = normalizzaListaStepOrizzontali(step)
+  } catch {
+    erroreStepOrizzontali.value =
+      'Impossibile caricare gli step orizzontali della fase.'
+    stepOrizzontali.value = normalizzaListaStepOrizzontali([])
+  } finally {
+    loadingStepOrizzontali.value = false
+  }
+}
+
+function normalizzaListaStepOrizzontali(step) {
+  const normalizzati = Array.isArray(step)
+    ? step.map(normalizzaStepOrizzontale).sort(confrontaOrdine)
+    : []
+
+  if (normalizzati.length) return normalizzati
+
+  return ['REDIGI', 'REVISIONA', 'FIRMA', 'PROTOCOLLA', 'FINE'].map(
+    (codiceStep, index) => ({
+      id: codiceStep,
+      codiceStep,
+      titoloStep: labelStepOrizzontale(codiceStep),
+      ordine: index + 1,
+      statoStep: 'NON_AVVIATO'
+    })
+  )
 }
 
 function tornaAElenco() {
@@ -508,6 +738,16 @@ function valoreDettaglio(value) {
   return value
 }
 
+function classeStepOrizzontale(stato) {
+  const normalizzato = String(stato || '').toUpperCase()
+  if (normalizzato === 'NON_AVVIATO') return 'step-orizzontale-non-avviato'
+  if (normalizzato.includes('COMPLET')) return 'step-orizzontale-completato'
+  if (normalizzato.includes('CORSO') || normalizzato === 'ACTIVE') {
+    return 'step-orizzontale-attivo'
+  }
+  return 'step-orizzontale-non-avviato'
+}
+
 function coloreFaseDot(stato) {
   const colore = coloreStatoWorkflow(stato)
   const palette = {
@@ -527,22 +767,21 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.dettaglio-procedimento-page {
-  --stepper-bottom-gap: 40px;
-  --stepper-fixed-height: calc(100vh - 246px);
+.procedimento-page {
+  --rail-width: 118px;
   box-sizing: border-box;
   height: calc(100vh - 112px);
-  margin: 0;
   max-width: none;
   overflow: hidden;
+  padding: 0;
 }
 
-.page-header {
+.procedimento-header {
   align-items: center;
   display: flex;
-  gap: 16px;
-  justify-content: flex-start;
-  margin-bottom: 18px;
+  height: 112px;
+  overflow: hidden;
+  padding: 0;
 }
 
 .btn-torna-procedimenti {
@@ -550,16 +789,19 @@ onMounted(() => {
   border: 1px solid #c62828;
   color: #111111;
   font-weight: 800;
-  min-height: 96px;
   letter-spacing: 0;
-  padding: 6px 30px 6px 18px;
+  min-height: 106px;
+  min-width: 408px;
+  margin-left: 0;
+  padding: 6px 30px 6px 22px;
+  flex: 0 0 auto;
   text-transform: none;
 }
 
 .btn-torna-procedimenti :deep(.v-btn__content) {
   align-items: center;
   display: flex;
-  gap: 20px;
+  gap: 18px;
 }
 
 .btn-torna-procedimenti:hover {
@@ -570,68 +812,50 @@ onMounted(() => {
 
 .btn-procedimenti-icon {
   display: block;
-  height: 110px;
+  height: 86px;
   object-fit: contain;
-  width: 110px;
+  width: 86px;
 }
 
 .btn-procedimenti-text {
   color: #111111;
-  font-size: 1.25rem;
-  font-weight: 800;
+  font-size: 1.2rem;
+  font-weight: 850;
   letter-spacing: 0;
   line-height: 1.1;
 }
 
-.procedimento-layout {
-  align-items: start;
+.btn-torna-fasi {
+  flex: 0 0 auto;
+  font-weight: 750;
+  letter-spacing: 0;
+  min-height: 44px;
+  text-transform: none;
+  width: max(240px, calc(408px - var(--rail-width) - 26px));
+}
+
+.procedimento-shell {
   display: grid;
-  gap: 24px;
-  grid-template-columns: minmax(380px, 36vw) minmax(0, 1fr);
-}
-
-.fasi-section {
-  min-width: 380px;
-  padding-bottom: var(--stepper-bottom-gap);
-}
-
-.fasi-header {
-  align-items: center;
-  display: flex;
-  gap: 14px;
-  justify-content: space-between;
-  margin-bottom: 14px;
-}
-
-.fasi-stepper-shell {
-  background: rgb(var(--v-theme-surface));
-  border-radius: 8px;
-  box-sizing: border-box;
-  display: grid;
-  grid-template-columns: 56px minmax(0, 1fr);
-  height: var(--stepper-fixed-height);
-  max-height: var(--stepper-fixed-height);
-  min-height: 280px;
+  grid-template-columns: var(--rail-width) minmax(0, 1fr);
+  height: calc(100% - 112px);
+  min-height: 0;
   overflow: hidden;
 }
 
-.procedimento-title-rail {
+.procedimento-rail {
   align-items: center;
-  align-self: stretch;
   background: #0d47a1;
-  border-radius: 8px 0 0 8px;
-  box-sizing: border-box;
   color: white;
   display: flex;
-  height: 100%;
   justify-content: center;
+  min-height: 0;
   overflow: hidden;
-  padding: 12px 6px;
+  padding: 18px 8px;
 }
 
 .procedimento-title-vertical {
   color: #ff9800;
-  font-size: 1.25rem;
+  font-size: 1.55rem;
   font-weight: 900;
   letter-spacing: 0;
   line-height: 1.15;
@@ -643,23 +867,49 @@ onMounted(() => {
   writing-mode: vertical-rl;
 }
 
-.fasi-stepper-scroll {
-  box-sizing: border-box;
+.work-area,
+.work-window,
+.work-window :deep(.v-window__container),
+.work-window :deep(.v-window-item) {
   height: 100%;
-  overscroll-behavior: contain;
+  min-height: 0;
+}
+
+.work-area {
+  background: rgb(var(--v-theme-surface));
+  min-width: 0;
+  overflow: hidden;
+}
+
+.fasi-verticali-view {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: minmax(360px, 33%) minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  padding: 22px 28px;
+}
+
+.fasi-panel,
+.fase-detail-section {
+  min-height: 0;
+}
+
+.fasi-header {
+  align-items: center;
+  display: flex;
+  gap: 14px;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.fasi-stepper-scroll {
+  height: calc(100% - 68px);
+  min-height: 0;
   overflow-y: auto;
-  padding-bottom: 32px;
-  padding-left: 12px;
-  padding-right: 6px;
-}
-
-.fasi-stepper-scroll::-webkit-scrollbar {
-  width: 8px;
-}
-
-.fasi-stepper-scroll::-webkit-scrollbar-thumb {
-  background: rgba(var(--v-theme-on-surface), 0.24);
-  border-radius: 999px;
+  padding-bottom: 28px;
+  padding-right: 8px;
 }
 
 .fasi-stepper {
@@ -699,7 +949,6 @@ onMounted(() => {
 .step-line {
   background: rgba(var(--v-theme-on-surface), 0.24);
   flex: 1;
-  margin-bottom: 0;
   margin-top: 4px;
   min-height: 78px;
   width: 3px;
@@ -742,27 +991,15 @@ onMounted(() => {
 }
 
 .fase-meta {
-  align-items: center;
-  color: rgba(var(--v-theme-on-surface), 0.7);
-  display: flex;
-  flex-wrap: wrap;
-  font-size: 0.76rem;
-  gap: 6px 10px;
   margin-top: 10px;
-}
-
-.fase-edit-btn {
-  flex: 0 0 auto;
 }
 
 .fase-detail-section {
   align-self: start;
-  min-width: 0;
-  padding-top: 40px;
 }
 
 .fase-detail-card {
-  max-width: 820px;
+  max-width: 920px;
 }
 
 .fase-detail-title {
@@ -818,59 +1055,269 @@ onMounted(() => {
   overflow-wrap: anywhere;
 }
 
+.detail-actions {
+  justify-content: flex-end;
+  padding: 16px 24px 20px;
+}
+
+.lavorazione-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  padding: 12px 38px 28px 26px;
+}
+
+.lavorazione-toolbar {
+  align-items: flex-start;
+  display: flex;
+  flex: 0 0 auto;
+  justify-content: center;
+  min-height: 112px;
+  position: relative;
+}
+
+.lavorazione-toolbar .btn-torna-fasi {
+  left: 0;
+  position: absolute;
+  top: 0;
+}
+
+.lavorazione-title {
+  font-size: 1.75rem;
+  font-weight: 850;
+  letter-spacing: 0;
+  line-height: 1.15;
+  margin: 0;
+  max-width: min(100%, 760px);
+  overflow-wrap: anywhere;
+  padding: 16px 28px;
+  text-align: center;
+}
+
+.lavorazione-content-card {
+  border: 1px dashed rgba(var(--v-theme-on-surface), 0.18);
+  border-radius: 8px;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  padding: 76px 40px 36px;
+}
+
+.stepper-orizzontale {
+  align-items: start;
+  display: grid;
+  flex: 0 0 auto;
+  grid-template-columns: repeat(5, minmax(120px, 1fr));
+  margin: 0 auto;
+  max-width: 1080px;
+  width: min(100%, 1080px);
+}
+
+.step-orizzontale-item {
+  min-width: 0;
+  text-align: center;
+}
+
+.step-orizzontale-node-wrap {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 10px;
+  position: relative;
+}
+
+.step-orizzontale-node {
+  align-items: center;
+  border: 4px solid white;
+  border-radius: 999px;
+  box-shadow: 0 0 0 1px rgba(var(--v-theme-on-surface), 0.16);
+  color: white;
+  display: flex;
+  font-size: 1rem;
+  font-weight: 900;
+  height: 52px;
+  justify-content: center;
+  position: relative;
+  width: 52px;
+  z-index: 1;
+}
+
+.step-orizzontale-non-avviato {
+  background: #9e9e9e;
+}
+
+.step-orizzontale-completato {
+  background: #2e7d32;
+}
+
+.step-orizzontale-attivo {
+  background: #f9a825;
+}
+
+.step-orizzontale-line {
+  background: rgba(var(--v-theme-on-surface), 0.2);
+  height: 3px;
+  left: calc(50% + 28px);
+  position: absolute;
+  right: calc(-50% + 28px);
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.step-orizzontale-title {
+  font-size: 1rem;
+  font-weight: 900;
+  margin-bottom: 8px;
+  overflow-wrap: anywhere;
+}
+
+.stepper-empty {
+  margin: 0 auto;
+  max-width: 620px;
+}
+
+.work-content-placeholder {
+  align-items: center;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  justify-content: center;
+  margin-top: 34px;
+  min-height: 0;
+  text-align: center;
+}
+
+.placeholder-title {
+  font-size: 1.45rem;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.placeholder-subtitle {
+  color: rgba(var(--v-theme-on-surface), 0.58);
+  font-size: 0.98rem;
+  font-weight: 650;
+  margin-top: 6px;
+}
+
 @media (max-width: 1100px) {
-  .procedimento-layout {
-    grid-template-columns: minmax(380px, 48vw) minmax(0, 1fr);
+  .procedimento-page {
+    --rail-width: 84px;
+  }
+
+  .fasi-verticali-view {
+    grid-template-columns: minmax(340px, 46%) minmax(0, 1fr);
+  }
+
+  .stepper-orizzontale {
+    grid-template-columns: repeat(5, minmax(96px, 1fr));
   }
 }
 
 @media (max-width: 720px) {
-  .dettaglio-procedimento-page {
-    --stepper-bottom-gap: 32px;
-    --stepper-fixed-height: calc(100vh - 242px);
+  .procedimento-page {
+    --rail-width: 54px;
+    height: auto;
+    min-height: calc(100vh - 112px);
+    overflow: visible;
   }
 
-  .page-header,
-  .fasi-header {
-    align-items: stretch;
-    flex-direction: column;
+  .procedimento-header {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 12px;
+    height: auto;
+    padding: 14px;
   }
 
   .btn-torna-procedimenti {
-    align-self: flex-start;
+    min-height: 72px;
   }
 
-  .procedimento-layout {
-    grid-template-columns: 1fr;
+  .btn-procedimenti-icon {
+    height: 58px;
+    width: 58px;
   }
 
-  .fasi-section {
-    min-width: 0;
+  .btn-procedimenti-text {
+    font-size: 1rem;
   }
 
-  .fase-detail-section {
-    padding-top: 0;
+  .btn-torna-fasi {
+    min-height: 40px;
+    width: auto;
   }
 
-  .detail-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .fasi-stepper-shell {
-    grid-template-columns: 44px minmax(0, 1fr);
+  .procedimento-shell {
+    min-height: calc(100vh - 210px);
   }
 
   .procedimento-title-vertical {
     font-size: 1rem;
   }
 
-  .fase-step {
-    grid-template-columns: 48px minmax(0, 1fr);
+  .fasi-verticali-view {
+    gap: 18px;
+    grid-template-columns: 1fr;
+    overflow-y: auto;
+    padding: 18px 14px 22px;
   }
 
-  .step-dot {
-    height: 36px;
-    width: 36px;
+  .fasi-stepper-scroll {
+    height: auto;
+    max-height: 360px;
+  }
+
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .lavorazione-view {
+    overflow-y: auto;
+    padding: 18px 14px 22px;
+  }
+
+  .lavorazione-toolbar {
+    align-items: stretch;
+    gap: 14px;
+    min-height: 0;
+    position: static;
+    flex-direction: column;
+  }
+
+  .lavorazione-toolbar .btn-torna-fasi {
+    left: auto;
+    position: static;
+    top: auto;
+  }
+
+  .lavorazione-title {
+    font-size: 1.55rem;
+    max-width: none;
+    padding: 14px 18px;
+  }
+
+  .lavorazione-content-card {
+    margin-top: 18px;
+    padding: 28px 16px;
+  }
+
+  .stepper-orizzontale {
+    gap: 18px;
+    grid-template-columns: 1fr;
+    max-width: 420px;
+  }
+
+  .step-orizzontale-line {
+    display: none;
+  }
+
+  .work-content-placeholder {
+    min-height: 280px;
   }
 }
 </style>
