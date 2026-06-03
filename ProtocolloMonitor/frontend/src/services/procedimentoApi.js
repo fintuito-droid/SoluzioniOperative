@@ -126,6 +126,42 @@ export function inizializzaStepOrizzontaliFase(idProcedimento, idFase) {
   )
 }
 
+export function configuraStepOrizzontaliIstanzaFine(idProcedimento, idFase) {
+  return fetchJson(
+    `/protocollo-monitor/procedimenti/${idProcedimento}/fasi/${idFase}/step-orizzontali/configura-istanza-fine`,
+    { method: 'POST' }
+  )
+}
+
+export function configuraStepOrizzontaliPredefinito(idProcedimento, idFase) {
+  return fetchJson(
+    `/protocollo-monitor/procedimenti/${idProcedimento}/fasi/${idFase}/step-orizzontali/configura-predefinito`,
+    { method: 'POST' }
+  )
+}
+
+export function inserisciStepOrizzontaleDopo(
+  idProcedimento,
+  idFase,
+  idStep,
+  payload
+) {
+  return fetchJson(
+    `/protocollo-monitor/procedimenti/${idProcedimento}/fasi/${idFase}/step-orizzontali/${idStep}/inserisci-dopo`,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload || {})
+    }
+  )
+}
+
+export function eliminaStepOrizzontale(idProcedimento, idFase, idStep) {
+  return fetchJson(
+    `/protocollo-monitor/procedimenti/${idProcedimento}/fasi/${idFase}/step-orizzontali/${idStep}`,
+    { method: 'DELETE' }
+  )
+}
+
 export function listCatalogoSottofasi(attivoOnly = true) {
   const params = new URLSearchParams({
     attivo_only: String(attivoOnly)

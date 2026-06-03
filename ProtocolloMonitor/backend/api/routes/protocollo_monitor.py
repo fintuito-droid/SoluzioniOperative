@@ -21,6 +21,7 @@ from backend.services.procedimento_service import (
     ProtocolloNotFoundError,
 )
 from backend.services.workflow_procedimento_service import (
+    WorkflowConfigurazioneBloccataError,
     WorkflowFaseNotFoundError,
     WorkflowFaseValidationError,
 )
@@ -85,6 +86,13 @@ class ProcedimentoFasePayload(BaseModel):
 
     Titolo: str | None = Field(default=None, max_length=255)
     Descrizione: str | None = None
+
+
+class ProcedimentoFaseStepPayload(BaseModel):
+    """Payload minimo per inserire uno step orizzontale."""
+
+    titoloStep: str | None = Field(default=None, max_length=255)
+    codiceStep: str | None = Field(default=None, max_length=50)
 
 
 def get_container() -> DependencyContainer:
@@ -656,6 +664,96 @@ def inizializza_procedimento_fase_step_orizzontali(
         )
     except WorkflowFaseNotFoundError:
         raise HTTPException(status_code=404, detail="Fase non trovata")
+
+
+@router.post(
+    "/protocollo-monitor/procedimenti/{id_procedimento}/fasi/{id_fase}/"
+    "step-orizzontali/configura-istanza-fine"
+)
+def configura_procedimento_fase_step_istanza_fine(
+    id_procedimento: int,
+    id_fase: int,
+    workflow_service: Any = Depends(get_workflow_procedimento_service),
+):
+    try:
+        return workflow_service.configura_step_orizzontali_istanza_fine(
+            id_procedimento=id_procedimento,
+            id_fase=id_fase,
+        )
+    except WorkflowFaseNotFoundError:
+        raise HTTPException(status_code=404, detail="Fase non trovata")
+    except WorkflowConfigurazioneBloccataError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    except WorkflowFaseValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.post(
+    "/protocollo-monitor/procedimenti/{id_procedimento}/fasi/{id_fase}/"
+    "step-orizzontali/configura-predefinito"
+)
+def configura_procedimento_fase_step_predefinito(
+    id_procedimento: int,
+    id_fase: int,
+    workflow_service: Any = Depends(get_workflow_procedimento_service),
+):
+    try:
+        return workflow_service.configura_step_orizzontali_predefinito(
+            id_procedimento=id_procedimento,
+            id_fase=id_fase,
+        )
+    except WorkflowFaseNotFoundError:
+        raise HTTPException(status_code=404, detail="Fase non trovata")
+    except WorkflowConfigurazioneBloccataError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    except WorkflowFaseValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.post(
+    "/protocollo-monitor/procedimenti/{id_procedimento}/fasi/{id_fase}/"
+    "step-orizzontali/{id_step}/inserisci-dopo"
+)
+def inserisci_procedimento_fase_step_orizzontale_dopo(
+    id_procedimento: int,
+    id_fase: int,
+    id_step: int,
+    payload: ProcedimentoFaseStepPayload,
+    workflow_service: Any = Depends(get_workflow_procedimento_service),
+):
+    try:
+        return workflow_service.inserisci_step_orizzontale_dopo(
+            id_procedimento=id_procedimento,
+            id_fase=id_fase,
+            id_step=id_step,
+            payload=payload,
+        )
+    except WorkflowFaseNotFoundError:
+        raise HTTPException(status_code=404, detail="Fase o step non trovato")
+    except WorkflowFaseValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.delete(
+    "/protocollo-monitor/procedimenti/{id_procedimento}/fasi/{id_fase}/"
+    "step-orizzontali/{id_step}"
+)
+def elimina_procedimento_fase_step_orizzontale(
+    id_procedimento: int,
+    id_fase: int,
+    id_step: int,
+    workflow_service: Any = Depends(get_workflow_procedimento_service),
+):
+    try:
+        return workflow_service.elimina_logicamente_step_orizzontale(
+            id_procedimento=id_procedimento,
+            id_fase=id_fase,
+            id_step=id_step,
+        )
+    except WorkflowFaseNotFoundError:
+        raise HTTPException(status_code=404, detail="Fase o step non trovato")
+    except WorkflowFaseValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 
 @router.get("/protocollo-monitor/catalogo-sottofasi")

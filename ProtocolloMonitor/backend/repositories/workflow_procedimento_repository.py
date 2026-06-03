@@ -506,6 +506,343 @@ class WorkflowProcedimentoRepository(BaseRepository):
         report["step"] = self.list_step_orizzontali_by_fase(id_fase)
         return report
 
+    def configura_step_orizzontali_istanza_fine(
+        self,
+        *,
+        id_fase: int,
+        data_modifica: datetime,
+    ) -> list[dict[str, Any]]:
+        """Sostituisce logicamente gli step attivi con `Istanza -> Fine`."""
+
+        conn = self._open_access_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute(
+                """
+                UPDATE T_FaseStepOrizzontali
+                SET Attivo = ?,
+                    DataModifica = ?
+                WHERE IDFase = ? AND Attivo = ?
+                """,
+                (False, data_modifica, id_fase, True),
+            )
+
+            for codice, titolo, ordine in (
+                ("ISTANZA", "Istanza", 1),
+                ("FINE", "Fine", 2),
+            ):
+                self._insert_step_orizzontale(
+                    cursor,
+                    id_fase=id_fase,
+                    codice_step=codice,
+                    titolo_step=titolo,
+                    ordine=ordine,
+                    data_creazione=data_modifica,
+                )
+
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            cursor.close()
+            conn.close()
+
+        return self.list_step_orizzontali_by_fase(id_fase)
+
+    def has_step_orizzontali_avviati(self, id_fase: int) -> bool:
+        """Indica se esistono step attivi con stato diverso da NON_AVVIATO."""
+
+        query = """
+            SELECT COUNT(*) AS Totale
+            FROM T_FaseStepOrizzontali
+            WHERE IDFase = ?
+                AND Attivo = ?
+                AND (
+                    StatoStep IS NULL
+                    OR UCASE(StatoStep) <> ?
+                )
+        """
+
+        conn = self._open_access_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute(query, (id_fase, True, "NON_AVVIATO"))
+            row = cursor.fetchone()
+            return int(self._get(row, "Totale", 0) or 0) > 0
+        finally:
+            cursor.close()
+            conn.close()
+
+    def configura_step_orizzontali_predefinito(
+        self,
+        *,
+        id_fase: int,
+        data_modifica: datetime,
+    ) -> list[dict[str, Any]]:
+        """Sostituisce logicamente gli step attivi con il workflow standard."""
+
+        conn = self._open_access_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute(
+                """
+                UPDATE T_FaseStepOrizzontali
+                SET Attivo = ?,
+                    DataModifica = ?
+                WHERE IDFase = ? AND Attivo = ?
+                """,
+                (False, data_modifica, id_fase, True),
+            )
+
+            for codice, titolo, ordine in self.STEP_ORIZZONTALI_DEFAULT:
+                self._insert_step_orizzontale(
+                    cursor,
+                    id_fase=id_fase,
+                    codice_step=codice,
+                    titolo_step=titolo,
+                    ordine=ordine,
+                    data_creazione=data_modifica,
+                )
+
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            cursor.close()
+            conn.close()
+
+        return self.list_step_orizzontali_by_fase(id_fase)
+
+    def inserisci_step_orizzontale_dopo(
+        self,
+        *,
+        id_fase: int,
+        id_step: int,
+        titolo_step: str,
+        codice_step: str,
+        data_creazione: datetime,
+    ) -> list[dict[str, Any]]:
+        """Inserisce uno step attivo subito dopo quello selezionato."""
+
+        conn = self._open_access_connection()
+        cursor = conn.cursor()
+
+        try:
+            step = self._get_step_orizzontale_attivo(
+                cursor,
+                id_fase=id_fase,
+                id_step=id_step,
+            )
+            if step is None:
+                raise ValueError("Step non trovato.")
+
+            ordine_corrente = int(self._get(step, "Ordine") or 0)
+
+            cursor.execute(
+                """
+                UPDATE T_FaseStepOrizzontali
+                SET Ordine = Ordine + 1,
+                    DataModifica = ?
+                WHERE IDFase = ?
+                    AND Attivo = ?
+                    AND Ordine > ?
+                """,
+                (data_creazione, id_fase, True, ordine_corrente),
+            )
+            self._insert_step_orizzontale(
+                cursor,
+                id_fase=id_fase,
+                codice_step=codice_step,
+                titolo_step=titolo_step,
+                ordine=ordine_corrente + 1,
+                data_creazione=data_creazione,
+            )
+            self._rinumera_step_orizzontali_attivi(
+                cursor,
+                id_fase=id_fase,
+                data_modifica=data_creazione,
+            )
+
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            cursor.close()
+            conn.close()
+
+        return self.list_step_orizzontali_by_fase(id_fase)
+
+    def elimina_logicamente_step_orizzontale(
+        self,
+        *,
+        id_fase: int,
+        id_step: int,
+        data_modifica: datetime,
+    ) -> list[dict[str, Any]]:
+        """Disattiva uno step e rinumera gli step attivi rimanenti."""
+
+        conn = self._open_access_connection()
+        cursor = conn.cursor()
+
+        try:
+            step = self._get_step_orizzontale_attivo(
+                cursor,
+                id_fase=id_fase,
+                id_step=id_step,
+            )
+            if step is None:
+                raise ValueError("Step non trovato.")
+
+            cursor.execute(
+                """
+                SELECT COUNT(*) AS Totale
+                FROM T_FaseStepOrizzontali
+                WHERE IDFase = ? AND Attivo = ?
+                """,
+                (id_fase, True),
+            )
+            totale_row = cursor.fetchone()
+            totale_attivi = int(self._get(totale_row, "Totale", 0) or 0)
+            if totale_attivi <= 1:
+                raise ValueError("Non e possibile eliminare l'unico step attivo.")
+
+            stato_step = str(self._get(step, "StatoStep") or "").upper()
+            if stato_step == "COMPLETATO":
+                raise ValueError("Non e possibile eliminare uno step completato.")
+
+            cursor.execute(
+                """
+                UPDATE T_FaseStepOrizzontali
+                SET Attivo = ?,
+                    DataModifica = ?
+                WHERE IDStepOrizzontale = ?
+                    AND IDFase = ?
+                    AND Attivo = ?
+                """,
+                (False, data_modifica, id_step, id_fase, True),
+            )
+            self._rinumera_step_orizzontali_attivi(
+                cursor,
+                id_fase=id_fase,
+                data_modifica=data_modifica,
+            )
+
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            cursor.close()
+            conn.close()
+
+        return self.list_step_orizzontali_by_fase(id_fase)
+
+    def _get_step_orizzontale_attivo(
+        self,
+        cursor: Any,
+        *,
+        id_fase: int,
+        id_step: int,
+    ) -> Any | None:
+        cursor.execute(
+            """
+            SELECT
+                IDStepOrizzontale,
+                IDFase,
+                CodiceStep,
+                TitoloStep,
+                Ordine,
+                StatoStep,
+                Attivo
+            FROM T_FaseStepOrizzontali
+            WHERE IDStepOrizzontale = ?
+                AND IDFase = ?
+                AND Attivo = ?
+            """,
+            (id_step, id_fase, True),
+        )
+        return cursor.fetchone()
+
+    def _insert_step_orizzontale(
+        self,
+        cursor: Any,
+        *,
+        id_fase: int,
+        codice_step: str,
+        titolo_step: str,
+        ordine: int,
+        data_creazione: datetime,
+    ) -> None:
+        cursor.execute(
+            """
+            INSERT INTO T_FaseStepOrizzontali (
+                IDFase,
+                CodiceStep,
+                TitoloStep,
+                Ordine,
+                StatoStep,
+                DataAvvio,
+                DataCompletamento,
+                Attivo,
+                DataCreazione,
+                DataModifica
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                id_fase,
+                codice_step,
+                titolo_step,
+                ordine,
+                "NON_AVVIATO",
+                None,
+                None,
+                True,
+                data_creazione,
+                data_creazione,
+            ),
+        )
+
+    def _rinumera_step_orizzontali_attivi(
+        self,
+        cursor: Any,
+        *,
+        id_fase: int,
+        data_modifica: datetime,
+    ) -> None:
+        cursor.execute(
+            """
+            SELECT IDStepOrizzontale
+            FROM T_FaseStepOrizzontali
+            WHERE IDFase = ? AND Attivo = ?
+            ORDER BY Ordine ASC, IDStepOrizzontale ASC
+            """,
+            (id_fase, True),
+        )
+        rows = cursor.fetchall()
+
+        for ordine, row in enumerate(rows, start=1):
+            cursor.execute(
+                """
+                UPDATE T_FaseStepOrizzontali
+                SET Ordine = ?,
+                    DataModifica = ?
+                WHERE IDStepOrizzontale = ?
+                    AND IDFase = ?
+                """,
+                (
+                    ordine,
+                    data_modifica,
+                    self._get(row, "IDStepOrizzontale"),
+                    id_fase,
+                ),
+            )
+
     @staticmethod
     def _identity_from_row(row: Any, *, field_name: str = "IDFase") -> int:
         if row is None:
@@ -532,6 +869,15 @@ class WorkflowProcedimentoRepository(BaseRepository):
         )
         parts = [part for part in normalized.split("_") if part]
         return "_".join(parts)[:50] or "FASE"
+
+    @classmethod
+    def codice_step_from_titolo(cls, titolo: str) -> str:
+        normalized = "".join(
+            char.upper() if char.isalnum() else "_"
+            for char in str(titolo or "").strip()
+        )
+        parts = [part for part in normalized.split("_") if part]
+        return "_".join(parts)[:50] or "STEP"
 
     def list_sottofasi_by_fase(self, id_fase: int) -> list[dict[str, Any]]:
         """Legge le sottofasi associate a una fase."""

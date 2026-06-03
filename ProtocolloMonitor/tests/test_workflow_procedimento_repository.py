@@ -414,6 +414,239 @@ def test_inizializza_step_orizzontali_is_idempotent():
     assert connection.committed is True
 
 
+def test_configura_step_orizzontali_istanza_fine_disables_and_recreates_minimal_workflow():
+    now = datetime(2026, 6, 1, 10, 36, 0)
+    cursor = FakeCursor(
+        [
+            [],
+            [],
+            [],
+            [
+                _step_row(
+                    id_step=10,
+                    id_fase=8,
+                    codice="ISTANZA",
+                    titolo="Istanza",
+                    ordine=1,
+                    now=now,
+                ),
+                _step_row(
+                    id_step=11,
+                    id_fase=8,
+                    codice="FINE",
+                    titolo="Fine",
+                    ordine=2,
+                    now=now,
+                ),
+            ],
+        ]
+    )
+    connection = FakeConnection(cursor)
+    repository = WorkflowProcedimentoRepositoryForTest(connection)
+
+    records = repository.configura_step_orizzontali_istanza_fine(
+        id_fase=8,
+        data_modifica=now,
+    )
+
+    assert [step["codice_step"] for step in records] == ["ISTANZA", "FINE"]
+    assert "SET Attivo = ?" in cursor.executed_queries[0]
+    assert cursor.executed_params[0] == (False, now, 8, True)
+    assert sum(
+        "INSERT INTO T_FaseStepOrizzontali" in query
+        for query in cursor.executed_queries
+    ) == 2
+    assert cursor.executed_params[1][1] == "ISTANZA"
+    assert cursor.executed_params[2][1] == "FINE"
+    assert connection.committed is True
+
+
+def test_has_step_orizzontali_avviati_detects_non_initial_active_steps():
+    cursor = FakeCursor([[SimpleNamespace(Totale=1)]])
+    repository = WorkflowProcedimentoRepositoryForTest(FakeConnection(cursor))
+
+    result = repository.has_step_orizzontali_avviati(8)
+
+    assert result is True
+    assert "UCASE(StatoStep)" in cursor.executed_queries[0]
+    assert cursor.executed_params == [(8, True, "NON_AVVIATO")]
+
+
+def test_configura_step_orizzontali_predefinito_disables_and_recreates_standard_workflow():
+    now = datetime(2026, 6, 1, 10, 36, 0)
+    cursor = FakeCursor(
+        [
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [
+                _step_row(id_step=1, id_fase=8, codice="REDIGI", titolo="Redigi", ordine=1, now=now),
+                _step_row(id_step=2, id_fase=8, codice="REVISIONA", titolo="Revisiona", ordine=2, now=now),
+                _step_row(id_step=3, id_fase=8, codice="FIRMA", titolo="Firma", ordine=3, now=now),
+                _step_row(id_step=4, id_fase=8, codice="PROTOCOLLA", titolo="Protocolla", ordine=4, now=now),
+                _step_row(id_step=5, id_fase=8, codice="FINE", titolo="Fine", ordine=5, now=now),
+            ],
+        ]
+    )
+    connection = FakeConnection(cursor)
+    repository = WorkflowProcedimentoRepositoryForTest(connection)
+
+    records = repository.configura_step_orizzontali_predefinito(
+        id_fase=8,
+        data_modifica=now,
+    )
+
+    assert [step["codice_step"] for step in records] == [
+        "REDIGI",
+        "REVISIONA",
+        "FIRMA",
+        "PROTOCOLLA",
+        "FINE",
+    ]
+    assert "SET Attivo = ?" in cursor.executed_queries[0]
+    assert sum(
+        "INSERT INTO T_FaseStepOrizzontali" in query
+        for query in cursor.executed_queries
+    ) == 5
+    assert cursor.executed_params[1][1] == "REDIGI"
+    assert cursor.executed_params[5][1] == "FINE"
+    assert connection.committed is True
+
+
+def test_inserisci_step_orizzontale_dopo_shifts_and_renumbers():
+    now = datetime(2026, 6, 1, 10, 36, 0)
+    cursor = FakeCursor(
+        [
+            [
+                _step_row(
+                    id_step=2,
+                    id_fase=8,
+                    codice="REVISIONA",
+                    titolo="Revisiona",
+                    ordine=2,
+                    now=now,
+                )
+            ],
+            [],
+            [],
+            [
+                SimpleNamespace(IDStepOrizzontale=1),
+                SimpleNamespace(IDStepOrizzontale=2),
+                SimpleNamespace(IDStepOrizzontale=99),
+                SimpleNamespace(IDStepOrizzontale=3),
+            ],
+            [],
+            [],
+            [],
+            [],
+            [
+                _step_row(id_step=1, id_fase=8, codice="REDIGI", titolo="Redigi", ordine=1, now=now),
+                _step_row(id_step=2, id_fase=8, codice="REVISIONA", titolo="Revisiona", ordine=2, now=now),
+                _step_row(id_step=99, id_fase=8, codice="NUOVO_STEP", titolo="Nuovo step", ordine=3, now=now),
+                _step_row(id_step=3, id_fase=8, codice="FIRMA", titolo="Firma", ordine=4, now=now),
+            ],
+        ]
+    )
+    connection = FakeConnection(cursor)
+    repository = WorkflowProcedimentoRepositoryForTest(connection)
+
+    records = repository.inserisci_step_orizzontale_dopo(
+        id_fase=8,
+        id_step=2,
+        titolo_step="Nuovo step",
+        codice_step="NUOVO_STEP",
+        data_creazione=now,
+    )
+
+    assert [step["ordine"] for step in records] == [1, 2, 3, 4]
+    assert "Ordine = Ordine + 1" in cursor.executed_queries[1]
+    assert cursor.executed_params[1] == (now, 8, True, 2)
+    assert cursor.executed_params[2][1] == "NUOVO_STEP"
+    assert "SELECT IDStepOrizzontale" in cursor.executed_queries[3]
+    assert connection.committed is True
+
+
+def test_elimina_logicamente_step_orizzontale_disables_and_renumbers():
+    now = datetime(2026, 6, 1, 10, 36, 0)
+    cursor = FakeCursor(
+        [
+            [
+                _step_row(
+                    id_step=2,
+                    id_fase=8,
+                    codice="REVISIONA",
+                    titolo="Revisiona",
+                    ordine=2,
+                    now=now,
+                )
+            ],
+            [SimpleNamespace(Totale=3)],
+            [],
+            [
+                SimpleNamespace(IDStepOrizzontale=1),
+                SimpleNamespace(IDStepOrizzontale=3),
+            ],
+            [],
+            [],
+            [
+                _step_row(id_step=1, id_fase=8, codice="REDIGI", titolo="Redigi", ordine=1, now=now),
+                _step_row(id_step=3, id_fase=8, codice="FIRMA", titolo="Firma", ordine=2, now=now),
+            ],
+        ]
+    )
+    connection = FakeConnection(cursor)
+    repository = WorkflowProcedimentoRepositoryForTest(connection)
+
+    records = repository.elimina_logicamente_step_orizzontale(
+        id_fase=8,
+        id_step=2,
+        data_modifica=now,
+    )
+
+    assert [step["codice_step"] for step in records] == ["REDIGI", "FIRMA"]
+    assert "SET Attivo = ?" in cursor.executed_queries[2]
+    assert cursor.executed_params[2] == (False, now, 2, 8, True)
+    assert connection.committed is True
+
+
+def test_elimina_logicamente_step_orizzontale_blocks_completed_step_and_rolls_back():
+    now = datetime(2026, 6, 1, 10, 36, 0)
+    cursor = FakeCursor(
+        [
+            [
+                _step_row(
+                    id_step=2,
+                    id_fase=8,
+                    codice="REVISIONA",
+                    titolo="Revisiona",
+                    ordine=2,
+                    stato="COMPLETATO",
+                    now=now,
+                )
+            ],
+            [SimpleNamespace(Totale=3)],
+        ]
+    )
+    connection = FakeConnection(cursor)
+    repository = WorkflowProcedimentoRepositoryForTest(connection)
+
+    try:
+        repository.elimina_logicamente_step_orizzontale(
+            id_fase=8,
+            id_step=2,
+            data_modifica=now,
+        )
+    except ValueError as exc:
+        assert "completato" in str(exc)
+    else:
+        raise AssertionError("ValueError atteso")
+
+    assert connection.rolled_back is True
+
+
 def test_list_catalogo_sottofasi_filters_active_by_default():
     cursor = FakeCursor(
         [

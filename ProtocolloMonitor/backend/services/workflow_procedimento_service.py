@@ -1,13 +1,11 @@
-"""Service per fasi verticali e step orizzontali del procedimento.
-
-Il service mantiene la creazione/modifica delle fasi verticali e inizializza gli
-step orizzontali fissi REDIGI, REVISIONA, FIRMA, PROTOCOLLA e FINE.
-"""
+"""Service per fasi verticali e step orizzontali del procedimento."""
 
 from __future__ import annotations
 
 from datetime import datetime
 from typing import Any
+
+from backend.core.access_backup import create_access_backup
 
 
 class WorkflowFaseNotFoundError(Exception):
@@ -18,6 +16,10 @@ class WorkflowFaseValidationError(ValueError):
     """Payload fase non valido."""
 
 
+class WorkflowConfigurazioneBloccataError(RuntimeError):
+    """Cambio configurazione workflow non ammesso per step gia avviati."""
+
+
 class WorkflowProcedimentoService:
     """Service applicativo per workflow procedimento semplificato."""
 
@@ -26,9 +28,11 @@ class WorkflowProcedimentoService:
         *,
         workflow_procedimento_repository: Any | None = None,
         now_factory: Any | None = None,
+        backup_factory: Any | None = None,
     ) -> None:
         self.workflow_procedimento_repository = workflow_procedimento_repository
         self.now_factory = now_factory or datetime.now
+        self.backup_factory = backup_factory or create_access_backup
 
     def crea_fase_procedimento(
         self,
@@ -142,6 +146,110 @@ class WorkflowProcedimentoService:
         return self.workflow_procedimento_repository.list_step_orizzontali_by_fase(
             id_fase
         )
+
+    def configura_step_orizzontali_istanza_fine(
+        self,
+        *,
+        id_procedimento: int,
+        id_fase: int,
+    ) -> list[dict[str, Any]]:
+        """Converte gli step attivi della fase in `Istanza -> Fine`."""
+
+        self._validate_fase_in_procedimento(
+            id_procedimento=id_procedimento,
+            id_fase=id_fase,
+        )
+        self._ensure_step_orizzontali_configurabili(id_fase)
+
+        self.backup_factory()
+        return self.workflow_procedimento_repository.configura_step_orizzontali_istanza_fine(
+            id_fase=id_fase,
+            data_modifica=self.now_factory(),
+        )
+
+    def configura_step_orizzontali_predefinito(
+        self,
+        *,
+        id_procedimento: int,
+        id_fase: int,
+    ) -> list[dict[str, Any]]:
+        """Converte gli step attivi della fase nel workflow standard."""
+
+        self._validate_fase_in_procedimento(
+            id_procedimento=id_procedimento,
+            id_fase=id_fase,
+        )
+        self._ensure_step_orizzontali_configurabili(id_fase)
+
+        self.backup_factory()
+        return self.workflow_procedimento_repository.configura_step_orizzontali_predefinito(
+            id_fase=id_fase,
+            data_modifica=self.now_factory(),
+        )
+
+    def inserisci_step_orizzontale_dopo(
+        self,
+        *,
+        id_procedimento: int,
+        id_fase: int,
+        id_step: int,
+        payload: Any,
+    ) -> list[dict[str, Any]]:
+        """Inserisce un nuovo step subito dopo lo step selezionato."""
+
+        self._validate_fase_in_procedimento(
+            id_procedimento=id_procedimento,
+            id_fase=id_fase,
+        )
+
+        data = self._payload_to_dict(payload)
+        titolo_step = self._clean_required(
+            data.get("titoloStep")
+            or data.get("TitoloStep")
+            or data.get("titolo_step")
+        )
+        codice_step = self._clean_optional(
+            data.get("codiceStep")
+            or data.get("CodiceStep")
+            or data.get("codice_step")
+        )
+        codice_step = codice_step or self._codice_from_titolo(titolo_step)
+
+        try:
+            self.backup_factory()
+            return self.workflow_procedimento_repository.inserisci_step_orizzontale_dopo(
+                id_fase=id_fase,
+                id_step=id_step,
+                titolo_step=titolo_step,
+                codice_step=codice_step,
+                data_creazione=self.now_factory(),
+            )
+        except ValueError as exc:
+            raise WorkflowFaseValidationError(str(exc)) from exc
+
+    def elimina_logicamente_step_orizzontale(
+        self,
+        *,
+        id_procedimento: int,
+        id_fase: int,
+        id_step: int,
+    ) -> list[dict[str, Any]]:
+        """Disattiva logicamente uno step e restituisce lo stepper aggiornato."""
+
+        self._validate_fase_in_procedimento(
+            id_procedimento=id_procedimento,
+            id_fase=id_fase,
+        )
+
+        try:
+            self.backup_factory()
+            return self.workflow_procedimento_repository.elimina_logicamente_step_orizzontale(
+                id_fase=id_fase,
+                id_step=id_step,
+                data_modifica=self.now_factory(),
+            )
+        except ValueError as exc:
+            raise WorkflowFaseValidationError(str(exc)) from exc
 
     def list_fasi_by_procedimento(
         self,
@@ -259,3 +367,43 @@ class WorkflowProcedimentoService:
         if normalized is None:
             raise WorkflowFaseValidationError("Titolo fase obbligatorio.")
         return normalized
+
+    def _validate_fase_in_procedimento(
+        self,
+        *,
+        id_procedimento: int,
+        id_fase: int,
+    ) -> dict[str, Any]:
+        if self.workflow_procedimento_repository is None:
+            raise WorkflowFaseNotFoundError()
+
+        fase = self.workflow_procedimento_repository.get_fase_detail(id_fase)
+        if fase is None or int(fase.get("id_procedimento") or 0) != int(
+            id_procedimento
+        ):
+            raise WorkflowFaseNotFoundError()
+
+        return fase
+
+    def _ensure_step_orizzontali_configurabili(self, id_fase: int) -> None:
+        has_avviati = getattr(
+            self.workflow_procedimento_repository,
+            "has_step_orizzontali_avviati",
+            None,
+        )
+        if has_avviati is None:
+            return
+
+        if has_avviati(id_fase):
+            raise WorkflowConfigurazioneBloccataError(
+                "Workflow non riconfigurabile: esistono step gia avviati."
+            )
+
+    @staticmethod
+    def _codice_from_titolo(titolo: str) -> str:
+        normalized = "".join(
+            char.upper() if char.isalnum() else "_"
+            for char in str(titolo or "").strip()
+        )
+        parts = [part for part in normalized.split("_") if part]
+        return "_".join(parts)[:50] or "STEP"

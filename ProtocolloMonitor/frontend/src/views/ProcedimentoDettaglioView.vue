@@ -293,6 +293,33 @@
 
               <div class="lavorazione-content-card">
                 <div
+                  v-if="workflowConfigurabile"
+                  class="workflow-quick-actions"
+                >
+                  <v-btn
+                    color="primary"
+                    :variant="workflowIstanzaFineAttivo ? 'flat' : 'tonal'"
+                    prepend-icon="mdi-file-import-outline"
+                    :loading="operazioneStepInCorso"
+                    :disabled="!faseSelezionata || loadingStepOrizzontali"
+                    @click="configuraWorkflowRapidoIstanzaFine"
+                  >
+                    Istanza -> Fine
+                  </v-btn>
+
+                  <v-btn
+                    color="primary"
+                    :variant="workflowPredefinitoAttivo ? 'flat' : 'tonal'"
+                    prepend-icon="mdi-format-list-numbered"
+                    :loading="operazioneStepInCorso"
+                    :disabled="!faseSelezionata || loadingStepOrizzontali"
+                    @click="configuraWorkflowPredefinito"
+                  >
+                    Predefinito
+                  </v-btn>
+                </div>
+
+                <div
                   v-if="stepOrizzontali.length"
                   class="stepper-orizzontale"
                 >
@@ -313,6 +340,57 @@
                         v-if="index < stepOrizzontali.length - 1"
                         class="step-orizzontale-line"
                       />
+                    </div>
+
+                    <div
+                      class="step-node-actions"
+                    >
+                      <v-btn
+                        icon="mdi-delete-outline"
+                        size="x-small"
+                        variant="text"
+                        color="error"
+                        :disabled="operazioneStepInCorso"
+                        @click.stop="apriConfermaEliminaStep(step)"
+                      />
+
+                      <v-menu location="bottom">
+                        <template #activator="{ props }">
+                          <v-btn
+                            v-bind="props"
+                            icon="mdi-plus-circle-outline"
+                            size="x-small"
+                            variant="text"
+                            color="primary"
+                            :disabled="operazioneStepInCorso"
+                            @click.stop
+                          />
+                        </template>
+
+                        <v-list density="compact">
+                          <v-list-item
+                            v-for="opzione in stepInseribili"
+                            :key="opzione.codiceStep"
+                            @click="inserisciStepDopo(step, opzione)"
+                          >
+                            <template #prepend>
+                              <v-avatar
+                                size="28"
+                                color="primary"
+                                variant="tonal"
+                              >
+                                <v-icon size="17">
+                                  {{ opzione.icona }}
+                                </v-icon>
+                              </v-avatar>
+                            </template>
+
+                            <v-list-item-title>
+                              {{ opzione.titoloStep }}
+                            </v-list-item-title>
+                          </v-list-item>
+                        </v-list>
+                      </v-menu>
                     </div>
 
                     <div class="step-orizzontale-title">
@@ -406,6 +484,39 @@
       </v-card>
     </v-dialog>
 
+    <v-dialog
+      v-model="dialogEliminaStep"
+      max-width="460"
+    >
+      <v-card rounded="lg">
+        <v-card-title class="text-subtitle-1 font-weight-bold">
+          Elimina step
+        </v-card-title>
+
+        <v-card-text>
+          Confermi l'eliminazione dello step selezionato?
+        </v-card-text>
+
+        <v-card-actions class="justify-end">
+          <v-btn
+            variant="text"
+            :disabled="operazioneStepInCorso"
+            @click="dialogEliminaStep = false"
+          >
+            Annulla
+          </v-btn>
+          <v-btn
+            color="error"
+            variant="flat"
+            :loading="operazioneStepInCorso"
+            @click="confermaEliminaStep"
+          >
+            Elimina
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <v-snackbar
       v-model="snackbarFase"
       color="success"
@@ -421,9 +532,13 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import {
+  configuraStepOrizzontaliIstanzaFine,
+  configuraStepOrizzontaliPredefinito,
   createFaseProcedimento,
+  eliminaStepOrizzontale,
   getProcedimento,
   inizializzaStepOrizzontaliFase,
+  inserisciStepOrizzontaleDopo,
   listFasiProcedimento,
   listStepOrizzontaliFase,
   updateFaseProcedimento
@@ -443,6 +558,9 @@ const faseSelezionataId = ref(null)
 const stepOrizzontali = ref([])
 const loadingStepOrizzontali = ref(false)
 const erroreStepOrizzontali = ref('')
+const operazioneStepInCorso = ref(false)
+const dialogEliminaStep = ref(false)
+const stepDaEliminare = ref(null)
 const dialogFase = ref(false)
 const faseDialogMode = ref('create')
 const faseInModificaId = ref(null)
@@ -460,6 +578,25 @@ const regoleFase = {
   titolo: (value) => Boolean(String(value || '').trim()) || 'Titolo fase obbligatorio'
 }
 
+const stepInseribili = [
+  { codiceStep: 'REDIGI', titoloStep: 'Redigi', icona: 'mdi-pencil' },
+  { codiceStep: 'REVISIONA', titoloStep: 'Revisiona', icona: 'mdi-magnify' },
+  { codiceStep: 'FIRMA', titoloStep: 'Firma', icona: 'mdi-signature-freehand' },
+  {
+    codiceStep: 'PROTOCOLLA',
+    titoloStep: 'Protocolla',
+    icona: 'mdi-file-document-outline'
+  },
+  { codiceStep: 'FINE', titoloStep: 'Fine', icona: 'mdi-flag-checkered' },
+  { codiceStep: 'TELEFONA', titoloStep: 'Telefona', icona: 'mdi-phone' },
+  { codiceStep: 'MAIL', titoloStep: 'Mail', icona: 'mdi-email-outline' },
+  {
+    codiceStep: 'APPUNTAMENTO',
+    titoloStep: 'Appuntamento',
+    icona: 'mdi-calendar-clock'
+  }
+]
+
 const idProcedimento = computed(() => route.params.idProcedimento)
 
 const titoloProcedimentoVerticale = computed(() => {
@@ -475,6 +612,29 @@ const titoloProcedimentoVerticale = computed(() => {
 
 const faseSelezionata = computed(() => {
   return fasiWorkflow.value.find((fase) => fase.id === faseSelezionataId.value)
+})
+
+const workflowIstanzaFineAttivo = computed(() => {
+  const codici = stepOrizzontali.value.map((step) =>
+    String(step.codiceStep || '').toUpperCase()
+  )
+  return codici.length === 2 && codici[0] === 'ISTANZA' && codici[1] === 'FINE'
+})
+
+const workflowPredefinitoAttivo = computed(() => {
+  const codici = stepOrizzontali.value.map((step) =>
+    String(step.codiceStep || '').toUpperCase()
+  )
+  return (
+    codici.length === 5 &&
+    codici.join('|') === 'REDIGI|REVISIONA|FIRMA|PROTOCOLLA|FINE'
+  )
+})
+
+const workflowConfigurabile = computed(() => {
+  return stepOrizzontali.value.every((step) => {
+    return String(step.statoStep || '').toUpperCase() === 'NON_AVVIATO'
+  })
 })
 
 async function caricaProcedimento() {
@@ -558,11 +718,15 @@ function normalizzaStepOrizzontale(dato = {}) {
 
 function labelStepOrizzontale(codice) {
   const labels = {
+    ISTANZA: 'Istanza',
     REDIGI: 'Redigi',
     REVISIONA: 'Revisiona',
     FIRMA: 'Firma',
     PROTOCOLLA: 'Protocolla',
-    FINE: 'Fine'
+    FINE: 'Fine',
+    TELEFONA: 'Telefona',
+    MAIL: 'Mail',
+    APPUNTAMENTO: 'Appuntamento'
   }
   return labels[String(codice || '').toUpperCase()] || 'Step'
 }
@@ -576,7 +740,19 @@ function normalizzaTitoloStepOrizzontale(titolo, codice) {
     return labelCodice
   }
 
-  if (['REDIGI', 'REVISIONA', 'FIRMA', 'PROTOCOLLA', 'FINE'].includes(titoloUpper)) {
+  if (
+    [
+      'ISTANZA',
+      'REDIGI',
+      'REVISIONA',
+      'FIRMA',
+      'PROTOCOLLA',
+      'FINE',
+      'TELEFONA',
+      'MAIL',
+      'APPUNTAMENTO'
+    ].includes(titoloUpper)
+  ) {
     return labelStepOrizzontale(titoloUpper)
   }
 
@@ -611,14 +787,18 @@ async function caricaStepOrizzontaliFase(fase) {
       step = await listStepOrizzontaliFase(idProcedimento.value, fase.id)
     }
 
-    stepOrizzontali.value = normalizzaListaStepOrizzontali(step)
+    aggiornaStepOrizzontali(step)
   } catch {
     erroreStepOrizzontali.value =
       'Impossibile caricare gli step orizzontali della fase.'
-    stepOrizzontali.value = normalizzaListaStepOrizzontali([])
+    aggiornaStepOrizzontali([])
   } finally {
     loadingStepOrizzontali.value = false
   }
+}
+
+function aggiornaStepOrizzontali(step) {
+  stepOrizzontali.value = normalizzaListaStepOrizzontali(step)
 }
 
 function normalizzaListaStepOrizzontali(step) {
@@ -628,15 +808,104 @@ function normalizzaListaStepOrizzontali(step) {
 
   if (normalizzati.length) return normalizzati
 
-  return ['REDIGI', 'REVISIONA', 'FIRMA', 'PROTOCOLLA', 'FINE'].map(
-    (codiceStep, index) => ({
-      id: codiceStep,
-      codiceStep,
-      titoloStep: labelStepOrizzontale(codiceStep),
-      ordine: index + 1,
-      statoStep: 'NON_AVVIATO'
-    })
-  )
+  return []
+}
+
+async function configuraWorkflowRapidoIstanzaFine() {
+  if (!faseSelezionata.value) return
+
+  operazioneStepInCorso.value = true
+  erroreStepOrizzontali.value = ''
+
+  try {
+    const step = await configuraStepOrizzontaliIstanzaFine(
+      idProcedimento.value,
+      faseSelezionata.value.id
+    )
+    aggiornaStepOrizzontali(step)
+    messaggioFase.value = 'Workflow rapido Istanza -> Fine applicato.'
+    snackbarFase.value = true
+  } catch (error) {
+    erroreStepOrizzontali.value = messaggioErroreStep(error)
+  } finally {
+    operazioneStepInCorso.value = false
+  }
+}
+
+async function configuraWorkflowPredefinito() {
+  if (!faseSelezionata.value) return
+
+  operazioneStepInCorso.value = true
+  erroreStepOrizzontali.value = ''
+
+  try {
+    const step = await configuraStepOrizzontaliPredefinito(
+      idProcedimento.value,
+      faseSelezionata.value.id
+    )
+    aggiornaStepOrizzontali(step)
+    messaggioFase.value = 'Workflow predefinito applicato.'
+    snackbarFase.value = true
+  } catch (error) {
+    erroreStepOrizzontali.value = messaggioErroreStep(error)
+  } finally {
+    operazioneStepInCorso.value = false
+  }
+}
+
+async function inserisciStepDopo(step, opzione) {
+  if (!faseSelezionata.value || !step?.id) return
+
+  operazioneStepInCorso.value = true
+  erroreStepOrizzontali.value = ''
+
+  try {
+    const stepAggiornati = await inserisciStepOrizzontaleDopo(
+      idProcedimento.value,
+      faseSelezionata.value.id,
+      step.id,
+      {
+        titoloStep: opzione?.titoloStep || 'Nuovo step',
+        codiceStep: opzione?.codiceStep || 'NUOVO_STEP'
+      }
+    )
+    aggiornaStepOrizzontali(stepAggiornati)
+    messaggioFase.value = `${opzione?.titoloStep || 'Step'} inserito.`
+    snackbarFase.value = true
+  } catch (error) {
+    erroreStepOrizzontali.value = messaggioErroreStep(error)
+  } finally {
+    operazioneStepInCorso.value = false
+  }
+}
+
+function apriConfermaEliminaStep(step) {
+  stepDaEliminare.value = step
+  dialogEliminaStep.value = true
+}
+
+async function confermaEliminaStep() {
+  if (!faseSelezionata.value || !stepDaEliminare.value?.id) return
+
+  operazioneStepInCorso.value = true
+  erroreStepOrizzontali.value = ''
+
+  try {
+    const stepAggiornati = await eliminaStepOrizzontale(
+      idProcedimento.value,
+      faseSelezionata.value.id,
+      stepDaEliminare.value.id
+    )
+    dialogEliminaStep.value = false
+    stepDaEliminare.value = null
+    aggiornaStepOrizzontali(stepAggiornati)
+    messaggioFase.value = 'Step eliminato.'
+    snackbarFase.value = true
+  } catch (error) {
+    erroreStepOrizzontali.value = messaggioErroreStep(error)
+  } finally {
+    operazioneStepInCorso.value = false
+  }
 }
 
 function tornaAElenco() {
@@ -719,6 +988,14 @@ function messaggioErroreFase(error) {
 
   if (error?.status === 404) return 'Fase non trovata.'
   return 'Impossibile salvare la fase.'
+}
+
+function messaggioErroreStep(error) {
+  const dettaglio = error?.payload?.detail
+  if (typeof dettaglio === 'string') return dettaglio
+
+  if (error?.status === 404) return 'Fase o step non trovato.'
+  return 'Impossibile aggiornare lo stepper.'
 }
 
 function selezionaFase(idFase) {
@@ -1107,6 +1384,14 @@ onMounted(() => {
   padding: 76px 40px 36px;
 }
 
+.workflow-quick-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 10px;
+  justify-content: flex-start;
+  margin-bottom: 26px;
+}
+
 .stepper-orizzontale {
   align-items: start;
   display: grid;
@@ -1118,7 +1403,10 @@ onMounted(() => {
 }
 
 .step-orizzontale-item {
+  cursor: pointer;
   min-width: 0;
+  padding-bottom: 46px;
+  position: relative;
   text-align: center;
 }
 
@@ -1144,6 +1432,32 @@ onMounted(() => {
   position: relative;
   width: 52px;
   z-index: 1;
+}
+
+.step-orizzontale-item:hover .step-orizzontale-node {
+  box-shadow:
+    0 0 0 1px rgba(var(--v-theme-on-surface), 0.16),
+    0 0 0 5px rgba(var(--v-theme-primary), 0.16);
+}
+
+.step-node-actions {
+  align-items: center;
+  display: flex;
+  gap: 4px;
+  left: 50%;
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  top: 58px;
+  transform: translateX(-50%);
+  transition: opacity 0.12s ease;
+  z-index: 2;
+}
+
+.step-orizzontale-item:hover .step-node-actions,
+.step-node-actions:focus-within {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .step-orizzontale-non-avviato {
@@ -1172,6 +1486,7 @@ onMounted(() => {
   font-size: 1rem;
   font-weight: 900;
   margin-bottom: 8px;
+  margin-top: 42px;
   overflow-wrap: anywhere;
 }
 
@@ -1310,6 +1625,14 @@ onMounted(() => {
     gap: 18px;
     grid-template-columns: 1fr;
     max-width: 420px;
+  }
+
+  .workflow-quick-actions {
+    justify-content: stretch;
+  }
+
+  .workflow-quick-actions .v-btn {
+    width: 100%;
   }
 
   .step-orizzontale-line {

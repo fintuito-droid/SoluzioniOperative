@@ -3,16 +3,22 @@ from fastapi import HTTPException
 
 from backend.api.routes.protocollo_monitor import (
     ProcedimentoFasePayload,
+    ProcedimentoFaseStepPayload,
     aggiorna_procedimento_fase,
+    configura_procedimento_fase_step_istanza_fine,
+    configura_procedimento_fase_step_predefinito,
     crea_procedimento_fase,
+    elimina_procedimento_fase_step_orizzontale,
     get_catalogo_sottofasi,
     get_procedimento_fase_dettaglio,
     get_procedimento_fase_sottofasi,
     get_procedimento_fase_step_orizzontali,
     get_procedimento_fasi,
     inizializza_procedimento_fase_step_orizzontali,
+    inserisci_procedimento_fase_step_orizzontale_dopo,
 )
 from backend.services.workflow_procedimento_service import (
+    WorkflowConfigurazioneBloccataError,
     WorkflowFaseNotFoundError,
     WorkflowFaseValidationError,
 )
@@ -87,6 +93,59 @@ class FakeWorkflowProcedimentoService:
                 id_fase=id_fase,
             ),
         }
+
+    def configura_step_orizzontali_istanza_fine(self, *, id_procedimento, id_fase):
+        if self.mode == "missing":
+            raise WorkflowFaseNotFoundError()
+        if self.mode == "blocked":
+            raise WorkflowConfigurazioneBloccataError("Workflow bloccato.")
+        return [
+            {"id_fase": id_fase, "codice_step": "ISTANZA", "ordine": 1},
+            {"id_fase": id_fase, "codice_step": "FINE", "ordine": 2},
+        ]
+
+    def configura_step_orizzontali_predefinito(self, *, id_procedimento, id_fase):
+        if self.mode == "missing":
+            raise WorkflowFaseNotFoundError()
+        if self.mode == "blocked":
+            raise WorkflowConfigurazioneBloccataError("Workflow bloccato.")
+        return [
+            {"id_fase": id_fase, "codice_step": "REDIGI", "ordine": 1},
+            {"id_fase": id_fase, "codice_step": "REVISIONA", "ordine": 2},
+            {"id_fase": id_fase, "codice_step": "FIRMA", "ordine": 3},
+            {"id_fase": id_fase, "codice_step": "PROTOCOLLA", "ordine": 4},
+            {"id_fase": id_fase, "codice_step": "FINE", "ordine": 5},
+        ]
+
+    def inserisci_step_orizzontale_dopo(
+        self,
+        *,
+        id_procedimento,
+        id_fase,
+        id_step,
+        payload,
+    ):
+        if self.mode == "missing":
+            raise WorkflowFaseNotFoundError()
+        if self.mode == "validation":
+            raise WorkflowFaseValidationError("Titolo step obbligatorio.")
+        return [
+            {"id_fase": id_fase, "codice_step": "REDIGI", "ordine": 1},
+            {"id_fase": id_fase, "codice_step": payload.codiceStep, "ordine": 2},
+        ]
+
+    def elimina_logicamente_step_orizzontale(
+        self,
+        *,
+        id_procedimento,
+        id_fase,
+        id_step,
+    ):
+        if self.mode == "missing":
+            raise WorkflowFaseNotFoundError()
+        if self.mode == "validation":
+            raise WorkflowFaseValidationError("Non eliminabile.")
+        return [{"id_fase": id_fase, "codice_step": "FINE", "ordine": 1}]
 
 
 def test_get_procedimento_fasi_returns_list():
@@ -241,6 +300,70 @@ def test_inizializza_step_orizzontali_returns_report():
         "PROTOCOLLA",
         "FINE",
     ]
+
+
+def test_configura_step_istanza_fine_returns_updated_steps():
+    response = configura_procedimento_fase_step_istanza_fine(
+        10,
+        9,
+        workflow_service=FakeWorkflowProcedimentoService(),
+    )
+
+    assert [step["codice_step"] for step in response] == ["ISTANZA", "FINE"]
+
+
+def test_configura_step_istanza_fine_returns_409_when_workflow_blocked():
+    with pytest.raises(HTTPException) as exc_info:
+        configura_procedimento_fase_step_istanza_fine(
+            10,
+            9,
+            workflow_service=FakeWorkflowProcedimentoService(mode="blocked"),
+        )
+
+    assert exc_info.value.status_code == 409
+    assert exc_info.value.detail == "Workflow bloccato."
+
+
+def test_configura_step_predefinito_returns_updated_steps():
+    response = configura_procedimento_fase_step_predefinito(
+        10,
+        9,
+        workflow_service=FakeWorkflowProcedimentoService(),
+    )
+
+    assert [step["codice_step"] for step in response] == [
+        "REDIGI",
+        "REVISIONA",
+        "FIRMA",
+        "PROTOCOLLA",
+        "FINE",
+    ]
+
+
+def test_inserisci_step_orizzontale_dopo_returns_updated_steps():
+    response = inserisci_procedimento_fase_step_orizzontale_dopo(
+        10,
+        9,
+        1,
+        ProcedimentoFaseStepPayload(
+            titoloStep="Mail",
+            codiceStep="MAIL",
+        ),
+        workflow_service=FakeWorkflowProcedimentoService(),
+    )
+
+    assert response[1]["codice_step"] == "MAIL"
+
+
+def test_elimina_step_orizzontale_returns_updated_steps():
+    response = elimina_procedimento_fase_step_orizzontale(
+        10,
+        9,
+        1,
+        workflow_service=FakeWorkflowProcedimentoService(),
+    )
+
+    assert response == [{"id_fase": 9, "codice_step": "FINE", "ordine": 1}]
 
 
 def test_get_catalogo_sottofasi_returns_active_catalog_by_default():

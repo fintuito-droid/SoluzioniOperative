@@ -3,6 +3,7 @@ from datetime import datetime
 import pytest
 
 from backend.services.workflow_procedimento_service import (
+    WorkflowConfigurazioneBloccataError,
     WorkflowFaseNotFoundError,
     WorkflowFaseValidationError,
     WorkflowProcedimentoService,
@@ -17,6 +18,11 @@ class FakeWorkflowProcedimentoRepository:
 
     def __init__(self):
         self.init_calls = []
+        self.configura_istanza_fine_calls = []
+        self.configura_predefinito_calls = []
+        self.inserisci_step_calls = []
+        self.elimina_step_calls = []
+        self.has_step_avviati_value = False
 
     def list_fasi_by_procedimento(self, id_procedimento):
         return [{"id_procedimento": id_procedimento, "id_fase": 1}]
@@ -87,6 +93,53 @@ class FakeWorkflowProcedimentoRepository:
                 "stato_step": "NON_AVVIATO",
             }
         ]
+
+    def has_step_orizzontali_avviati(self, id_fase):
+        return self.has_step_avviati_value
+
+    def configura_step_orizzontali_istanza_fine(self, *, id_fase, data_modifica):
+        self.configura_istanza_fine_calls.append((id_fase, data_modifica))
+        return [
+            {"id_fase": id_fase, "codice_step": "ISTANZA", "ordine": 1},
+            {"id_fase": id_fase, "codice_step": "FINE", "ordine": 2},
+        ]
+
+    def configura_step_orizzontali_predefinito(self, *, id_fase, data_modifica):
+        self.configura_predefinito_calls.append((id_fase, data_modifica))
+        return [
+            {"id_fase": id_fase, "codice_step": "REDIGI", "ordine": 1},
+            {"id_fase": id_fase, "codice_step": "REVISIONA", "ordine": 2},
+            {"id_fase": id_fase, "codice_step": "FIRMA", "ordine": 3},
+            {"id_fase": id_fase, "codice_step": "PROTOCOLLA", "ordine": 4},
+            {"id_fase": id_fase, "codice_step": "FINE", "ordine": 5},
+        ]
+
+    def inserisci_step_orizzontale_dopo(
+        self,
+        *,
+        id_fase,
+        id_step,
+        titolo_step,
+        codice_step,
+        data_creazione,
+    ):
+        self.inserisci_step_calls.append(
+            (id_fase, id_step, titolo_step, codice_step, data_creazione)
+        )
+        return [
+            {"id_fase": id_fase, "codice_step": "REDIGI", "ordine": 1},
+            {"id_fase": id_fase, "codice_step": codice_step, "ordine": 2},
+        ]
+
+    def elimina_logicamente_step_orizzontale(
+        self,
+        *,
+        id_fase,
+        id_step,
+        data_modifica,
+    ):
+        self.elimina_step_calls.append((id_fase, id_step, data_modifica))
+        return [{"id_fase": id_fase, "codice_step": "FINE", "ordine": 1}]
 
     def list_sottofasi_by_fase(self, id_fase):
         return [{"id_fase": id_fase, "id_sottofase": 2}]
@@ -283,6 +336,129 @@ def test_list_step_orizzontali_can_skip_initialization():
 
     assert steps[0]["codice_step"] == "REDIGI"
     assert repository.init_calls == []
+
+
+def test_configura_step_orizzontali_istanza_fine_validates_and_delegates():
+    repository = FakeWorkflowProcedimentoRepository()
+    backup_calls = []
+    service = WorkflowProcedimentoService(
+        workflow_procedimento_repository=repository,
+        now_factory=lambda: FIXED_NOW,
+        backup_factory=lambda: backup_calls.append("backup"),
+    )
+
+    steps = service.configura_step_orizzontali_istanza_fine(
+        id_procedimento=7,
+        id_fase=7,
+    )
+
+    assert [step["codice_step"] for step in steps] == ["ISTANZA", "FINE"]
+    assert repository.configura_istanza_fine_calls == [(7, FIXED_NOW)]
+    assert backup_calls == ["backup"]
+
+
+def test_configura_step_orizzontali_istanza_fine_blocks_when_step_started():
+    repository = FakeWorkflowProcedimentoRepository()
+    repository.has_step_avviati_value = True
+    backup_calls = []
+    service = WorkflowProcedimentoService(
+        workflow_procedimento_repository=repository,
+        now_factory=lambda: FIXED_NOW,
+        backup_factory=lambda: backup_calls.append("backup"),
+    )
+
+    with pytest.raises(WorkflowConfigurazioneBloccataError):
+        service.configura_step_orizzontali_istanza_fine(
+            id_procedimento=7,
+            id_fase=7,
+        )
+
+    assert backup_calls == []
+    assert repository.configura_istanza_fine_calls == []
+
+
+def test_configura_step_orizzontali_predefinito_validates_and_delegates():
+    repository = FakeWorkflowProcedimentoRepository()
+    backup_calls = []
+    service = WorkflowProcedimentoService(
+        workflow_procedimento_repository=repository,
+        now_factory=lambda: FIXED_NOW,
+        backup_factory=lambda: backup_calls.append("backup"),
+    )
+
+    steps = service.configura_step_orizzontali_predefinito(
+        id_procedimento=7,
+        id_fase=7,
+    )
+
+    assert [step["codice_step"] for step in steps] == [
+        "REDIGI",
+        "REVISIONA",
+        "FIRMA",
+        "PROTOCOLLA",
+        "FINE",
+    ]
+    assert repository.configura_predefinito_calls == [(7, FIXED_NOW)]
+    assert backup_calls == ["backup"]
+
+
+def test_inserisci_step_orizzontale_dopo_generates_code_when_missing():
+    repository = FakeWorkflowProcedimentoRepository()
+    backup_calls = []
+    service = WorkflowProcedimentoService(
+        workflow_procedimento_repository=repository,
+        now_factory=lambda: FIXED_NOW,
+        backup_factory=lambda: backup_calls.append("backup"),
+    )
+
+    steps = service.inserisci_step_orizzontale_dopo(
+        id_procedimento=7,
+        id_fase=7,
+        id_step=1,
+        payload={"titoloStep": "Nuovo controllo"},
+    )
+
+    assert steps[1]["codice_step"] == "NUOVO_CONTROLLO"
+    assert repository.inserisci_step_calls == [
+        (7, 1, "Nuovo controllo", "NUOVO_CONTROLLO", FIXED_NOW)
+    ]
+    assert backup_calls == ["backup"]
+
+
+def test_inserisci_step_orizzontale_dopo_requires_title():
+    service = WorkflowProcedimentoService(
+        workflow_procedimento_repository=FakeWorkflowProcedimentoRepository(),
+        now_factory=lambda: FIXED_NOW,
+        backup_factory=lambda: None,
+    )
+
+    with pytest.raises(WorkflowFaseValidationError):
+        service.inserisci_step_orizzontale_dopo(
+            id_procedimento=7,
+            id_fase=7,
+            id_step=1,
+            payload={"titoloStep": " "},
+        )
+
+
+def test_elimina_logicamente_step_orizzontale_delegates():
+    repository = FakeWorkflowProcedimentoRepository()
+    backup_calls = []
+    service = WorkflowProcedimentoService(
+        workflow_procedimento_repository=repository,
+        now_factory=lambda: FIXED_NOW,
+        backup_factory=lambda: backup_calls.append("backup"),
+    )
+
+    steps = service.elimina_logicamente_step_orizzontale(
+        id_procedimento=7,
+        id_fase=7,
+        id_step=3,
+    )
+
+    assert steps == [{"id_fase": 7, "codice_step": "FINE", "ordine": 1}]
+    assert repository.elimina_step_calls == [(7, 3, FIXED_NOW)]
+    assert backup_calls == ["backup"]
 
 
 def test_list_sottofasi_without_repository_returns_empty_list():
