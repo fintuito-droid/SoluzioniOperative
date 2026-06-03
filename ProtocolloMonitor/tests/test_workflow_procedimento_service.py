@@ -22,7 +22,9 @@ class FakeWorkflowProcedimentoRepository:
         self.configura_predefinito_calls = []
         self.inserisci_step_calls = []
         self.elimina_step_calls = []
+        self.collega_protocollo_calls = []
         self.has_step_avviati_value = False
+        self.has_step_orizzontali_value = False
 
     def list_fasi_by_procedimento(self, id_procedimento):
         return [{"id_procedimento": id_procedimento, "id_fase": 1}]
@@ -97,6 +99,9 @@ class FakeWorkflowProcedimentoRepository:
     def has_step_orizzontali_avviati(self, id_fase):
         return self.has_step_avviati_value
 
+    def has_step_orizzontali_fase(self, id_fase):
+        return self.has_step_orizzontali_value
+
     def configura_step_orizzontali_istanza_fine(self, *, id_fase, data_modifica):
         self.configura_istanza_fine_calls.append((id_fase, data_modifica))
         return [
@@ -140,6 +145,28 @@ class FakeWorkflowProcedimentoRepository:
     ):
         self.elimina_step_calls.append((id_fase, id_step, data_modifica))
         return [{"id_fase": id_fase, "codice_step": "FINE", "ordine": 1}]
+
+    def collega_protocollo_step_istanza(
+        self,
+        *,
+        id_procedimento,
+        id_fase,
+        id_step,
+        id_protocollo,
+        data_modifica,
+    ):
+        self.collega_protocollo_calls.append(
+            (id_procedimento, id_fase, id_step, id_protocollo, data_modifica)
+        )
+        return [
+            {
+                "id_fase": id_fase,
+                "id_step_orizzontale": id_step,
+                "codice_step": "ISTANZA",
+                "stato_step": "COMPLETATO",
+                "id_protocollo_collegato": id_protocollo,
+            }
+        ]
 
     def list_sottofasi_by_fase(self, id_fase):
         return [{"id_fase": id_fase, "id_sottofase": 2}]
@@ -338,6 +365,23 @@ def test_list_step_orizzontali_can_skip_initialization():
     assert repository.init_calls == []
 
 
+def test_list_step_orizzontali_does_not_reinitialize_existing_inactive_history():
+    repository = FakeWorkflowProcedimentoRepository()
+    repository.has_step_orizzontali_value = True
+    service = WorkflowProcedimentoService(
+        workflow_procedimento_repository=repository,
+        now_factory=lambda: FIXED_NOW,
+    )
+
+    steps = service.list_step_orizzontali_fase(
+        id_procedimento=7,
+        id_fase=7,
+    )
+
+    assert steps[0]["codice_step"] == "REDIGI"
+    assert repository.init_calls == []
+
+
 def test_configura_step_orizzontali_istanza_fine_validates_and_delegates():
     repository = FakeWorkflowProcedimentoRepository()
     backup_calls = []
@@ -459,6 +503,45 @@ def test_elimina_logicamente_step_orizzontale_delegates():
     assert steps == [{"id_fase": 7, "codice_step": "FINE", "ordine": 1}]
     assert repository.elimina_step_calls == [(7, 3, FIXED_NOW)]
     assert backup_calls == ["backup"]
+
+
+def test_collega_protocollo_step_istanza_validates_and_delegates():
+    repository = FakeWorkflowProcedimentoRepository()
+    backup_calls = []
+    service = WorkflowProcedimentoService(
+        workflow_procedimento_repository=repository,
+        now_factory=lambda: FIXED_NOW,
+        backup_factory=lambda: backup_calls.append("backup"),
+    )
+
+    steps = service.collega_protocollo_step_istanza(
+        id_procedimento=7,
+        id_fase=7,
+        id_step=3,
+        payload={"idProtocollo": 123},
+    )
+
+    assert steps[0]["stato_step"] == "COMPLETATO"
+    assert steps[0]["id_protocollo_collegato"] == 123
+    assert repository.collega_protocollo_calls == [
+        (7, 7, 3, 123, FIXED_NOW)
+    ]
+    assert backup_calls == ["backup"]
+
+
+def test_collega_protocollo_step_istanza_requires_protocollo():
+    service = WorkflowProcedimentoService(
+        workflow_procedimento_repository=FakeWorkflowProcedimentoRepository(),
+        now_factory=lambda: FIXED_NOW,
+    )
+
+    with pytest.raises(WorkflowFaseValidationError):
+        service.collega_protocollo_step_istanza(
+            id_procedimento=7,
+            id_fase=7,
+            id_step=3,
+            payload={},
+        )
 
 
 def test_list_sottofasi_without_repository_returns_empty_list():

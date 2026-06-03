@@ -4,7 +4,9 @@ from fastapi import HTTPException
 from backend.api.routes.protocollo_monitor import (
     ProcedimentoFasePayload,
     ProcedimentoFaseStepPayload,
+    ProcedimentoFaseStepProtocolloPayload,
     aggiorna_procedimento_fase,
+    collega_protocollo_procedimento_fase_step_istanza,
     configura_procedimento_fase_step_istanza_fine,
     configura_procedimento_fase_step_predefinito,
     crea_procedimento_fase,
@@ -146,6 +148,28 @@ class FakeWorkflowProcedimentoService:
         if self.mode == "validation":
             raise WorkflowFaseValidationError("Non eliminabile.")
         return [{"id_fase": id_fase, "codice_step": "FINE", "ordine": 1}]
+
+    def collega_protocollo_step_istanza(
+        self,
+        *,
+        id_procedimento,
+        id_fase,
+        id_step,
+        payload,
+    ):
+        if self.mode == "missing":
+            raise WorkflowFaseNotFoundError("Protocollo non trovato.")
+        if self.mode == "validation":
+            raise WorkflowFaseValidationError("Step non collegabile.")
+        return [
+            {
+                "id_fase": id_fase,
+                "id_step_orizzontale": id_step,
+                "codice_step": "ISTANZA",
+                "stato_step": "COMPLETATO",
+                "id_protocollo_collegato": payload.idProtocollo,
+            }
+        ]
 
 
 def test_get_procedimento_fasi_returns_list():
@@ -364,6 +388,34 @@ def test_elimina_step_orizzontale_returns_updated_steps():
     )
 
     assert response == [{"id_fase": 9, "codice_step": "FINE", "ordine": 1}]
+
+
+def test_collega_protocollo_step_istanza_returns_updated_steps():
+    response = collega_protocollo_procedimento_fase_step_istanza(
+        10,
+        9,
+        3,
+        ProcedimentoFaseStepProtocolloPayload(idProtocollo=123),
+        workflow_service=FakeWorkflowProcedimentoService(),
+    )
+
+    assert response[0]["codice_step"] == "ISTANZA"
+    assert response[0]["stato_step"] == "COMPLETATO"
+    assert response[0]["id_protocollo_collegato"] == 123
+
+
+def test_collega_protocollo_step_istanza_returns_404_when_missing():
+    with pytest.raises(HTTPException) as exc_info:
+        collega_protocollo_procedimento_fase_step_istanza(
+            10,
+            9,
+            3,
+            ProcedimentoFaseStepProtocolloPayload(idProtocollo=999),
+            workflow_service=FakeWorkflowProcedimentoService(mode="missing"),
+        )
+
+    assert exc_info.value.status_code == 404
+    assert exc_info.value.detail == "Protocollo non trovato."
 
 
 def test_get_catalogo_sottofasi_returns_active_catalog_by_default():

@@ -332,6 +332,7 @@
                       <div
                         class="step-orizzontale-node"
                         :class="classeStepOrizzontale(step.statoStep)"
+                        @click.stop="gestisciClickStepOrizzontale(step)"
                       >
                         {{ index + 1 }}
                       </div>
@@ -396,6 +397,27 @@
                     <div class="step-orizzontale-title">
                       {{ step.titoloStep }}
                     </div>
+
+                    <button
+                      v-if="isStepIstanza(step) && step.idProtocolloCollegato"
+                      type="button"
+                      class="step-istanza-linked"
+                      title="Apri PDF protocollo collegato"
+                      @click.stop="apriPdfProtocolloIstanza(step)"
+                    >
+                      <v-icon
+                        size="34"
+                        color="primary"
+                      >
+                        mdi-file-document-outline
+                      </v-icon>
+                      <v-icon
+                        size="30"
+                        color="success"
+                      >
+                        mdi-check-circle
+                      </v-icon>
+                    </button>
                   </div>
                 </div>
 
@@ -517,6 +539,97 @@
       </v-card>
     </v-dialog>
 
+    <v-dialog
+      v-model="dialogProtocolloIstanza"
+      max-width="980"
+    >
+      <v-card rounded="lg">
+        <v-card-title class="text-subtitle-1 font-weight-bold">
+          Collega protocollo allo step Istanza
+        </v-card-title>
+
+        <v-card-text>
+          <v-alert
+            v-if="protocolloCollegatoCorrente"
+            type="info"
+            variant="tonal"
+            density="compact"
+            class="mb-4"
+          >
+            Protocollo collegato:
+            {{ protocolloCollegatoCorrente.numeroProtocollo || protocolloCollegatoCorrente.idProtocollo }}
+            -
+            {{ protocolloCollegatoCorrente.oggetto || '-' }}
+          </v-alert>
+
+          <v-alert
+            v-if="erroreProtocolloIstanza"
+            type="error"
+            variant="tonal"
+            density="compact"
+            class="mb-4"
+          >
+            {{ erroreProtocolloIstanza }}
+          </v-alert>
+
+          <v-text-field
+            v-model="ricercaProtocolloIstanza"
+            label="Cerca protocollo"
+            variant="outlined"
+            density="compact"
+            prepend-inner-icon="mdi-magnify"
+            clearable
+            class="mb-3"
+          />
+
+          <v-data-table
+            :headers="headersProtocolliIstanza"
+            :items="protocolliIstanzaFiltrati"
+            :loading="loadingProtocolliIstanza"
+            density="compact"
+            item-value="idProtocollo"
+            hover
+          >
+            <template #item.dataProtocollo="{ item }">
+              {{ valoreDettaglio(item.dataProtocollo) }}
+            </template>
+
+            <template #item.oggetto="{ item }">
+              <span class="protocollo-oggetto-cell">
+                {{ item.oggetto || '-' }}
+              </span>
+            </template>
+
+            <template #item.actions="{ item }">
+              <v-btn
+                color="primary"
+                variant="flat"
+                size="small"
+                :loading="collegamentoProtocolloInCorso"
+                @click="selezionaProtocolloIstanza(item)"
+              >
+                Seleziona
+              </v-btn>
+            </template>
+
+            <template #no-data>
+              Nessun protocollo disponibile.
+            </template>
+          </v-data-table>
+        </v-card-text>
+
+        <v-card-actions class="justify-end">
+          <v-btn
+            variant="text"
+            :disabled="collegamentoProtocolloInCorso"
+            @click="chiudiDialogProtocolloIstanza"
+          >
+            Chiudi
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <v-snackbar
       v-model="snackbarFase"
       color="success"
@@ -532,14 +645,16 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import {
+  apriPdfProtocolloEsterno,
   configuraStepOrizzontaliIstanzaFine,
   configuraStepOrizzontaliPredefinito,
+  collegaProtocolloStepIstanza,
   createFaseProcedimento,
   eliminaStepOrizzontale,
   getProcedimento,
-  inizializzaStepOrizzontaliFase,
   inserisciStepOrizzontaleDopo,
   listFasiProcedimento,
+  listProtocolli,
   listStepOrizzontaliFase,
   updateFaseProcedimento
 } from '../services/procedimentoApi'
@@ -561,6 +676,13 @@ const erroreStepOrizzontali = ref('')
 const operazioneStepInCorso = ref(false)
 const dialogEliminaStep = ref(false)
 const stepDaEliminare = ref(null)
+const dialogProtocolloIstanza = ref(false)
+const stepIstanzaCorrente = ref(null)
+const protocolliIstanza = ref([])
+const loadingProtocolliIstanza = ref(false)
+const collegamentoProtocolloInCorso = ref(false)
+const erroreProtocolloIstanza = ref('')
+const ricercaProtocolloIstanza = ref('')
 const dialogFase = ref(false)
 const faseDialogMode = ref('create')
 const faseInModificaId = ref(null)
@@ -595,6 +717,14 @@ const stepInseribili = [
     titoloStep: 'Appuntamento',
     icona: 'mdi-calendar-clock'
   }
+]
+
+const headersProtocolliIstanza = [
+  { title: 'Numero', key: 'numeroProtocollo', sortable: true },
+  { title: 'Data', key: 'dataProtocollo', sortable: true },
+  { title: 'Oggetto', key: 'oggetto', sortable: true },
+  { title: 'Mittente', key: 'comandoMittente', sortable: true },
+  { title: '', key: 'actions', sortable: false, align: 'end' }
 ]
 
 const idProcedimento = computed(() => route.params.idProcedimento)
@@ -634,6 +764,35 @@ const workflowPredefinitoAttivo = computed(() => {
 const workflowConfigurabile = computed(() => {
   return stepOrizzontali.value.every((step) => {
     return String(step.statoStep || '').toUpperCase() === 'NON_AVVIATO'
+  })
+})
+
+const protocolloCollegatoCorrente = computed(() => {
+  const step = stepIstanzaCorrente.value
+  if (!step?.idProtocolloCollegato) return null
+
+  return {
+    idProtocollo: step.idProtocolloCollegato,
+    numeroProtocollo: step.numeroProtocolloCollegato,
+    dataProtocollo: step.dataProtocolloCollegato,
+    oggetto: step.oggettoProtocolloCollegato
+  }
+})
+
+const protocolliIstanzaFiltrati = computed(() => {
+  const filtro = String(ricercaProtocolloIstanza.value || '').trim().toLowerCase()
+  if (!filtro) return protocolliIstanza.value
+
+  return protocolliIstanza.value.filter((protocollo) => {
+    return [
+      protocollo.numeroProtocollo,
+      protocollo.dataProtocollo,
+      protocollo.oggetto,
+      protocollo.comandoMittente,
+      protocollo.modalita
+    ]
+      .map((value) => String(value || '').toLowerCase())
+      .some((value) => value.includes(filtro))
   })
 })
 
@@ -712,7 +871,60 @@ function normalizzaStepOrizzontale(dato = {}) {
       dato.stato_step ??
       dato.StatoStep ??
       dato.statoStep ??
-      'NON_AVVIATO'
+      'NON_AVVIATO',
+    idProtocolloCollegato:
+      dato.id_protocollo_collegato ??
+      dato.IDProtocolloCollegato ??
+      dato.idProtocolloCollegato ??
+      null,
+    numeroProtocolloCollegato:
+      dato.numero_protocollo_collegato ??
+      dato.NumeroProtocolloCollegato ??
+      dato.numeroProtocolloCollegato ??
+      '',
+    dataProtocolloCollegato:
+      dato.data_protocollo_collegato ??
+      dato.DataProtocolloCollegato ??
+      dato.dataProtocolloCollegato ??
+      '',
+    oggettoProtocolloCollegato:
+      dato.oggetto_protocollo_collegato ??
+      dato.OggettoProtocolloCollegato ??
+      dato.oggettoProtocolloCollegato ??
+      ''
+  }
+}
+
+function normalizzaProtocolloIstanza(dato = {}) {
+  return {
+    idProtocollo:
+      dato.id_protocollo ??
+      dato.IDProtocollo ??
+      dato.idProtocollo ??
+      dato.id,
+    numeroProtocollo:
+      dato.numero_protocollo ??
+      dato.NumeroProtocollo ??
+      dato.numeroProtocollo ??
+      '',
+    dataProtocollo:
+      dato.data_protocollo ??
+      dato.DataProtocollo ??
+      dato.dataProtocollo ??
+      '',
+    oggetto:
+      dato.oggetto ??
+      dato.Oggetto ??
+      '',
+    modalita:
+      dato.modalita ??
+      dato.Modalita ??
+      '',
+    comandoMittente:
+      dato.comando_mittente ??
+      dato.ComandoMittente ??
+      dato.comandoMittente ??
+      ''
   }
 }
 
@@ -780,13 +992,7 @@ async function caricaStepOrizzontaliFase(fase) {
   stepOrizzontali.value = []
 
   try {
-    let step = await listStepOrizzontaliFase(idProcedimento.value, fase.id)
-
-    if (!Array.isArray(step) || step.length === 0) {
-      await inizializzaStepOrizzontaliFase(idProcedimento.value, fase.id)
-      step = await listStepOrizzontaliFase(idProcedimento.value, fase.id)
-    }
-
+    const step = await listStepOrizzontaliFase(idProcedimento.value, fase.id)
     aggiornaStepOrizzontali(step)
   } catch {
     erroreStepOrizzontali.value =
@@ -851,6 +1057,101 @@ async function configuraWorkflowPredefinito() {
   } finally {
     operazioneStepInCorso.value = false
   }
+}
+
+function isStepIstanza(step) {
+  return String(step?.codiceStep || '').toUpperCase() === 'ISTANZA'
+}
+
+async function gestisciClickStepOrizzontale(step) {
+  if (!isStepIstanza(step)) return
+
+  stepIstanzaCorrente.value = step
+  erroreProtocolloIstanza.value = ''
+  ricercaProtocolloIstanza.value = ''
+  dialogProtocolloIstanza.value = true
+  await caricaProtocolliIstanza()
+}
+
+async function caricaProtocolliIstanza() {
+  loadingProtocolliIstanza.value = true
+  erroreProtocolloIstanza.value = ''
+
+  try {
+    const protocolli = await listProtocolli()
+    protocolliIstanza.value = Array.isArray(protocolli)
+      ? protocolli.map(normalizzaProtocolloIstanza)
+      : []
+  } catch {
+    protocolliIstanza.value = []
+    erroreProtocolloIstanza.value = 'Impossibile caricare i protocolli disponibili.'
+  } finally {
+    loadingProtocolliIstanza.value = false
+  }
+}
+
+async function selezionaProtocolloIstanza(protocollo) {
+  if (!faseSelezionata.value || !stepIstanzaCorrente.value?.id || !protocollo?.idProtocollo) {
+    return
+  }
+
+  const protocolloGiaCollegato = stepIstanzaCorrente.value.idProtocolloCollegato
+  const protocolloDiverso =
+    protocolloGiaCollegato &&
+    Number(protocolloGiaCollegato) !== Number(protocollo.idProtocollo)
+
+  if (protocolloDiverso) {
+    const conferma = window.confirm(
+      'Lo step Istanza contiene gia un protocollo collegato. Vuoi sostituirlo?'
+    )
+    if (!conferma) return
+  }
+
+  collegamentoProtocolloInCorso.value = true
+  erroreProtocolloIstanza.value = ''
+
+  try {
+    const stepAggiornati = await collegaProtocolloStepIstanza(
+      idProcedimento.value,
+      faseSelezionata.value.id,
+      stepIstanzaCorrente.value.id,
+      { idProtocollo: protocollo.idProtocollo }
+    )
+    aggiornaStepOrizzontali(stepAggiornati)
+    stepIstanzaCorrente.value = stepOrizzontali.value.find(
+      (step) => Number(step.id) === Number(stepIstanzaCorrente.value?.id)
+    )
+    dialogProtocolloIstanza.value = false
+    messaggioFase.value = 'Protocollo collegato allo step Istanza.'
+    snackbarFase.value = true
+  } catch (error) {
+    erroreProtocolloIstanza.value = messaggioErroreStep(error)
+  } finally {
+    collegamentoProtocolloInCorso.value = false
+  }
+}
+
+async function apriPdfProtocolloIstanza(step) {
+  const idProtocollo = step?.idProtocolloCollegato
+  if (!idProtocollo) {
+    erroreStepOrizzontali.value = 'Nessun protocollo collegato allo step Istanza.'
+    return
+  }
+
+  erroreStepOrizzontali.value = ''
+
+  try {
+    await apriPdfProtocolloEsterno(idProtocollo)
+  } catch (error) {
+    erroreStepOrizzontali.value = messaggioErrorePdfProtocollo(error)
+  }
+}
+
+function chiudiDialogProtocolloIstanza() {
+  if (collegamentoProtocolloInCorso.value) return
+
+  dialogProtocolloIstanza.value = false
+  erroreProtocolloIstanza.value = ''
 }
 
 async function inserisciStepDopo(step, opzione) {
@@ -996,6 +1297,17 @@ function messaggioErroreStep(error) {
 
   if (error?.status === 404) return 'Fase o step non trovato.'
   return 'Impossibile aggiornare lo stepper.'
+}
+
+function messaggioErrorePdfProtocollo(error) {
+  const dettaglio = error?.payload?.detail
+  if (typeof dettaglio === 'string') return dettaglio
+
+  if (error?.status === 404) {
+    return 'Il PDF non e disponibile o non e stato ancora acquisito.'
+  }
+
+  return 'Errore apertura PDF protocollo.'
 }
 
 function selezionaFase(idFase) {
@@ -1488,6 +1800,32 @@ onMounted(() => {
   margin-bottom: 8px;
   margin-top: 42px;
   overflow-wrap: anywhere;
+}
+
+.step-istanza-linked {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin: 4px auto 0;
+  padding: 0;
+  width: fit-content;
+}
+
+.step-istanza-linked:hover {
+  filter: drop-shadow(0 0 4px rgba(var(--v-theme-primary), 0.35));
+}
+
+.protocollo-oggetto-cell {
+  display: inline-block;
+  max-width: 360px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
+  white-space: nowrap;
 }
 
 .stepper-empty {

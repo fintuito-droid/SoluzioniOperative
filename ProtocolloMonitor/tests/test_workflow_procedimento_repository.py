@@ -411,6 +411,7 @@ def test_inizializza_step_orizzontali_is_idempotent():
         "INSERT INTO T_FaseStepOrizzontali" in query
         for query in cursor.executed_queries
     )
+    assert cursor.executed_params[0] == (8,)
     assert connection.committed is True
 
 
@@ -470,6 +471,18 @@ def test_has_step_orizzontali_avviati_detects_non_initial_active_steps():
     assert result is True
     assert "UCASE(StatoStep)" in cursor.executed_queries[0]
     assert cursor.executed_params == [(8, True, "NON_AVVIATO")]
+
+
+def test_has_step_orizzontali_fase_counts_inactive_records_too():
+    cursor = FakeCursor([[SimpleNamespace(Totale=1)]])
+    repository = WorkflowProcedimentoRepositoryForTest(FakeConnection(cursor))
+
+    result = repository.has_step_orizzontali_fase(8)
+
+    assert result is True
+    assert "FROM T_FaseStepOrizzontali" in cursor.executed_queries[0]
+    assert "Attivo" not in cursor.executed_queries[0]
+    assert cursor.executed_params == [(8,)]
 
 
 def test_configura_step_orizzontali_predefinito_disables_and_recreates_standard_workflow():
@@ -645,6 +658,67 @@ def test_elimina_logicamente_step_orizzontale_blocks_completed_step_and_rolls_ba
         raise AssertionError("ValueError atteso")
 
     assert connection.rolled_back is True
+
+
+def test_collega_protocollo_step_istanza_updates_step_and_bridge():
+    now = datetime(2026, 6, 1, 10, 36, 0)
+    cursor = FakeCursor(
+        [
+            [
+                _step_row(
+                    id_step=2,
+                    id_fase=8,
+                    codice="ISTANZA",
+                    titolo="Istanza",
+                    ordine=1,
+                    now=now,
+                )
+            ],
+            [SimpleNamespace(Totale=1)],
+            [],
+            [SimpleNamespace(Totale=0)],
+            [],
+            [
+                _step_row(
+                    id_step=2,
+                    id_fase=8,
+                    codice="ISTANZA",
+                    titolo="Istanza",
+                    ordine=1,
+                    stato="COMPLETATO",
+                    now=now,
+                )
+            ],
+        ]
+    )
+    connection = FakeConnection(cursor)
+    repository = WorkflowProcedimentoRepositoryForTest(connection)
+
+    records = repository.collega_protocollo_step_istanza(
+        id_procedimento=7,
+        id_fase=8,
+        id_step=2,
+        id_protocollo=123,
+        data_modifica=now,
+    )
+
+    assert records[0]["codice_step"] == "ISTANZA"
+    assert records[0]["stato_step"] == "COMPLETATO"
+    assert "SET IDProtocolloCollegato = ?" in cursor.executed_queries[2]
+    assert cursor.executed_params[2] == (
+        123,
+        "COMPLETATO",
+        now,
+        now,
+        2,
+        8,
+        True,
+    )
+    assert "INSERT INTO T_ProcedimentoProtocolli" in cursor.executed_queries[4]
+    assert cursor.executed_params[4][0] == 7
+    assert cursor.executed_params[4][1] == 123
+    assert cursor.executed_params[4][2] == "ISTANZA"
+    assert connection.committed is True
 
 
 def test_list_catalogo_sottofasi_filters_active_by_default():

@@ -95,6 +95,12 @@ class ProcedimentoFaseStepPayload(BaseModel):
     codiceStep: str | None = Field(default=None, max_length=50)
 
 
+class ProcedimentoFaseStepProtocolloPayload(BaseModel):
+    """Payload per collegare un protocollo a uno step orizzontale."""
+
+    idProtocollo: int
+
+
 def get_container() -> DependencyContainer:
     """Dipendenza FastAPI per creare il container della richiesta."""
 
@@ -752,6 +758,31 @@ def elimina_procedimento_fase_step_orizzontale(
         )
     except WorkflowFaseNotFoundError:
         raise HTTPException(status_code=404, detail="Fase o step non trovato")
+    except WorkflowFaseValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.post(
+    "/protocollo-monitor/procedimenti/{id_procedimento}/fasi/{id_fase}/"
+    "step-orizzontali/{id_step}/collega-protocollo"
+)
+def collega_protocollo_procedimento_fase_step_istanza(
+    id_procedimento: int,
+    id_fase: int,
+    id_step: int,
+    payload: ProcedimentoFaseStepProtocolloPayload,
+    workflow_service: Any = Depends(get_workflow_procedimento_service),
+):
+    try:
+        return workflow_service.collega_protocollo_step_istanza(
+            id_procedimento=id_procedimento,
+            id_fase=id_fase,
+            id_step=id_step,
+            payload=payload,
+        )
+    except WorkflowFaseNotFoundError as exc:
+        detail = str(exc) or "Fase, step o protocollo non trovato"
+        raise HTTPException(status_code=404, detail=detail)
     except WorkflowFaseValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 

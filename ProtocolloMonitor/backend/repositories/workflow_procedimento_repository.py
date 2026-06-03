@@ -158,6 +158,18 @@ class WorkflowProcedimentoRepository(BaseRepository):
             "data_completamento": self._normalize_value(
                 self._get(row, "DataCompletamento")
             ),
+            "id_protocollo_collegato": self._normalize_value(
+                self._get(row, "IDProtocolloCollegato")
+            ),
+            "numero_protocollo_collegato": self._normalize_value(
+                self._get(row, "NumeroProtocolloCollegato")
+            ),
+            "data_protocollo_collegato": self._normalize_value(
+                self._get(row, "DataProtocolloCollegato")
+            ),
+            "oggetto_protocollo_collegato": self._normalize_value(
+                self._get(row, "OggettoProtocolloCollegato")
+            ),
             "attivo": bool(self._get(row, "Attivo"))
             if self._get(row, "Attivo") is not None
             else False,
@@ -400,20 +412,26 @@ class WorkflowProcedimentoRepository(BaseRepository):
 
         query = """
             SELECT
-                IDStepOrizzontale,
-                IDFase,
-                CodiceStep,
-                TitoloStep,
-                Ordine,
-                StatoStep,
-                DataAvvio,
-                DataCompletamento,
-                Attivo,
-                DataCreazione,
-                DataModifica
-            FROM T_FaseStepOrizzontali
-            WHERE IDFase = ? AND Attivo = ?
-            ORDER BY Ordine ASC, IDStepOrizzontale ASC
+                s.IDStepOrizzontale,
+                s.IDFase,
+                s.CodiceStep,
+                s.TitoloStep,
+                s.Ordine,
+                s.StatoStep,
+                s.DataAvvio,
+                s.DataCompletamento,
+                s.IDProtocolloCollegato,
+                s.Attivo,
+                s.DataCreazione,
+                s.DataModifica,
+                p.NumeroProtocollo AS NumeroProtocolloCollegato,
+                p.DataProtocollo AS DataProtocolloCollegato,
+                p.Oggetto AS OggettoProtocolloCollegato
+            FROM T_FaseStepOrizzontali AS s
+                LEFT JOIN T_Protocolli AS p
+                    ON s.IDProtocolloCollegato = p.IDProtocollo
+            WHERE s.IDFase = ? AND s.Attivo = ?
+            ORDER BY s.Ordine ASC, s.IDStepOrizzontale ASC
         """
 
         conn = self._open_access_connection()
@@ -451,9 +469,9 @@ class WorkflowProcedimentoRepository(BaseRepository):
                 """
                 SELECT CodiceStep
                 FROM T_FaseStepOrizzontali
-                WHERE IDFase = ? AND Attivo = ?
+                WHERE IDFase = ?
                 """,
-                (id_fase, True),
+                (id_fase,),
             )
             existing = {
                 str(self._get(row, "CodiceStep") or "").upper()
@@ -505,6 +523,26 @@ class WorkflowProcedimentoRepository(BaseRepository):
 
         report["step"] = self.list_step_orizzontali_by_fase(id_fase)
         return report
+
+    def has_step_orizzontali_fase(self, id_fase: int) -> bool:
+        """Indica se la fase ha gia record step, anche disattivati."""
+
+        query = """
+            SELECT COUNT(*) AS Totale
+            FROM T_FaseStepOrizzontali
+            WHERE IDFase = ?
+        """
+
+        conn = self._open_access_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute(query, (id_fase,))
+            row = cursor.fetchone()
+            return int(self._get(row, "Totale", 0) or 0) > 0
+        finally:
+            cursor.close()
+            conn.close()
 
     def configura_step_orizzontali_istanza_fine(
         self,
@@ -743,6 +781,84 @@ class WorkflowProcedimentoRepository(BaseRepository):
 
         return self.list_step_orizzontali_by_fase(id_fase)
 
+    def collega_protocollo_step_istanza(
+        self,
+        *,
+        id_procedimento: int,
+        id_fase: int,
+        id_step: int,
+        id_protocollo: int,
+        data_modifica: datetime,
+    ) -> list[dict[str, Any]]:
+        """Collega un protocollo esistente allo step `ISTANZA` e lo completa."""
+
+        conn = self._open_access_connection()
+        cursor = conn.cursor()
+
+        try:
+            step = self._get_step_orizzontale_attivo(
+                cursor,
+                id_fase=id_fase,
+                id_step=id_step,
+            )
+            if step is None:
+                raise LookupError("Step non trovato.")
+
+            codice_step = str(self._get(step, "CodiceStep") or "").upper()
+            if codice_step != "ISTANZA":
+                raise ValueError("Il protocollo puo essere collegato solo allo step Istanza.")
+
+            cursor.execute(
+                """
+                SELECT COUNT(*) AS Totale
+                FROM T_Protocolli
+                WHERE IDProtocollo = ?
+                """,
+                (id_protocollo,),
+            )
+            protocollo_row = cursor.fetchone()
+            if int(self._get(protocollo_row, "Totale", 0) or 0) <= 0:
+                raise LookupError("Protocollo non trovato.")
+
+            cursor.execute(
+                """
+                UPDATE T_FaseStepOrizzontali
+                SET IDProtocolloCollegato = ?,
+                    StatoStep = ?,
+                    DataCompletamento = ?,
+                    DataModifica = ?
+                WHERE IDStepOrizzontale = ?
+                    AND IDFase = ?
+                    AND Attivo = ?
+                """,
+                (
+                    id_protocollo,
+                    "COMPLETATO",
+                    data_modifica,
+                    data_modifica,
+                    id_step,
+                    id_fase,
+                    True,
+                ),
+            )
+
+            self._collega_protocollo_a_procedimento_se_assente(
+                cursor,
+                id_procedimento=id_procedimento,
+                id_protocollo=id_protocollo,
+                data_collegamento=data_modifica,
+            )
+
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            cursor.close()
+            conn.close()
+
+        return self.list_step_orizzontali_by_fase(id_fase)
+
     def _get_step_orizzontale_attivo(
         self,
         cursor: Any,
@@ -759,6 +875,9 @@ class WorkflowProcedimentoRepository(BaseRepository):
                 TitoloStep,
                 Ordine,
                 StatoStep,
+                DataAvvio,
+                DataCompletamento,
+                IDProtocolloCollegato,
                 Attivo
             FROM T_FaseStepOrizzontali
             WHERE IDStepOrizzontale = ?
@@ -805,6 +924,48 @@ class WorkflowProcedimentoRepository(BaseRepository):
                 True,
                 data_creazione,
                 data_creazione,
+            ),
+        )
+
+    def _collega_protocollo_a_procedimento_se_assente(
+        self,
+        cursor: Any,
+        *,
+        id_procedimento: int,
+        id_protocollo: int,
+        data_collegamento: datetime,
+    ) -> None:
+        cursor.execute(
+            """
+            SELECT COUNT(*) AS Totale
+            FROM T_ProcedimentoProtocolli
+            WHERE IDProcedimento = ?
+                AND IDProtocollo = ?
+            """,
+            (id_procedimento, id_protocollo),
+        )
+        row = cursor.fetchone()
+        if int(self._get(row, "Totale", 0) or 0) > 0:
+            return
+
+        cursor.execute(
+            """
+            INSERT INTO T_ProcedimentoProtocolli (
+                IDProcedimento,
+                IDProtocollo,
+                RuoloProtocollo,
+                Principale,
+                DataCollegamento,
+                NoteCollegamento
+            ) VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                id_procedimento,
+                id_protocollo,
+                "ISTANZA",
+                False,
+                data_collegamento,
+                "Collegato dallo step Istanza",
             ),
         )
 

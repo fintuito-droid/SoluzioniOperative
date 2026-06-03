@@ -136,7 +136,20 @@ class WorkflowProcedimentoService:
         ):
             raise WorkflowFaseNotFoundError()
 
-        if inizializza:
+        has_step_orizzontali = getattr(
+            self.workflow_procedimento_repository,
+            "has_step_orizzontali_fase",
+            None,
+        )
+        deve_inizializzare = (
+            inizializza
+            and (
+                has_step_orizzontali is None
+                or not has_step_orizzontali(id_fase)
+            )
+        )
+
+        if deve_inizializzare:
             report = self.inizializza_step_orizzontali_fase(
                 id_procedimento=id_procedimento,
                 id_fase=id_fase,
@@ -248,6 +261,42 @@ class WorkflowProcedimentoService:
                 id_step=id_step,
                 data_modifica=self.now_factory(),
             )
+        except ValueError as exc:
+            raise WorkflowFaseValidationError(str(exc)) from exc
+
+    def collega_protocollo_step_istanza(
+        self,
+        *,
+        id_procedimento: int,
+        id_fase: int,
+        id_step: int,
+        payload: Any,
+    ) -> list[dict[str, Any]]:
+        """Collega un protocollo esistente allo step Istanza e completa lo step."""
+
+        self._validate_fase_in_procedimento(
+            id_procedimento=id_procedimento,
+            id_fase=id_fase,
+        )
+
+        data = self._payload_to_dict(payload)
+        id_protocollo = self._clean_required_int(
+            data.get("idProtocollo")
+            or data.get("IDProtocollo")
+            or data.get("id_protocollo")
+        )
+
+        try:
+            self.backup_factory()
+            return self.workflow_procedimento_repository.collega_protocollo_step_istanza(
+                id_procedimento=id_procedimento,
+                id_fase=id_fase,
+                id_step=id_step,
+                id_protocollo=id_protocollo,
+                data_modifica=self.now_factory(),
+            )
+        except LookupError as exc:
+            raise WorkflowFaseNotFoundError(str(exc)) from exc
         except ValueError as exc:
             raise WorkflowFaseValidationError(str(exc)) from exc
 
@@ -366,6 +415,18 @@ class WorkflowProcedimentoService:
         normalized = cls._clean_optional(value)
         if normalized is None:
             raise WorkflowFaseValidationError("Titolo fase obbligatorio.")
+        return normalized
+
+    @staticmethod
+    def _clean_required_int(value: Any) -> int:
+        try:
+            normalized = int(value)
+        except (TypeError, ValueError) as exc:
+            raise WorkflowFaseValidationError("Protocollo obbligatorio.") from exc
+
+        if normalized <= 0:
+            raise WorkflowFaseValidationError("Protocollo obbligatorio.")
+
         return normalized
 
     def _validate_fase_in_procedimento(

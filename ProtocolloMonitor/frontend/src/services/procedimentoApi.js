@@ -51,6 +51,14 @@ export function listProcedimenti() {
   return fetchJson('/protocollo-monitor/procedimenti')
 }
 
+export function listProtocolli() {
+  return fetchJson('/protocollo-monitor/protocolli')
+}
+
+export function apriPdfProtocolloEsterno(idProtocollo) {
+  return fetchJson(`/protocollo-monitor/protocolli/${idProtocollo}/apri-pdf`)
+}
+
 export function createProcedimento(payload) {
   return fetchJson('/protocollo-monitor/procedimenti', {
     method: 'POST',
@@ -159,6 +167,16 @@ export function eliminaStepOrizzontale(idProcedimento, idFase, idStep) {
   return fetchJson(
     `/protocollo-monitor/procedimenti/${idProcedimento}/fasi/${idFase}/step-orizzontali/${idStep}`,
     { method: 'DELETE' }
+  )
+}
+
+export function collegaProtocolloStepIstanza(idProcedimento, idFase, idStep, payload) {
+  return fetchJson(
+    `/protocollo-monitor/procedimenti/${idProcedimento}/fasi/${idFase}/step-orizzontali/${idStep}/collega-protocollo`,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload || {})
+    }
   )
 }
 
