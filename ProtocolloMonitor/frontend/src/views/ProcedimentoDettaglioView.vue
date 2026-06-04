@@ -331,7 +331,7 @@
                     <div class="step-orizzontale-node-wrap">
                       <div
                         class="step-orizzontale-node"
-                        :class="classeStepOrizzontale(step.statoStep)"
+                        :class="classeStepOrizzontale(step)"
                         @click.stop="gestisciClickStepOrizzontale(step)"
                       >
                         {{ index + 1 }}
@@ -399,10 +399,11 @@
                     </div>
 
                     <button
-                      v-if="isStepIstanza(step) && step.idProtocolloCollegato"
+                      v-if="isIstanzaProtocolloCompletata(step)"
                       type="button"
                       class="step-istanza-linked"
                       title="Apri PDF protocollo collegato"
+                      aria-label="Apri PDF protocollo collegato"
                       @click.stop="apriPdfProtocolloIstanza(step)"
                     >
                       <v-icon
@@ -1063,6 +1064,13 @@ function isStepIstanza(step) {
   return String(step?.codiceStep || '').toUpperCase() === 'ISTANZA'
 }
 
+function isIstanzaProtocolloCompletata(step) {
+  const stato = String(step?.statoStep || '').toUpperCase()
+  return isStepIstanza(step) &&
+    stato.includes('COMPLET') &&
+    Boolean(step?.idProtocolloCollegato)
+}
+
 async function gestisciClickStepOrizzontale(step) {
   if (!isStepIstanza(step)) return
 
@@ -1327,12 +1335,14 @@ function valoreDettaglio(value) {
   return value
 }
 
-function classeStepOrizzontale(stato) {
+function classeStepOrizzontale(step) {
+  const stato = typeof step === 'string' ? step : step?.statoStep
   const normalizzato = String(stato || '').toUpperCase()
   if (normalizzato === 'NON_AVVIATO') return 'step-orizzontale-non-avviato'
   if (normalizzato.includes('COMPLET')) return 'step-orizzontale-completato'
+  if (normalizzato.includes('ANNULL')) return 'step-orizzontale-annullato'
   if (normalizzato.includes('CORSO') || normalizzato === 'ACTIVE') {
-    return 'step-orizzontale-attivo'
+    return 'step-orizzontale-in-corso'
   }
   return 'step-orizzontale-non-avviato'
 }
@@ -1780,8 +1790,12 @@ onMounted(() => {
   background: #2e7d32;
 }
 
-.step-orizzontale-attivo {
-  background: #f9a825;
+.step-orizzontale-in-corso {
+  background: #1976d2;
+}
+
+.step-orizzontale-annullato {
+  background: #c62828;
 }
 
 .step-orizzontale-line {
