@@ -220,6 +220,14 @@ export function listDocumentiSottofase(idSottofase) {
   return fetchJson(`/protocollo-monitor/sottofasi/${idSottofase}/documenti`)
 }
 
+export function getDocumentoPrincipaleSottofase(idSottofase) {
+  return fetchJson(`/protocollo-monitor/sottofasi/${idSottofase}/documento-principale`)
+}
+
+export function listAllegatiSottofase(idSottofase) {
+  return fetchJson(`/protocollo-monitor/sottofasi/${idSottofase}/allegati`)
+}
+
 export function listStepOperativiSottofase(idSottofase) {
   return fetchJson(`/protocollo-monitor/sottofasi/${idSottofase}/step-operativi`)
 }

@@ -40,6 +40,7 @@ class DependencyContainer:
         self._procedimento_repository: Any | None = None
         self._workflow_procedimento_repository: Any | None = None
         self._sottofase_documentale_repository: Any | None = None
+        self._sottofase_documenti_repository: Any | None = None
         self._sottofase_workflow_action_repository: Any | None = None
         self._sottofase_document_upload_repository: Any | None = None
         self._sottofase_partecipanti_repository: Any | None = None
@@ -51,6 +52,7 @@ class DependencyContainer:
         self._procedimento_service: Any | None = None
         self._workflow_procedimento_service: Any | None = None
         self._sottofase_documentale_service: Any | None = None
+        self._sottofase_documenti_service: Any | None = None
         self._sottofase_workflow_service: Any | None = None
         self._sottofase_workflow_command_service: Any | None = None
         self._sottofase_document_upload_service: Any | None = None
@@ -127,6 +129,18 @@ class DependencyContainer:
             )
 
         return self._sottofase_documentale_repository
+
+    def _get_sottofase_documenti_repository(self) -> Any:
+        """Restituisce il repository del modello documentale unificato."""
+
+        if self._sottofase_documenti_repository is None:
+            from ..repositories.sottofase_documenti_repository import (
+                SottofaseDocumentiRepository,
+            )
+
+            self._sottofase_documenti_repository = SottofaseDocumentiRepository()
+
+        return self._sottofase_documenti_repository
 
     def _get_sottofase_workflow_action_repository(self) -> Any:
         """Restituisce il repository di scrittura workflow sottofase."""
@@ -274,6 +288,22 @@ class DependencyContainer:
             )
 
         return self._sottofase_documentale_service
+
+    def get_sottofase_documenti_service(self) -> Any:
+        """Restituisce il service documenti principali/allegati sottofase."""
+
+        if self._sottofase_documenti_service is None:
+            from ..services.sottofase_documenti_service import (
+                SottofaseDocumentiService,
+            )
+
+            self._sottofase_documenti_service = SottofaseDocumentiService(
+                sottofase_documenti_repository=(
+                    self._get_sottofase_documenti_repository()
+                ),
+            )
+
+        return self._sottofase_documenti_service
 
     def get_sottofase_workflow_service(self) -> Any:
         """Restituisce `SottofaseWorkflowService` read-only collegato."""

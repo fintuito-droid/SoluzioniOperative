@@ -41,6 +41,9 @@ from backend.services.sottofase_document_upload_service import (
     SottofaseDocumentUploadValidationError,
     SottofaseDocumentUploadWriteError,
 )
+from backend.services.sottofase_documenti_service import (
+    SottofaseDocumentiValidationError,
+)
 from backend.services.sottofase_partecipanti_service import (
     SottofasePartecipantiBackupError,
     SottofasePartecipantiDuplicateError,
@@ -159,6 +162,14 @@ def get_sottofase_documentale_service(
     """Dipendenza FastAPI per ottenere `SottofaseDocumentaleService`."""
 
     return container.get_sottofase_documentale_service()
+
+
+def get_sottofase_documenti_service(
+    container: DependencyContainer = Depends(get_container),
+) -> Any:
+    """Dipendenza FastAPI per documenti principali/allegati sottofase."""
+
+    return container.get_sottofase_documenti_service()
 
 
 def get_sottofase_workflow_service(
@@ -893,13 +904,51 @@ def get_sottofase_documentale(
 def get_sottofase_documenti(
     id_sottofase: int,
     sottofase_service: Any = Depends(get_sottofase_documentale_service),
+    documenti_service: Any = Depends(get_sottofase_documenti_service),
 ):
     sottofase = sottofase_service.get_sottofase_documentale(id_sottofase)
 
     if sottofase is None:
         raise HTTPException(status_code=404, detail="Sottofase non trovata")
 
-    return sottofase_service.list_documenti_by_sottofase(id_sottofase)
+    try:
+        return documenti_service.get_documenti_sottofase(id_sottofase)
+    except SottofaseDocumentiValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.get("/protocollo-monitor/sottofasi/{id_sottofase}/documento-principale")
+def get_sottofase_documento_principale(
+    id_sottofase: int,
+    sottofase_service: Any = Depends(get_sottofase_documentale_service),
+    documenti_service: Any = Depends(get_sottofase_documenti_service),
+):
+    sottofase = sottofase_service.get_sottofase_documentale(id_sottofase)
+
+    if sottofase is None:
+        raise HTTPException(status_code=404, detail="Sottofase non trovata")
+
+    try:
+        return documenti_service.get_documento_principale(id_sottofase)
+    except SottofaseDocumentiValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.get("/protocollo-monitor/sottofasi/{id_sottofase}/allegati")
+def get_sottofase_allegati(
+    id_sottofase: int,
+    sottofase_service: Any = Depends(get_sottofase_documentale_service),
+    documenti_service: Any = Depends(get_sottofase_documenti_service),
+):
+    sottofase = sottofase_service.get_sottofase_documentale(id_sottofase)
+
+    if sottofase is None:
+        raise HTTPException(status_code=404, detail="Sottofase non trovata")
+
+    try:
+        return documenti_service.get_allegati(id_sottofase)
+    except SottofaseDocumentiValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 
 @router.post("/protocollo-monitor/sottofasi/{id_sottofase}/documenti", status_code=201)

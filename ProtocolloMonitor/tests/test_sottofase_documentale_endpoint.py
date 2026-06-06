@@ -7,6 +7,8 @@ from backend.api.routes.protocollo_monitor import (
     apri_sottofase_documento,
     carica_documento_word_sottofase,
     get_sottofase_documentale,
+    get_sottofase_allegati,
+    get_sottofase_documento_principale,
     get_sottofase_documenti,
     get_sottofase_step_operativi,
     scarica_sottofase_documento,
@@ -39,6 +41,17 @@ class FakeSottofaseDocumentaleService:
         if self.documento is None:
             return None
         return {**self.documento, "id_documento_sottofase": id_documento}
+
+
+class FakeSottofaseDocumentiService:
+    def get_documenti_sottofase(self, id_sottofase):
+        return [{"id_sottofase": id_sottofase, "ruolo_documento": "ALLEGATO"}]
+
+    def get_documento_principale(self, id_sottofase):
+        return {"id_sottofase": id_sottofase, "ruolo_documento": "PRINCIPALE"}
+
+    def get_allegati(self, id_sottofase):
+        return [{"id_sottofase": id_sottofase, "ruolo_documento": "ALLEGATO"}]
 
 
 class FailingSottofaseDocumentaleService:
@@ -116,9 +129,10 @@ def test_get_sottofase_documenti_returns_list():
         sottofase_service=FakeSottofaseDocumentaleService(
             sottofase={"step_corrente": "REDIGI"}
         ),
+        documenti_service=FakeSottofaseDocumentiService(),
     )
 
-    assert response == [{"id_sottofase": 7, "id_documento_sottofase": 1}]
+    assert response == [{"id_sottofase": 7, "ruolo_documento": "ALLEGATO"}]
 
 
 def test_get_sottofase_documenti_returns_404_when_missing():
@@ -126,10 +140,35 @@ def test_get_sottofase_documenti_returns_404_when_missing():
         get_sottofase_documenti(
             999,
             sottofase_service=FakeSottofaseDocumentaleService(sottofase=None),
+            documenti_service=FakeSottofaseDocumentiService(),
         )
 
     assert exc_info.value.status_code == 404
     assert exc_info.value.detail == "Sottofase non trovata"
+
+
+def test_get_sottofase_documento_principale_returns_record():
+    response = get_sottofase_documento_principale(
+        7,
+        sottofase_service=FakeSottofaseDocumentaleService(
+            sottofase={"step_corrente": "REDIGI"}
+        ),
+        documenti_service=FakeSottofaseDocumentiService(),
+    )
+
+    assert response == {"id_sottofase": 7, "ruolo_documento": "PRINCIPALE"}
+
+
+def test_get_sottofase_allegati_returns_list():
+    response = get_sottofase_allegati(
+        7,
+        sottofase_service=FakeSottofaseDocumentaleService(
+            sottofase={"step_corrente": "REDIGI"}
+        ),
+        documenti_service=FakeSottofaseDocumentiService(),
+    )
+
+    assert response == [{"id_sottofase": 7, "ruolo_documento": "ALLEGATO"}]
 
 
 def test_get_sottofase_step_operativi_returns_list():

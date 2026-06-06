@@ -793,6 +793,7 @@ const stepInseribili = [
     titoloStep: 'Protocolla',
     icona: 'mdi-file-document-outline'
   },
+  { codiceStep: 'ALLEGATI', titoloStep: 'Allegati', icona: 'mdi-paperclip' },
   { codiceStep: 'FINE', titoloStep: 'Fine', icona: 'mdi-flag-checkered' },
   { codiceStep: 'TELEFONA', titoloStep: 'Telefona', icona: 'mdi-phone' },
   { codiceStep: 'MAIL', titoloStep: 'Mail', icona: 'mdi-email-outline' },
@@ -1057,6 +1058,7 @@ function labelStepOrizzontale(codice) {
     REVISIONA: 'Revisiona',
     FIRMA: 'Firma',
     PROTOCOLLA: 'Protocolla',
+    ALLEGATI: 'Allegati',
     FINE: 'Fine',
     TELEFONA: 'Telefona',
     MAIL: 'Mail',
@@ -1081,6 +1083,7 @@ function normalizzaTitoloStepOrizzontale(titolo, codice) {
       'REVISIONA',
       'FIRMA',
       'PROTOCOLLA',
+      'ALLEGATI',
       'FINE',
       'TELEFONA',
       'MAIL',
