@@ -7,6 +7,8 @@ from backend.api.routes.protocollo_monitor import (
     SottofaseAllegatoEliminaPayload,
     SottofaseAllegatoProtocolloPayload,
     SottofaseAllegatoRipristinaPayload,
+    SottofaseWorkflowDocumentaleAzionePayload,
+    SottofaseWorkflowDocumentaleBozzaPayload,
     SottofaseDocumentoPrincipaleMetadatiPayload,
     aggiorna_sottofase_documento_principale_metadati,
     apri_sottofase_documento,
@@ -14,13 +16,16 @@ from backend.api.routes.protocollo_monitor import (
     carica_documento_word_sottofase,
     collega_protocollo_come_allegato_sottofase,
     crea_sottofase_documento_principale,
+    crea_bozza_workflow_documentale_sottofase,
     elimina_allegato_sottofase,
+    esegui_azione_workflow_documentale_sottofase,
     get_sottofase_allegati_eliminati,
     get_sottofase_documentale,
     get_sottofase_allegati,
     get_sottofase_documento_principale,
     get_sottofase_documenti,
     get_sottofase_step_operativi,
+    get_workflow_documentale_sottofase,
     ripristina_allegato_sottofase,
     scarica_sottofase_documento,
 )
@@ -63,14 +68,17 @@ class FakeSottofaseDocumentiService:
         duplicate_allegato=False,
         delete_mode=None,
         restore_mode=None,
+        workflow_mode=None,
     ):
         self.duplicate = duplicate
         self.missing_principale = missing_principale
         self.duplicate_allegato = duplicate_allegato
         self.delete_mode = delete_mode
         self.restore_mode = restore_mode
+        self.workflow_mode = workflow_mode
         self.delete_calls = []
         self.restore_calls = []
+        self.workflow_action_calls = []
 
     def get_documenti_sottofase(self, id_sottofase):
         return [{"id_sottofase": id_sottofase, "ruolo_documento": "ALLEGATO"}]
@@ -90,6 +98,75 @@ class FakeSottofaseDocumentiService:
                     "stato_documento": "ELIMINATO",
                 }
             ]
+        }
+
+    def get_workflow_documentale_sottofase(self, id_sottofase):
+        return {
+            "documento": {
+                "idDocumento": 11,
+                "idSottofase": id_sottofase,
+                "statoDocumento": "BOZZA",
+            },
+            "azioniDisponibili": ["completa_redazione"],
+            "message": "Documento in bozza",
+        }
+
+    def crea_bozza_documento_principale(self, id_sottofase, payload):
+        if self.duplicate:
+            from backend.services.sottofase_documenti_service import (
+                SottofaseDocumentoPrincipaleGiaEsistenteError,
+            )
+
+            raise SottofaseDocumentoPrincipaleGiaEsistenteError(
+                "Esiste gia un documento PRINCIPALE attivo per la sottofase."
+            )
+        return {
+            "documento": {
+                "idDocumento": 11,
+                "idSottofase": id_sottofase,
+                "titoloDocumento": payload["titoloDocumento"],
+                "statoDocumento": "BOZZA",
+            },
+            "azioniDisponibili": ["completa_redazione"],
+            "message": "Documento in bozza",
+        }
+
+    def avanza_stato_documentale(
+        self,
+        *,
+        id_sottofase,
+        id_documento,
+        azione,
+        payload,
+    ):
+        self.workflow_action_calls.append(
+            {
+                "id_sottofase": id_sottofase,
+                "id_documento": id_documento,
+                "azione": azione,
+                "payload": payload,
+            }
+        )
+        if self.workflow_mode == "missing":
+            from backend.services.sottofase_documenti_service import (
+                SottofaseDocumentoPrincipaleNotFoundError,
+            )
+
+            raise SottofaseDocumentoPrincipaleNotFoundError(
+                "Documento principale non trovato."
+            )
+        if self.workflow_mode == "invalid":
+            from backend.services.sottofase_documenti_service import (
+                SottofaseWorkflowDocumentaleTransitionError,
+            )
+
+            raise SottofaseWorkflowDocumentaleTransitionError(
+                "Transizione non valida."
+            )
+        return {
+            "success": True,
+            "statoDocumento": "REDATTO",
+            "message": "Stato documentale aggiornato",
         }
 
     def create_documento_principale(self, id_sottofase):
@@ -373,6 +450,87 @@ def test_aggiorna_sottofase_documento_principale_metadati_returns_404_when_missi
         )
 
     assert exc_info.value.status_code == 404
+
+
+def test_get_workflow_documentale_sottofase_returns_state():
+    response = get_workflow_documentale_sottofase(
+        7,
+        documenti_service=FakeSottofaseDocumentiService(),
+    )
+
+    assert response["documento"]["idDocumento"] == 11
+    assert response["azioniDisponibili"] == ["completa_redazione"]
+
+
+def test_crea_bozza_workflow_documentale_sottofase_returns_state():
+    response = crea_bozza_workflow_documentale_sottofase(
+        7,
+        SottofaseWorkflowDocumentaleBozzaPayload(
+            titoloDocumento="Bozza nota",
+            descrizioneDocumento="Descrizione",
+            utente="operatore",
+        ),
+        documenti_service=FakeSottofaseDocumentiService(),
+    )
+
+    assert response["documento"]["titoloDocumento"] == "Bozza nota"
+    assert response["documento"]["statoDocumento"] == "BOZZA"
+
+
+def test_crea_bozza_workflow_documentale_sottofase_returns_409_on_duplicate():
+    with pytest.raises(HTTPException) as exc_info:
+        crea_bozza_workflow_documentale_sottofase(
+            7,
+            SottofaseWorkflowDocumentaleBozzaPayload(
+                titoloDocumento="Bozza nota",
+            ),
+            documenti_service=FakeSottofaseDocumentiService(duplicate=True),
+        )
+
+    assert exc_info.value.status_code == 409
+
+
+def test_esegui_azione_workflow_documentale_sottofase_returns_success():
+    service = FakeSottofaseDocumentiService()
+
+    response = esegui_azione_workflow_documentale_sottofase(
+        7,
+        11,
+        SottofaseWorkflowDocumentaleAzionePayload(
+            azione="completa_redazione",
+            note="Nota",
+            utente="operatore",
+        ),
+        documenti_service=service,
+    )
+
+    assert response["success"] is True
+    assert response["statoDocumento"] == "REDATTO"
+    assert service.workflow_action_calls[0]["azione"] == "completa_redazione"
+
+
+def test_esegui_azione_workflow_documentale_sottofase_returns_404_when_missing():
+    with pytest.raises(HTTPException) as exc_info:
+        esegui_azione_workflow_documentale_sottofase(
+            7,
+            11,
+            SottofaseWorkflowDocumentaleAzionePayload(azione="completa_redazione"),
+            documenti_service=FakeSottofaseDocumentiService(workflow_mode="missing"),
+        )
+
+    assert exc_info.value.status_code == 404
+
+
+def test_esegui_azione_workflow_documentale_sottofase_returns_400_when_invalid():
+    with pytest.raises(HTTPException) as exc_info:
+        esegui_azione_workflow_documentale_sottofase(
+            7,
+            11,
+            SottofaseWorkflowDocumentaleAzionePayload(azione="conferma_firma"),
+            documenti_service=FakeSottofaseDocumentiService(workflow_mode="invalid"),
+        )
+
+    assert exc_info.value.status_code == 400
 
 
 def test_get_sottofase_allegati_returns_list():

@@ -243,6 +243,24 @@ def test_create_allegato_file_forces_file_allegato_payload():
     assert repository.created_payload["RuoloDocumento"] == "ALLEGATO"
 
 
+def test_crea_documento_principale_bozza_creates_minimal_workflow_payload():
+    repository = CapturingSottofaseDocumentiRepository()
+
+    result = repository.crea_documento_principale_bozza(
+        id_sottofase=7,
+        titolo="Bozza nota",
+        descrizione="Descrizione",
+        utente="operatore",
+        data_creazione="2026-06-06 14:00:00",
+    )
+
+    assert result["RuoloDocumento"] == "PRINCIPALE"
+    assert result["TipoOrigine"] == "INTERNO"
+    assert result["TitoloDocumento"] == "Bozza nota"
+    assert result["StatoDocumento"] == "BOZZA"
+    assert result["UtenteCollegamento"] == "operatore"
+
+
 def test_get_documento_by_id_returns_document():
     cursor = FakeCursor([[make_documento_row()]])
     repository = SottofaseDocumentiRepositoryForTest(FakeConnection(cursor))
@@ -252,6 +270,45 @@ def test_get_documento_by_id_returns_document():
     assert result["id_documento_sottofase"] == 11
     assert result["nome_file"] == "documento.pdf"
     assert cursor.executed_params == [(11,)]
+
+
+def test_aggiorna_stato_documento_principale_updates_principale_only():
+    updated_row = make_documento_row(
+        RuoloDocumento="PRINCIPALE",
+        StatoDocumento="REDATTO",
+        DescrizioneDocumento="Descrizione\n\n[2026-06-06 14:00] operatore - REDATTO: Nota",
+    )
+    cursor = FakeCursor(
+        [
+            [make_documento_row(RuoloDocumento="PRINCIPALE")],
+            [],
+            [updated_row],
+        ]
+    )
+    repository = SottofaseDocumentiRepositoryForTest(FakeConnection(cursor))
+
+    result = repository.aggiorna_stato_documento_principale(
+        id_sottofase=7,
+        id_documento=11,
+        nuovo_stato="REDATTO",
+        note="Nota",
+        utente="operatore",
+        data_modifica="2026-06-06 14:00:00",
+    )
+
+    assert result["success"] is True
+    assert result["documento"]["stato_documento"] == "REDATTO"
+    assert "UPDATE T_SottofaseDocumenti" in cursor.executed_queries[1]
+    assert cursor.executed_params[1] == (
+        "REDATTO",
+        "Descrizione\n\n[2026-06-06 14:00] operatore - REDATTO: Nota",
+        "2026-06-06 14:00:00",
+        "operatore",
+        11,
+        7,
+        "PRINCIPALE",
+        True,
+    )
 
 
 def test_elimina_logicamente_allegato_updates_audit_fields():

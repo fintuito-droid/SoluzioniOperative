@@ -511,6 +511,139 @@
                       </v-alert>
 
                       <v-card
+                        class="workflow-documentale-card mt-5"
+                        rounded="lg"
+                        variant="tonal"
+                      >
+                        <v-card-title class="workflow-documentale-title">
+                          <div class="redigi-document-header">
+                            <v-avatar
+                              color="primary"
+                              variant="tonal"
+                              size="42"
+                            >
+                              <img
+                                :src="workflowAvatarForStep(stepRedigiSelezionato)"
+                                alt=""
+                                class="workflow-panel-avatar-img"
+                              >
+                            </v-avatar>
+
+                            <div>
+                              <div class="redigi-document-title">
+                                Workflow documentale
+                              </div>
+                              <div class="text-caption text-medium-emphasis">
+                                Redigi
+                              </div>
+                            </div>
+                          </div>
+
+                          <v-chip
+                            :color="coloreStatoDocumentoWorkflow(statoWorkflowDocumento)"
+                            variant="tonal"
+                          >
+                            {{ valoreDettaglio(statoWorkflowDocumento) }}
+                          </v-chip>
+                        </v-card-title>
+
+                        <v-card-text>
+                          <v-progress-linear
+                            v-if="loadingWorkflowDocumentale"
+                            color="primary"
+                            indeterminate
+                            rounded
+                          />
+
+                          <v-alert
+                            v-if="erroreWorkflowDocumentale"
+                            type="warning"
+                            variant="tonal"
+                            density="compact"
+                            class="mb-4"
+                          >
+                            {{ erroreWorkflowDocumentale }}
+                          </v-alert>
+
+                          <div v-if="canCreaBozzaWorkflow">
+                            <v-text-field
+                              v-model="workflowBozzaForm.titoloDocumento"
+                              label="Titolo documento"
+                              variant="outlined"
+                              density="compact"
+                            />
+
+                            <v-textarea
+                              v-model="workflowBozzaForm.descrizioneDocumento"
+                              label="Descrizione"
+                              variant="outlined"
+                              rows="3"
+                              auto-grow
+                            />
+
+                            <v-btn
+                              color="primary"
+                              variant="flat"
+                              prepend-icon="mdi-file-plus-outline"
+                              :loading="operazioneWorkflowDocumentaleInCorso"
+                              @click="creaBozzaWorkflowDocumentale"
+                            >
+                              Crea bozza documento
+                            </v-btn>
+                          </div>
+
+                          <div v-else>
+                            <div class="detail-grid">
+                              <div class="detail-field">
+                                <div class="detail-label">Documento</div>
+                                <div class="detail-value">
+                                  {{ valoreDettaglio(documentoWorkflowPrincipale?.titoloDocumento) }}
+                                </div>
+                              </div>
+                              <div class="detail-field">
+                                <div class="detail-label">Messaggio</div>
+                                <div class="detail-value">
+                                  {{ workflowDocumentaleReadyMessage }}
+                                </div>
+                              </div>
+                            </div>
+
+                            <v-textarea
+                              v-if="canCompletaRedazioneWorkflow"
+                              v-model="workflowAzioneNote"
+                              label="Note redazione"
+                              variant="outlined"
+                              rows="3"
+                              auto-grow
+                              class="mt-4"
+                            />
+
+                            <v-btn
+                              v-if="canCompletaRedazioneWorkflow"
+                              color="success"
+                              variant="flat"
+                              prepend-icon="mdi-check-circle-outline"
+                              :loading="operazioneWorkflowDocumentaleInCorso"
+                              class="mt-2"
+                              @click="eseguiAzioneDocumentale('completa_redazione')"
+                            >
+                              Completa redazione
+                            </v-btn>
+
+                            <v-alert
+                              v-else
+                              type="info"
+                              variant="tonal"
+                              density="compact"
+                              class="mt-4"
+                            >
+                              Documento gia redatto o in fase successiva.
+                            </v-alert>
+                          </div>
+                        </v-card-text>
+                      </v-card>
+
+                      <v-card
                         class="redigi-document-card mt-5"
                         rounded="lg"
                         variant="tonal"
@@ -692,6 +825,239 @@
                       Salva note
                     </v-btn>
                   </v-card-actions>
+                </v-card>
+
+                <v-card
+                  v-else-if="stepDocumentaleSelezionato"
+                  class="redigi-work-panel"
+                  rounded="lg"
+                  variant="outlined"
+                >
+                  <v-card-title class="redigi-panel-title">
+                    <div class="redigi-document-header">
+                      <v-avatar
+                        color="primary"
+                        variant="tonal"
+                        size="46"
+                      >
+                        <img
+                          :src="workflowAvatarForStep(stepDocumentaleSelezionato)"
+                          alt=""
+                          class="workflow-panel-avatar-img"
+                        >
+                      </v-avatar>
+
+                      <div>
+                        <div class="text-caption text-medium-emphasis">
+                          Workflow documentale
+                        </div>
+                        <div class="redigi-panel-heading">
+                          {{ stepDocumentaleSelezionato.titolo }}
+                        </div>
+                      </div>
+                    </div>
+
+                    <v-chip
+                      :color="coloreStatoDocumentoWorkflow(statoWorkflowDocumento)"
+                      variant="tonal"
+                    >
+                      Stato documento: {{ valoreDettaglio(statoWorkflowDocumento) }}
+                    </v-chip>
+                  </v-card-title>
+
+                  <v-divider />
+
+                  <v-card-text>
+                    <v-progress-linear
+                      v-if="loadingWorkflowDocumentale"
+                      color="primary"
+                      indeterminate
+                      rounded
+                      class="mb-4"
+                    />
+
+                    <v-alert
+                      v-if="erroreWorkflowDocumentale"
+                      type="warning"
+                      variant="tonal"
+                      density="compact"
+                      class="mb-4"
+                    >
+                      {{ erroreWorkflowDocumentale }}
+                    </v-alert>
+
+                    <v-alert
+                      v-if="!documentoWorkflowPrincipale"
+                      type="info"
+                      variant="tonal"
+                      density="compact"
+                      class="mb-4"
+                    >
+                      Documento principale non ancora presente. Crearlo dallo step Redigi.
+                    </v-alert>
+
+                    <div
+                      v-else
+                      class="workflow-documentale-body"
+                    >
+                      <div class="detail-grid">
+                        <div class="detail-field">
+                          <div class="detail-label">Titolo documento</div>
+                          <div class="detail-value">
+                            {{ valoreDettaglio(documentoWorkflowPrincipale.titoloDocumento) }}
+                          </div>
+                        </div>
+
+                        <div class="detail-field">
+                          <div class="detail-label">Stato</div>
+                          <div class="detail-value">
+                            {{ valoreDettaglio(statoWorkflowDocumento) }}
+                          </div>
+                        </div>
+
+                        <div class="detail-field">
+                          <div class="detail-label">Ultima modifica</div>
+                          <div class="detail-value">
+                            {{ valoreDettaglio(documentoWorkflowPrincipale.dataModifica) }}
+                          </div>
+                        </div>
+
+                        <div class="detail-field">
+                          <div class="detail-label">Protocollo collegato</div>
+                          <div class="detail-value">
+                            {{ valoreDettaglio(documentoWorkflowPrincipale.idProtocolloCollegato) }}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="detail-description-box">
+                        {{ valoreDettaglio(documentoWorkflowPrincipale.descrizioneDocumento) }}
+                      </div>
+
+                      <v-alert
+                        type="info"
+                        variant="tonal"
+                        density="compact"
+                        class="mb-4"
+                      >
+                        {{ workflowDocumentaleReadyMessage }}
+                      </v-alert>
+
+                      <v-textarea
+                        v-if="canApprovaRevisioneWorkflow || canFirmaWorkflow || canProtocollaWorkflow"
+                        v-model="workflowAzioneNote"
+                        label="Note / motivo"
+                        variant="outlined"
+                        rows="3"
+                        auto-grow
+                      />
+
+                      <v-text-field
+                        v-if="canProtocollaWorkflow"
+                        v-model="workflowProtocolloId"
+                        label="ID protocollo"
+                        type="number"
+                        variant="outlined"
+                        density="compact"
+                      />
+
+                      <div class="workflow-documentale-actions">
+                        <v-btn
+                          v-if="canApprovaRevisioneWorkflow"
+                          color="success"
+                          variant="flat"
+                          prepend-icon="mdi-check-circle-outline"
+                          :loading="operazioneWorkflowDocumentaleInCorso"
+                          @click="eseguiAzioneDocumentale('approva_revisione')"
+                        >
+                          Approva revisione
+                        </v-btn>
+
+                        <v-btn
+                          v-if="canApprovaRevisioneWorkflow"
+                          color="error"
+                          variant="tonal"
+                          prepend-icon="mdi-close-circle-outline"
+                          :loading="operazioneWorkflowDocumentaleInCorso"
+                          @click="eseguiAzioneDocumentale('respingi_revisione')"
+                        >
+                          Respingi revisione
+                        </v-btn>
+
+                        <v-btn
+                          v-if="canFirmaWorkflow"
+                          color="success"
+                          variant="flat"
+                          prepend-icon="mdi-draw"
+                          :loading="operazioneWorkflowDocumentaleInCorso"
+                          @click="eseguiAzioneDocumentale('conferma_firma')"
+                        >
+                          Conferma firma
+                        </v-btn>
+
+                        <v-btn
+                          v-if="canFirmaWorkflow"
+                          color="error"
+                          variant="tonal"
+                          prepend-icon="mdi-close-circle-outline"
+                          :loading="operazioneWorkflowDocumentaleInCorso"
+                          @click="eseguiAzioneDocumentale('respingi_firma')"
+                        >
+                          Respingi firma
+                        </v-btn>
+
+                        <v-btn
+                          v-if="canProtocollaWorkflow"
+                          color="success"
+                          variant="flat"
+                          prepend-icon="mdi-file-check-outline"
+                          :loading="operazioneWorkflowDocumentaleInCorso"
+                          @click="eseguiAzioneDocumentale('conferma_protocollazione')"
+                        >
+                          Conferma protocollazione
+                        </v-btn>
+                      </div>
+
+                      <v-alert
+                        v-if="
+                          isStepRevisiona(stepDocumentaleSelezionato) &&
+                          !canApprovaRevisioneWorkflow
+                        "
+                        type="info"
+                        variant="tonal"
+                        density="compact"
+                        class="mt-4"
+                      >
+                        Il documento non e ancora pronto per la revisione.
+                      </v-alert>
+
+                      <v-alert
+                        v-if="
+                          isStepFirma(stepDocumentaleSelezionato) &&
+                          !canFirmaWorkflow
+                        "
+                        type="info"
+                        variant="tonal"
+                        density="compact"
+                        class="mt-4"
+                      >
+                        Il documento non e ancora pronto per la firma.
+                      </v-alert>
+
+                      <v-alert
+                        v-if="
+                          isStepProtocolla(stepDocumentaleSelezionato) &&
+                          !canProtocollaWorkflow
+                        "
+                        type="info"
+                        variant="tonal"
+                        density="compact"
+                        class="mt-4"
+                      >
+                        Il documento non e ancora pronto per la protocollazione.
+                      </v-alert>
+                    </div>
+                  </v-card-text>
                 </v-card>
 
                 <v-card
@@ -1397,11 +1763,14 @@ import {
   collegaProtocolloStepIstanza,
   createDocumentoPrincipaleSottofase,
   createFaseProcedimento,
+  creaBozzaDocumentoPrincipale,
   eliminaAllegatoSottofase,
   eliminaStepOrizzontale,
+  eseguiAzioneWorkflowDocumentale,
   getAllegatiEliminati,
   getDocumentoPrincipaleSottofase,
   getProcedimento,
+  getWorkflowDocumentaleSottofase,
   inserisciStepOrizzontaleDopo,
   listAllegatiSottofase,
   listFasiProcedimento,
@@ -1447,6 +1816,16 @@ const creazioneDocumentoPrincipaleInCorso = ref(false)
 const aperturaDocumentoPrincipaleInCorso = ref(false)
 const salvataggioMetadatiDocumentoInCorso = ref(false)
 const erroreDocumentoPrincipaleRedigi = ref('')
+const workflowDocumentale = ref(null)
+const loadingWorkflowDocumentale = ref(false)
+const erroreWorkflowDocumentale = ref('')
+const operazioneWorkflowDocumentaleInCorso = ref(false)
+const workflowBozzaForm = reactive({
+  titoloDocumento: '',
+  descrizioneDocumento: ''
+})
+const workflowAzioneNote = ref('')
+const workflowProtocolloId = ref('')
 const allegatiSottofase = ref([])
 const allegatiEliminatiSottofase = ref([])
 const loadingAllegatiSottofase = ref(false)
@@ -1539,11 +1918,17 @@ const stepInseribili = [
 
 const statiDocumentoPrincipale = [
   'BOZZA',
+  'REDATTO',
   'IN_REVISIONE',
+  'REVISIONATO',
+  'DA_FIRMARE',
   'APPROVATO',
   'FIRMATO',
   'PROTOCOLLATO',
-  'ARCHIVIATO'
+  'DA_PROTOCOLLARE',
+  'ARCHIVIATO',
+  'RESPINTO',
+  'ANNULLATO'
 ]
 
 const tipiDocumentoPrincipale = [
@@ -1646,12 +2031,21 @@ const stepRedigiSelezionato = computed(() => {
   return isStepRedigi(step) ? step : null
 })
 
+const stepDocumentaleSelezionato = computed(() => {
+  const step = stepOperativoSelezionato.value
+  return isStepDocumentale(step) ? step : null
+})
+
 const stepAllegatiSelezionato = computed(() => {
   const step = stepOperativoSelezionato.value
   return isStepAllegati(step) ? step : null
 })
 
 const idSottofaseDocumentaleRedigi = computed(() => {
+  return faseSelezionata.value?.idSottofase || faseSelezionata.value?.id || null
+})
+
+const idSottofaseDocumentaleWorkflow = computed(() => {
   return faseSelezionata.value?.idSottofase || faseSelezionata.value?.id || null
 })
 
@@ -1669,6 +2063,56 @@ const redigiAvviabile = computed(() => {
 
 const redigiCompletabile = computed(() => {
   return statoRedigiSelezionato.value === 'IN_CORSO'
+})
+
+const documentoWorkflowPrincipale = computed(() => {
+  return workflowDocumentale.value?.documento || null
+})
+
+const statoWorkflowDocumento = computed(() => {
+  return String(documentoWorkflowPrincipale.value?.statoDocumento || '').toUpperCase()
+})
+
+const azioniWorkflowDocumentaleDisponibili = computed(() => {
+  return Array.isArray(workflowDocumentale.value?.azioniDisponibili)
+    ? workflowDocumentale.value.azioniDisponibili
+    : []
+})
+
+const workflowDocumentaleReadyMessage = computed(() => {
+  return workflowDocumentale.value?.message || 'Workflow documentale non caricato.'
+})
+
+const canCreaBozzaWorkflow = computed(() => {
+  return isStepRedigi(stepDocumentaleSelezionato.value) && !documentoWorkflowPrincipale.value
+})
+
+const canCompletaRedazioneWorkflow = computed(() => {
+  return (
+    isStepRedigi(stepDocumentaleSelezionato.value) &&
+    azioniWorkflowDocumentaleDisponibili.value.includes('completa_redazione')
+  )
+})
+
+const canApprovaRevisioneWorkflow = computed(() => {
+  return (
+    isStepRevisiona(stepDocumentaleSelezionato.value) &&
+    azioniWorkflowDocumentaleDisponibili.value.includes('approva_revisione')
+  )
+})
+
+const canFirmaWorkflow = computed(() => {
+  return (
+    isStepFirma(stepDocumentaleSelezionato.value) &&
+    azioniWorkflowDocumentaleDisponibili.value.includes('conferma_firma')
+  )
+})
+
+const canProtocollaWorkflow = computed(() => {
+  return (
+    isStepProtocolla(stepDocumentaleSelezionato.value) &&
+    azioniWorkflowDocumentaleDisponibili.value.includes('conferma_protocollazione')
+  )
 })
 
 const protocolloCollegatoCorrente = computed(() => {
@@ -2189,6 +2633,27 @@ function isStepRedigi(step) {
   return String(step?.codiceStep || '').toUpperCase() === 'REDIGI'
 }
 
+function isStepRevisiona(step) {
+  return String(step?.codiceStep || '').toUpperCase() === 'REVISIONA'
+}
+
+function isStepFirma(step) {
+  return String(step?.codiceStep || '').toUpperCase() === 'FIRMA'
+}
+
+function isStepProtocolla(step) {
+  return String(step?.codiceStep || '').toUpperCase() === 'PROTOCOLLA'
+}
+
+function isStepDocumentale(step) {
+  return (
+    isStepRedigi(step) ||
+    isStepRevisiona(step) ||
+    isStepFirma(step) ||
+    isStepProtocolla(step)
+  )
+}
+
 function isStepAllegati(step) {
   return String(step?.codiceStep || '').toUpperCase() === 'ALLEGATI'
 }
@@ -2201,10 +2666,21 @@ function isIstanzaProtocolloCompletata(step) {
 }
 
 async function gestisciClickStepOrizzontale(step) {
-  if (isStepRedigi(step)) {
+  if (isStepDocumentale(step)) {
     stepOperativoSelezionatoId.value = step.id
-    noteRedigiForm.value = step.noteOperative || ''
-    await caricaDocumentoPrincipaleRedigi()
+    noteRedigiForm.value = isStepRedigi(step) ? step.noteOperative || '' : ''
+    allegatiSottofase.value = []
+    allegatiEliminatiSottofase.value = []
+    resetFormMetadatiDocumento()
+    if (isStepRedigi(step)) {
+      await Promise.all([
+        caricaWorkflowDocumentale(),
+        caricaDocumentoPrincipaleRedigi()
+      ])
+    } else {
+      documentoPrincipaleRedigi.value = null
+      await caricaWorkflowDocumentale()
+    }
     return
   }
 
@@ -2223,6 +2699,8 @@ async function gestisciClickStepOrizzontale(step) {
     documentoPrincipaleRedigi.value = null
     resetFormMetadatiDocumento()
     erroreDocumentoPrincipaleRedigi.value = ''
+    workflowDocumentale.value = null
+    erroreWorkflowDocumentale.value = ''
     allegatiSottofase.value = []
     allegatiEliminatiSottofase.value = []
     erroreAllegatiSottofase.value = ''
@@ -2253,6 +2731,115 @@ function sincronizzaStepOperativoSelezionato() {
   if (isStepRedigi(stepAggiornato)) {
     noteRedigiForm.value = stepAggiornato.noteOperative || ''
   }
+}
+
+async function caricaWorkflowDocumentale() {
+  const idSottofase = idSottofaseDocumentaleWorkflow.value
+  if (!idSottofase) {
+    workflowDocumentale.value = null
+    erroreWorkflowDocumentale.value =
+      'Contesto documentale della fase non disponibile.'
+    return
+  }
+
+  loadingWorkflowDocumentale.value = true
+  erroreWorkflowDocumentale.value = ''
+
+  try {
+    workflowDocumentale.value = await getWorkflowDocumentaleSottofase(idSottofase)
+    sincronizzaDocumentoPrincipaleDaWorkflow()
+  } catch (error) {
+    workflowDocumentale.value = null
+    erroreWorkflowDocumentale.value = messaggioErroreWorkflowDocumentale(error)
+  } finally {
+    loadingWorkflowDocumentale.value = false
+  }
+}
+
+async function creaBozzaWorkflowDocumentale() {
+  const idSottofase = idSottofaseDocumentaleWorkflow.value
+  if (!idSottofase) return
+
+  operazioneWorkflowDocumentaleInCorso.value = true
+  erroreWorkflowDocumentale.value = ''
+
+  try {
+    workflowDocumentale.value = await creaBozzaDocumentoPrincipale(idSottofase, {
+      titoloDocumento: workflowBozzaForm.titoloDocumento,
+      descrizioneDocumento: workflowBozzaForm.descrizioneDocumento,
+      utente: 'operatore'
+    })
+    sincronizzaDocumentoPrincipaleDaWorkflow()
+    workflowBozzaForm.titoloDocumento = ''
+    workflowBozzaForm.descrizioneDocumento = ''
+    mostraSnackbarFase('Bozza documento creata.', 'success')
+  } catch (error) {
+    erroreWorkflowDocumentale.value = messaggioErroreWorkflowDocumentale(error)
+    mostraSnackbarFase(erroreWorkflowDocumentale.value, 'error')
+  } finally {
+    operazioneWorkflowDocumentaleInCorso.value = false
+  }
+}
+
+async function eseguiAzioneDocumentale(azione) {
+  const idSottofase = idSottofaseDocumentaleWorkflow.value
+  const idDocumento = documentoWorkflowPrincipale.value?.idDocumento
+  if (!idSottofase || !idDocumento) return
+
+  operazioneWorkflowDocumentaleInCorso.value = true
+  erroreWorkflowDocumentale.value = ''
+
+  try {
+    const payload = {
+      azione,
+      note: workflowAzioneNote.value,
+      utente: 'operatore'
+    }
+    if (azione === 'conferma_protocollazione') {
+      payload.idProtocollo = workflowProtocolloId.value
+    }
+
+    const result = await eseguiAzioneWorkflowDocumentale(
+      idSottofase,
+      idDocumento,
+      payload
+    )
+    workflowDocumentale.value = result.workflow
+    sincronizzaDocumentoPrincipaleDaWorkflow()
+    workflowAzioneNote.value = ''
+    workflowProtocolloId.value = ''
+    mostraSnackbarFase('Stato documentale aggiornato.', 'success')
+  } catch (error) {
+    erroreWorkflowDocumentale.value = messaggioErroreWorkflowDocumentale(error)
+    mostraSnackbarFase(erroreWorkflowDocumentale.value, 'error')
+  } finally {
+    operazioneWorkflowDocumentaleInCorso.value = false
+  }
+}
+
+function sincronizzaDocumentoPrincipaleDaWorkflow() {
+  const documento = workflowDocumentale.value?.documento
+  if (!documento) {
+    documentoPrincipaleRedigi.value = null
+    resetFormMetadatiDocumento()
+    return
+  }
+
+  const normalizzato = normalizzaDocumentoPrincipale({
+    ...documento,
+    idDocumentoSottofase:
+      documento.idDocumentoSottofase ??
+      documento.idDocumento,
+    statoDocumento: documento.statoDocumento,
+    titoloDocumento: documento.titoloDocumento,
+    descrizioneDocumento: documento.descrizioneDocumento,
+    tipoDocumento: documento.tipoDocumento,
+    dataCreazione: documento.dataCreazione,
+    dataModifica: documento.dataModifica,
+    versioneDocumento: documento.versioneDocumento
+  })
+  documentoPrincipaleRedigi.value = normalizzato
+  popolaFormMetadatiDocumento(normalizzato)
 }
 
 async function aggiornaListeAllegatiSottofase() {
@@ -2983,6 +3570,25 @@ function messaggioErroreDocumentoPrincipale(error) {
   return 'Impossibile aggiornare il documento principale.'
 }
 
+function messaggioErroreWorkflowDocumentale(error) {
+  const dettaglio = error?.payload?.detail
+  if (typeof dettaglio === 'string') return dettaglio
+
+  if (error?.status === 400) {
+    return 'Azione documentale non consentita.'
+  }
+
+  if (error?.status === 404) {
+    return 'Documento principale non trovato.'
+  }
+
+  if (error?.status === 409) {
+    return 'Esiste gia un documento principale attivo.'
+  }
+
+  return 'Impossibile aggiornare il workflow documentale.'
+}
+
 function messaggioErroreAllegati(error) {
   const dettaglio = error?.payload?.detail
   if (typeof dettaglio === 'string') return dettaglio
@@ -3089,6 +3695,18 @@ function coloreStatoStep(stato) {
   if (normalizzato.includes('COMPLET')) return 'success'
   if (normalizzato.includes('ANNULL')) return 'error'
   if (normalizzato.includes('CORSO') || normalizzato === 'ACTIVE') return 'primary'
+  return 'grey'
+}
+
+function coloreStatoDocumentoWorkflow(stato) {
+  const normalizzato = String(stato || '').toUpperCase()
+  if (normalizzato === 'BOZZA') return 'grey'
+  if (normalizzato === 'REDATTO') return 'info'
+  if (normalizzato === 'REVISIONATO') return 'primary'
+  if (normalizzato === 'FIRMATO') return 'success'
+  if (normalizzato === 'PROTOCOLLATO') return 'success'
+  if (normalizzato === 'RESPINTO') return 'error'
+  if (normalizzato === 'ANNULLATO') return 'error'
   return 'grey'
 }
 
@@ -3802,6 +4420,34 @@ onMounted(() => {
 
 .redigi-document-card {
   background: rgba(var(--v-theme-primary), 0.045);
+}
+
+.workflow-documentale-card {
+  background: rgba(var(--v-theme-primary), 0.045);
+}
+
+.workflow-documentale-title {
+  align-items: center;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.workflow-panel-avatar-img {
+  height: 34px;
+  object-fit: contain;
+  width: 34px;
+}
+
+.workflow-documentale-body {
+  display: grid;
+  gap: 16px;
+}
+
+.workflow-documentale-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 .redigi-document-header {

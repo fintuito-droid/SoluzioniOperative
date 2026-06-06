@@ -191,6 +191,14 @@ class SottofaseDocumentiRepository(BaseRepository):
             cursor.close()
             conn.close()
 
+    def get_documento_principale_sottofase(
+        self,
+        id_sottofase: int,
+    ) -> dict[str, Any] | None:
+        """Alias esplicito per il workflow documentale PM-9."""
+
+        return self.get_documento_principale(id_sottofase)
+
     def get_allegati(
         self,
         id_sottofase: int,
@@ -453,6 +461,54 @@ class SottofaseDocumentiRepository(BaseRepository):
             }
         )
 
+    def crea_documento_principale_bozza(
+        self,
+        *,
+        id_sottofase: int,
+        titolo: str,
+        descrizione: str | None,
+        utente: str,
+        data_creazione: datetime,
+    ) -> dict[str, Any]:
+        """Crea una bozza minimale del documento principale della sottofase."""
+
+        return self.create_documento(
+            {
+                "IDSottofase": id_sottofase,
+                "RuoloDocumento": "PRINCIPALE",
+                "TipoOrigine": "INTERNO",
+                "TitoloDocumento": titolo,
+                "DescrizioneDocumento": descrizione,
+                "TipoDocumento": "ALTRO",
+                "StatoDocumento": "BOZZA",
+                "VersioneDocumento": 1,
+                "Attivo": True,
+                "UtenteCollegamento": utente,
+                "DataCreazione": data_creazione,
+                "DataModifica": data_creazione,
+                "DataCollegamento": data_creazione,
+            }
+        )
+
+    def crea_documento_principale_boza(
+        self,
+        *,
+        id_sottofase: int,
+        titolo: str,
+        descrizione: str | None,
+        utente: str,
+        data_creazione: datetime,
+    ) -> dict[str, Any]:
+        """Alias con nome richiesto dal prompt PM-9."""
+
+        return self.crea_documento_principale_bozza(
+            id_sottofase=id_sottofase,
+            titolo=titolo,
+            descrizione=descrizione,
+            utente=utente,
+            data_creazione=data_creazione,
+        )
+
     def update_documento_principale_metadati(
         self,
         *,
@@ -591,6 +647,246 @@ class SottofaseDocumentiRepository(BaseRepository):
             conn.close()
 
         return self.get_documento_by_id(id_documento_sottofase)
+
+    def aggiorna_stato_documento_principale(
+        self,
+        *,
+        id_sottofase: int,
+        id_documento: int,
+        nuovo_stato: str,
+        note: str | None,
+        utente: str,
+        data_modifica: datetime,
+    ) -> dict[str, Any]:
+        """Aggiorna in modo controllato lo stato del documento principale."""
+
+        conn = self._open_access_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute(
+                f"""
+                SELECT {self.SELECT_COLUMNS}
+                FROM T_SottofaseDocumenti
+                WHERE IDDocumentoSottofase = ?
+                """,
+                (id_documento,),
+            )
+            row = cursor.fetchone()
+            if row is None:
+                return {
+                    "success": False,
+                    "reason": "not_found",
+                    "message": "Documento non trovato.",
+                }
+
+            documento = self._documento_row_to_dict(row)
+            if int(documento.get("id_sottofase") or 0) != int(id_sottofase):
+                return {
+                    "success": False,
+                    "reason": "not_found",
+                    "message": "Documento non appartenente alla sottofase.",
+                }
+
+            if str(documento.get("ruolo_documento") or "").upper() != "PRINCIPALE":
+                return {
+                    "success": False,
+                    "reason": "not_principale",
+                    "message": "Il documento indicato non e principale.",
+                }
+
+            if not documento.get("attivo"):
+                return {
+                    "success": False,
+                    "reason": "inactive",
+                    "message": "Documento principale non attivo.",
+                }
+
+            descrizione = documento.get("descrizione_documento")
+            nota_normalizzata = str(note or "").strip()
+            if nota_normalizzata:
+                timestamp = (
+                    data_modifica.strftime("%Y-%m-%d %H:%M")
+                    if hasattr(data_modifica, "strftime")
+                    else str(data_modifica)[:16]
+                )
+                riga_evento = (
+                    f"[{timestamp}] {utente} - {nuovo_stato}: {nota_normalizzata}"
+                )
+                descrizione = (
+                    f"{descrizione}\n\n{riga_evento}"
+                    if descrizione
+                    else riga_evento
+                )
+
+            cursor.execute(
+                """
+                UPDATE T_SottofaseDocumenti
+                SET StatoDocumento = ?,
+                    DescrizioneDocumento = ?,
+                    DataModifica = ?,
+                    UtenteCollegamento = ?
+                WHERE IDDocumentoSottofase = ?
+                  AND IDSottofase = ?
+                  AND RuoloDocumento = ?
+                  AND Attivo = ?
+                """,
+                (
+                    nuovo_stato,
+                    descrizione,
+                    data_modifica,
+                    utente,
+                    id_documento,
+                    id_sottofase,
+                    "PRINCIPALE",
+                    True,
+                ),
+            )
+            if getattr(cursor, "rowcount", 1) == 0:
+                conn.rollback()
+                return {
+                    "success": False,
+                    "reason": "not_found",
+                    "message": "Documento principale non trovato.",
+                }
+
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            cursor.close()
+            conn.close()
+
+        return {
+            "success": True,
+            "documento": self.get_documento_by_id(id_documento),
+        }
+
+    def collega_protocollo_a_documento_principale(
+        self,
+        *,
+        id_sottofase: int,
+        id_documento: int,
+        id_protocollo: int,
+        note: str | None,
+        utente: str,
+        data_modifica: datetime,
+    ) -> dict[str, Any]:
+        """Collega un protocollo esistente al documento principale."""
+
+        protocollo = self.get_protocollo_per_allegato(id_protocollo)
+        if protocollo is None:
+            return {
+                "success": False,
+                "reason": "protocollo_not_found",
+                "message": "Protocollo non trovato.",
+            }
+
+        conn = self._open_access_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute(
+                f"""
+                SELECT {self.SELECT_COLUMNS}
+                FROM T_SottofaseDocumenti
+                WHERE IDDocumentoSottofase = ?
+                """,
+                (id_documento,),
+            )
+            row = cursor.fetchone()
+            if row is None:
+                return {
+                    "success": False,
+                    "reason": "not_found",
+                    "message": "Documento non trovato.",
+                }
+
+            documento = self._documento_row_to_dict(row)
+            if int(documento.get("id_sottofase") or 0) != int(id_sottofase):
+                return {
+                    "success": False,
+                    "reason": "not_found",
+                    "message": "Documento non appartenente alla sottofase.",
+                }
+
+            if str(documento.get("ruolo_documento") or "").upper() != "PRINCIPALE":
+                return {
+                    "success": False,
+                    "reason": "not_principale",
+                    "message": "Il documento indicato non e principale.",
+                }
+
+            if not documento.get("attivo"):
+                return {
+                    "success": False,
+                    "reason": "inactive",
+                    "message": "Documento principale non attivo.",
+                }
+
+            descrizione = documento.get("descrizione_documento")
+            nota_normalizzata = str(note or "").strip()
+            if nota_normalizzata:
+                timestamp = (
+                    data_modifica.strftime("%Y-%m-%d %H:%M")
+                    if hasattr(data_modifica, "strftime")
+                    else str(data_modifica)[:16]
+                )
+                riga_evento = (
+                    f"[{timestamp}] {utente} - PROTOCOLLATO: {nota_normalizzata}"
+                )
+                descrizione = (
+                    f"{descrizione}\n\n{riga_evento}"
+                    if descrizione
+                    else riga_evento
+                )
+
+            cursor.execute(
+                """
+                UPDATE T_SottofaseDocumenti
+                SET IDProtocolloCollegato = ?,
+                    StatoDocumento = ?,
+                    DescrizioneDocumento = ?,
+                    DataModifica = ?,
+                    UtenteCollegamento = ?
+                WHERE IDDocumentoSottofase = ?
+                  AND IDSottofase = ?
+                  AND RuoloDocumento = ?
+                  AND Attivo = ?
+                """,
+                (
+                    id_protocollo,
+                    "PROTOCOLLATO",
+                    descrizione,
+                    data_modifica,
+                    utente,
+                    id_documento,
+                    id_sottofase,
+                    "PRINCIPALE",
+                    True,
+                ),
+            )
+            if getattr(cursor, "rowcount", 1) == 0:
+                conn.rollback()
+                return {
+                    "success": False,
+                    "reason": "not_found",
+                    "message": "Documento principale non trovato.",
+                }
+
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            cursor.close()
+            conn.close()
+
+        return {
+            "success": True,
+            "documento": self.get_documento_by_id(id_documento),
+        }
 
     def disattiva_documento(
         self,

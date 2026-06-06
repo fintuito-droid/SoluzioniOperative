@@ -11,6 +11,7 @@ from backend.services.sottofase_documenti_service import (
     SottofaseDocumentoPrincipaleNotFoundError,
     SottofaseProtocolloAllegatoGiaEsistenteError,
     SottofaseProtocolloAllegatoNotFoundError,
+    SottofaseWorkflowDocumentaleTransitionError,
     SottofaseDocumentiService,
     SottofaseDocumentiValidationError,
 )
@@ -26,6 +27,9 @@ class FakeSottofaseDocumentiRepository:
         protocollo_missing=False,
         eliminazione_result=None,
         ripristino_result=None,
+        workflow_documento=None,
+        workflow_update_result=None,
+        workflow_protocollo_result=None,
     ):
         self.principale_exists = principale_exists
         self.update_missing = update_missing
@@ -33,15 +37,24 @@ class FakeSottofaseDocumentiRepository:
         self.protocollo_missing = protocollo_missing
         self.eliminazione_result = eliminazione_result
         self.ripristino_result = ripristino_result
+        self.workflow_documento = workflow_documento
+        self.workflow_update_result = workflow_update_result
+        self.workflow_protocollo_result = workflow_protocollo_result
         self.created_payloads = []
         self.updated_metadati = []
         self.eliminazione_calls = []
         self.ripristino_calls = []
+        self.workflow_update_calls = []
+        self.workflow_protocollo_calls = []
 
     def get_documenti_sottofase(self, id_sottofase):
         return [{"id_sottofase": id_sottofase, "ruolo_documento": "ALLEGATO"}]
 
     def get_documento_principale(self, id_sottofase):
+        if self.workflow_documento is None and self.update_missing:
+            return None
+        if self.workflow_documento is not None:
+            return self.workflow_documento
         return {"id_sottofase": id_sottofase, "ruolo_documento": "PRINCIPALE"}
 
     def get_allegati(self, id_sottofase):
@@ -80,6 +93,39 @@ class FakeSottofaseDocumentiRepository:
         }
         self.created_payloads.append(payload)
         return {"id_documento_sottofase": 20, **payload}
+
+    def crea_documento_principale_bozza(
+        self,
+        *,
+        id_sottofase,
+        titolo,
+        descrizione,
+        utente,
+        data_creazione,
+    ):
+        payload = {
+            "id_documento_sottofase": 21,
+            "id_sottofase": id_sottofase,
+            "ruolo_documento": "PRINCIPALE",
+            "tipo_origine": "INTERNO",
+            "titolo_documento": titolo,
+            "descrizione_documento": descrizione,
+            "stato_documento": "BOZZA",
+            "utente_collegamento": utente,
+            "attivo": True,
+            "data_creazione": data_creazione,
+            "data_modifica": data_creazione,
+        }
+        self.created_payloads.append(payload)
+        return payload
+
+    def get_documento_by_id(self, id_documento):
+        if self.workflow_documento is None:
+            return None
+        return {
+            **self.workflow_documento,
+            "id_documento_sottofase": id_documento,
+        }
 
     def create_documento(self, payload):
         self.created_payloads.append(payload)
@@ -204,6 +250,75 @@ class FakeSottofaseDocumentiRepository:
             },
         }
 
+    def aggiorna_stato_documento_principale(
+        self,
+        *,
+        id_sottofase,
+        id_documento,
+        nuovo_stato,
+        note,
+        utente,
+        data_modifica,
+    ):
+        self.workflow_update_calls.append(
+            {
+                "id_sottofase": id_sottofase,
+                "id_documento": id_documento,
+                "nuovo_stato": nuovo_stato,
+                "note": note,
+                "utente": utente,
+                "data_modifica": data_modifica,
+            }
+        )
+        if self.workflow_update_result is not None:
+            return self.workflow_update_result
+        return {
+            "success": True,
+            "documento": {
+                **(self.workflow_documento or {}),
+                "id_documento_sottofase": id_documento,
+                "id_sottofase": id_sottofase,
+                "ruolo_documento": "PRINCIPALE",
+                "stato_documento": nuovo_stato,
+                "attivo": True,
+            },
+        }
+
+    def collega_protocollo_a_documento_principale(
+        self,
+        *,
+        id_sottofase,
+        id_documento,
+        id_protocollo,
+        note,
+        utente,
+        data_modifica,
+    ):
+        self.workflow_protocollo_calls.append(
+            {
+                "id_sottofase": id_sottofase,
+                "id_documento": id_documento,
+                "id_protocollo": id_protocollo,
+                "note": note,
+                "utente": utente,
+                "data_modifica": data_modifica,
+            }
+        )
+        if self.workflow_protocollo_result is not None:
+            return self.workflow_protocollo_result
+        return {
+            "success": True,
+            "documento": {
+                **(self.workflow_documento or {}),
+                "id_documento_sottofase": id_documento,
+                "id_sottofase": id_sottofase,
+                "ruolo_documento": "PRINCIPALE",
+                "stato_documento": "PROTOCOLLATO",
+                "id_protocollo_collegato": id_protocollo,
+                "attivo": True,
+            },
+        }
+
 
 def test_get_documenti_sottofase_uses_repository():
     service = SottofaseDocumentiService(
@@ -252,6 +367,215 @@ def test_get_allegati_eliminati_returns_items_wrapper():
             }
         ]
     }
+
+
+def test_get_workflow_documentale_sottofase_returns_document_state():
+    repository = FakeSottofaseDocumentiRepository(
+        workflow_documento={
+            "id_documento_sottofase": 11,
+            "id_sottofase": 7,
+            "ruolo_documento": "PRINCIPALE",
+            "titolo_documento": "Bozza nota",
+            "stato_documento": "BOZZA",
+            "attivo": True,
+        }
+    )
+    service = SottofaseDocumentiService(
+        sottofase_documenti_repository=repository
+    )
+
+    result = service.get_workflow_documentale_sottofase(7)
+
+    assert result["documento"]["idDocumento"] == 11
+    assert result["documento"]["statoDocumento"] == "BOZZA"
+    assert result["azioniDisponibili"] == ["completa_redazione"]
+
+
+def test_get_workflow_documentale_sottofase_returns_create_action_when_missing():
+    service = SottofaseDocumentiService(
+        sottofase_documenti_repository=FakeSottofaseDocumentiRepository(
+            update_missing=True
+        )
+    )
+
+    result = service.get_workflow_documentale_sottofase(7)
+
+    assert result["documento"] is None
+    assert result["azioniDisponibili"] == ["crea_bozza"]
+
+
+def test_crea_bozza_documento_principale_validates_title_and_calls_backup():
+    calls = []
+    repository = FakeSottofaseDocumentiRepository(update_missing=True)
+    service = SottofaseDocumentiService(
+        sottofase_documenti_repository=repository,
+        backup_factory=lambda: calls.append("backup"),
+        now_factory=lambda: datetime(2026, 6, 6, 14, 0, 0),
+    )
+
+    result = service.crea_bozza_documento_principale(
+        7,
+        {
+            "titoloDocumento": "Bozza nota",
+            "descrizioneDocumento": "Descrizione",
+            "utente": "Mario Rossi",
+        },
+    )
+
+    assert calls == ["backup"]
+    assert result["documento"]["titoloDocumento"] == "Bozza nota"
+    assert result["documento"]["statoDocumento"] == "BOZZA"
+    assert repository.created_payloads[0]["tipo_origine"] == "INTERNO"
+
+
+def test_crea_bozza_documento_principale_blocks_duplicate():
+    service = SottofaseDocumentiService(
+        sottofase_documenti_repository=FakeSottofaseDocumentiRepository(
+            principale_exists=True
+        ),
+        backup_factory=lambda: None,
+    )
+
+    with pytest.raises(SottofaseDocumentoPrincipaleGiaEsistenteError):
+        service.crea_bozza_documento_principale(
+            7,
+            {"titoloDocumento": "Bozza nota"},
+        )
+
+
+@pytest.mark.parametrize(
+    "stato,azione,nuovo_stato",
+    [
+        ("BOZZA", "completa_redazione", "REDATTO"),
+        ("REDATTO", "approva_revisione", "REVISIONATO"),
+        ("REDATTO", "respingi_revisione", "RESPINTO"),
+        ("REVISIONATO", "conferma_firma", "FIRMATO"),
+        ("REVISIONATO", "respingi_firma", "RESPINTO"),
+    ],
+)
+def test_avanza_stato_documentale_transizioni_consentite(stato, azione, nuovo_stato):
+    repository = FakeSottofaseDocumentiRepository(
+        workflow_documento={
+            "id_documento_sottofase": 11,
+            "id_sottofase": 7,
+            "ruolo_documento": "PRINCIPALE",
+            "stato_documento": stato,
+            "attivo": True,
+        }
+    )
+    service = SottofaseDocumentiService(
+        sottofase_documenti_repository=repository,
+        backup_factory=lambda: None,
+        now_factory=lambda: datetime(2026, 6, 6, 14, 0, 0),
+    )
+
+    result = service.avanza_stato_documentale(
+        id_sottofase=7,
+        id_documento=11,
+        azione=azione,
+        payload={"note": "nota", "utente": "operatore"},
+    )
+
+    assert result["success"] is True
+    assert result["statoDocumento"] == nuovo_stato
+    assert repository.workflow_update_calls[0]["nuovo_stato"] == nuovo_stato
+
+
+def test_avanza_stato_documentale_conferma_protocollazione_collega_protocollo():
+    repository = FakeSottofaseDocumentiRepository(
+        workflow_documento={
+            "id_documento_sottofase": 11,
+            "id_sottofase": 7,
+            "ruolo_documento": "PRINCIPALE",
+            "stato_documento": "FIRMATO",
+            "attivo": True,
+        }
+    )
+    service = SottofaseDocumentiService(
+        sottofase_documenti_repository=repository,
+        backup_factory=lambda: None,
+        now_factory=lambda: datetime(2026, 6, 6, 14, 0, 0),
+    )
+
+    result = service.avanza_stato_documentale(
+        id_sottofase=7,
+        id_documento=11,
+        azione="conferma_protocollazione",
+        payload={"idProtocollo": 12},
+    )
+
+    assert result["success"] is True
+    assert result["statoDocumento"] == "PROTOCOLLATO"
+    assert repository.workflow_protocollo_calls[0]["id_protocollo"] == 12
+
+
+def test_avanza_stato_documentale_blocca_transizione_incoerente():
+    service = SottofaseDocumentiService(
+        sottofase_documenti_repository=FakeSottofaseDocumentiRepository(
+            workflow_documento={
+                "id_documento_sottofase": 11,
+                "id_sottofase": 7,
+                "ruolo_documento": "PRINCIPALE",
+                "stato_documento": "BOZZA",
+                "attivo": True,
+            }
+        ),
+        backup_factory=lambda: None,
+    )
+
+    with pytest.raises(SottofaseWorkflowDocumentaleTransitionError):
+        service.avanza_stato_documentale(
+            id_sottofase=7,
+            id_documento=11,
+            azione="conferma_firma",
+            payload={},
+        )
+
+
+def test_avanza_stato_documentale_blocca_documento_non_appartenente():
+    service = SottofaseDocumentiService(
+        sottofase_documenti_repository=FakeSottofaseDocumentiRepository(
+            workflow_documento={
+                "id_documento_sottofase": 11,
+                "id_sottofase": 99,
+                "ruolo_documento": "PRINCIPALE",
+                "stato_documento": "BOZZA",
+                "attivo": True,
+            }
+        ),
+        backup_factory=lambda: None,
+    )
+
+    with pytest.raises(SottofaseDocumentoPrincipaleNotFoundError):
+        service.avanza_stato_documentale(
+            id_sottofase=7,
+            id_documento=11,
+            azione="completa_redazione",
+            payload={},
+        )
+
+
+def test_avanza_stato_documentale_blocca_documento_non_attivo():
+    service = SottofaseDocumentiService(
+        sottofase_documenti_repository=FakeSottofaseDocumentiRepository(
+            workflow_documento={
+                "id_documento_sottofase": 11,
+                "id_sottofase": 7,
+                "ruolo_documento": "PRINCIPALE",
+                "stato_documento": "BOZZA",
+                "attivo": False,
+            }
+        ),
+        backup_factory=lambda: None,
+    )
+
+    with pytest.raises(SottofaseDocumentiValidationError):
+        service.avanza_stato_documentale(
+            id_sottofase=7,
+            id_documento=11,
+            azione="completa_redazione",
+            payload={},
+        )
 
 
 def test_create_documento_rejects_invalid_role():

@@ -240,6 +240,27 @@ export function updateDocumentoPrincipaleMetadatiSottofase(idSottofase, payload)
   )
 }
 
+export function getWorkflowDocumentaleSottofase(idSottofase) {
+  return fetchJson(`/protocollo-monitor/sottofasi/${idSottofase}/workflow-documentale`)
+}
+
+export function creaBozzaDocumentoPrincipale(idSottofase, payload) {
+  return fetchJson(`/protocollo-monitor/sottofasi/${idSottofase}/workflow-documentale/bozza`, {
+    method: 'POST',
+    body: JSON.stringify(payload || {})
+  })
+}
+
+export function eseguiAzioneWorkflowDocumentale(idSottofase, idDocumento, payload) {
+  return fetchJson(
+    `/protocollo-monitor/sottofasi/${idSottofase}/workflow-documentale/${idDocumento}/azione`,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload || {})
+    }
+  )
+}
+
 export function listAllegatiSottofase(idSottofase) {
   return fetchJson(`/protocollo-monitor/sottofasi/${idSottofase}/allegati`)
 }

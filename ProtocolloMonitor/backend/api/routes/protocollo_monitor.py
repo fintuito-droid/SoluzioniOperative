@@ -50,6 +50,7 @@ from backend.services.sottofase_documenti_service import (
     SottofaseAllegatoRipristinoError,
     SottofaseDocumentoPrincipaleGiaEsistenteError,
     SottofaseDocumentoPrincipaleNotFoundError,
+    SottofaseWorkflowDocumentaleTransitionError,
     SottofaseProtocolloAllegatoGiaEsistenteError,
     SottofaseProtocolloAllegatoNotFoundError,
     SottofaseDocumentiValidationError,
@@ -127,6 +128,23 @@ class SottofaseDocumentoPrincipaleMetadatiPayload(BaseModel):
     descrizioneDocumento: str | None = None
     statoDocumento: str | None = Field(default=None, max_length=50)
     tipoDocumento: str | None = Field(default=None, max_length=50)
+
+
+class SottofaseWorkflowDocumentaleBozzaPayload(BaseModel):
+    """Payload per creare la bozza PM-9 del documento principale."""
+
+    titoloDocumento: str | None = Field(default=None, max_length=255)
+    descrizioneDocumento: str | None = None
+    utente: str | None = Field(default=None, max_length=100)
+
+
+class SottofaseWorkflowDocumentaleAzionePayload(BaseModel):
+    """Payload per avanzare lo stato documentale PM-9."""
+
+    azione: str
+    note: str | None = None
+    utente: str | None = Field(default=None, max_length=100)
+    idProtocollo: int | None = None
 
 
 class SottofaseAllegatoProtocolloPayload(BaseModel):
@@ -1039,6 +1057,73 @@ def aggiorna_sottofase_documento_principale_metadati(
     except SottofaseDocumentoPrincipaleNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
     except SottofaseDocumentiValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.get("/protocollo-monitor/sottofasi/{id_sottofase}/workflow-documentale")
+def get_workflow_documentale_sottofase(
+    id_sottofase: int,
+    documenti_service: Any = Depends(get_sottofase_documenti_service),
+):
+    try:
+        return documenti_service.get_workflow_documentale_sottofase(id_sottofase)
+    except SottofaseDocumentiValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.post(
+    "/protocollo-monitor/sottofasi/{id_sottofase}/workflow-documentale/bozza",
+    status_code=201,
+)
+def crea_bozza_workflow_documentale_sottofase(
+    id_sottofase: int,
+    payload: SottofaseWorkflowDocumentaleBozzaPayload,
+    documenti_service: Any = Depends(get_sottofase_documenti_service),
+):
+    try:
+        payload_data = (
+            payload.model_dump()
+            if hasattr(payload, "model_dump")
+            else payload.dict()
+        )
+        return documenti_service.crea_bozza_documento_principale(
+            id_sottofase,
+            payload_data,
+        )
+    except SottofaseDocumentoPrincipaleGiaEsistenteError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    except SottofaseDocumentiValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.post(
+    "/protocollo-monitor/sottofasi/{id_sottofase}/workflow-documentale/"
+    "{id_documento}/azione"
+)
+def esegui_azione_workflow_documentale_sottofase(
+    id_sottofase: int,
+    id_documento: int,
+    payload: SottofaseWorkflowDocumentaleAzionePayload,
+    documenti_service: Any = Depends(get_sottofase_documenti_service),
+):
+    try:
+        payload_data = (
+            payload.model_dump()
+            if hasattr(payload, "model_dump")
+            else payload.dict()
+        )
+        return documenti_service.avanza_stato_documentale(
+            id_sottofase=id_sottofase,
+            id_documento=id_documento,
+            azione=payload_data.get("azione"),
+            payload=payload_data,
+        )
+    except SottofaseDocumentoPrincipaleNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except (
+        SottofaseWorkflowDocumentaleTransitionError,
+        SottofaseDocumentiValidationError,
+    ) as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
 

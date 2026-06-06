@@ -69,18 +69,28 @@ class SottofaseAllegatoRipristinoError(SottofaseDocumentiValidationError):
     """Allegato non ripristinabile."""
 
 
+class SottofaseWorkflowDocumentaleTransitionError(SottofaseDocumentiValidationError):
+    """Transizione documentale non ammessa."""
+
+
 class SottofaseDocumentiService:
     """Regole applicative del modello documentale unificato."""
 
     RUOLI_AMMESSI = {"PRINCIPALE", "ALLEGATO"}
-    TIPI_ORIGINE_AMMESSI = {"PROTOCOLLO", "FILE", "GENERATO"}
+    TIPI_ORIGINE_AMMESSI = {"PROTOCOLLO", "FILE", "GENERATO", "INTERNO"}
     STATI_DOCUMENTO_AMMESSI = {
         "BOZZA",
+        "REDATTO",
         "IN_REVISIONE",
+        "REVISIONATO",
+        "DA_FIRMARE",
         "APPROVATO",
         "FIRMATO",
+        "DA_PROTOCOLLARE",
         "PROTOCOLLATO",
         "ARCHIVIATO",
+        "RESPINTO",
+        "ANNULLATO",
     }
     TIPI_DOCUMENTO_AMMESSI = {
         "NOTA",
@@ -89,6 +99,23 @@ class SottofaseDocumentiService:
         "RICHIESTA",
         "PARERE",
         "ALTRO",
+    }
+    WORKFLOW_DOCUMENTALE_TRANSITIONS = {
+        ("BOZZA", "completa_redazione"): "REDATTO",
+        ("REDATTO", "approva_revisione"): "REVISIONATO",
+        ("REDATTO", "respingi_revisione"): "RESPINTO",
+        ("REVISIONATO", "conferma_firma"): "FIRMATO",
+        ("REVISIONATO", "respingi_firma"): "RESPINTO",
+        ("FIRMATO", "conferma_protocollazione"): "PROTOCOLLATO",
+    }
+    WORKFLOW_DOCUMENTALE_MESSAGES = {
+        "BOZZA": "Documento in bozza",
+        "REDATTO": "Documento redatto, pronto per revisione",
+        "REVISIONATO": "Documento revisionato, pronto per firma",
+        "FIRMATO": "Documento firmato, pronto per protocollazione",
+        "PROTOCOLLATO": "Documento protocollato",
+        "RESPINTO": "Documento respinto",
+        "ANNULLATO": "Documento annullato",
     }
 
     def __init__(
@@ -237,6 +264,252 @@ class SottofaseDocumentiService:
             )
 
         return updated
+
+    def get_workflow_documentale_sottofase(self, id_sottofase: int) -> dict[str, Any]:
+        """Legge lo stato PM-9 del documento principale della sottofase."""
+
+        id_sottofase_normalizzato = self._validate_id(id_sottofase, "IDSottofase")
+        documento = self.get_documento_principale(id_sottofase_normalizzato)
+        return self._workflow_documentale_response(documento)
+
+    def crea_bozza_documento_principale(
+        self,
+        id_sottofase: int,
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Crea una bozza documentale principale senza file fisico."""
+
+        if self.sottofase_documenti_repository is None:
+            raise SottofaseDocumentiValidationError(
+                "Repository documenti sottofase non configurato."
+            )
+
+        id_sottofase_normalizzato = self._validate_id(id_sottofase, "IDSottofase")
+        titolo = self._text_or_none(
+            self._pick(payload, "titoloDocumento", "TitoloDocumento")
+        )
+        if not titolo:
+            raise SottofaseDocumentiValidationError("Titolo documento obbligatorio.")
+
+        descrizione = self._text_or_none(
+            self._pick(payload, "descrizioneDocumento", "DescrizioneDocumento")
+        )
+        utente = self._text_or_none(
+            self._pick(payload, "utente", "Utente", "utenteCollegamento")
+        ) or "operatore"
+
+        if self.exists_documento_principale(id_sottofase_normalizzato):
+            raise SottofaseDocumentoPrincipaleGiaEsistenteError(
+                "Esiste gia un documento PRINCIPALE attivo per la sottofase."
+            )
+
+        crea_bozza = getattr(
+            self.sottofase_documenti_repository,
+            "crea_documento_principale_bozza",
+            None,
+        ) or getattr(
+            self.sottofase_documenti_repository,
+            "crea_documento_principale_boza",
+            None,
+        )
+        if crea_bozza is None:
+            raise SottofaseDocumentiValidationError(
+                "Creazione bozza documentale non disponibile."
+            )
+
+        self.backup_factory()
+        documento = crea_bozza(
+            id_sottofase=id_sottofase_normalizzato,
+            titolo=titolo,
+            descrizione=descrizione,
+            utente=utente,
+            data_creazione=self.now_factory(),
+        )
+        return self._workflow_documentale_response(documento)
+
+    def avanza_stato_documentale(
+        self,
+        *,
+        id_sottofase: int,
+        id_documento: int,
+        azione: str,
+        payload: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Esegue una transizione controllata del workflow documentale PM-9."""
+
+        if self.sottofase_documenti_repository is None:
+            raise SottofaseDocumentiValidationError(
+                "Repository documenti sottofase non configurato."
+            )
+
+        id_sottofase_normalizzato = self._validate_id(id_sottofase, "IDSottofase")
+        id_documento_normalizzato = self._validate_id(
+            id_documento,
+            "IDDocumentoSottofase",
+        )
+        azione_normalizzata = str(azione or "").strip().lower()
+        dati = payload or {}
+        note = self._text_or_none(self._pick(dati, "note", "Note"))
+        utente = self._text_or_none(self._pick(dati, "utente", "Utente")) or "operatore"
+
+        documento = self.sottofase_documenti_repository.get_documento_by_id(
+            id_documento_normalizzato
+        )
+        self._ensure_documento_principale_workflow(
+            documento,
+            id_sottofase_normalizzato,
+        )
+
+        stato_attuale = str(documento.get("stato_documento") or "").upper()
+        nuovo_stato = self.WORKFLOW_DOCUMENTALE_TRANSITIONS.get(
+            (stato_attuale, azione_normalizzata)
+        )
+        if nuovo_stato is None:
+            raise SottofaseWorkflowDocumentaleTransitionError(
+                f"Transizione non valida: {stato_attuale} / {azione_normalizzata}."
+            )
+
+        self.backup_factory()
+        now = self.now_factory()
+
+        if azione_normalizzata == "conferma_protocollazione":
+            id_protocollo = self._pick(
+                dati,
+                "idProtocollo",
+                "IDProtocollo",
+                "id_protocollo",
+            )
+            if id_protocollo in (None, ""):
+                raise SottofaseDocumentiValidationError(
+                    "ID protocollo obbligatorio per la protocollazione."
+                )
+            id_protocollo_normalizzato = self._validate_id(
+                id_protocollo,
+                "IDProtocollo",
+            )
+            collega_protocollo = getattr(
+                self.sottofase_documenti_repository,
+                "collega_protocollo_a_documento_principale",
+                None,
+            )
+            if collega_protocollo is None:
+                raise SottofaseDocumentiValidationError(
+                    "Collegamento protocollo non disponibile."
+                )
+            result = collega_protocollo(
+                id_sottofase=id_sottofase_normalizzato,
+                id_documento=id_documento_normalizzato,
+                id_protocollo=id_protocollo_normalizzato,
+                note=note,
+                utente=utente,
+                data_modifica=now,
+            )
+        else:
+            aggiorna_stato = getattr(
+                self.sottofase_documenti_repository,
+                "aggiorna_stato_documento_principale",
+                None,
+            )
+            if aggiorna_stato is None:
+                raise SottofaseDocumentiValidationError(
+                    "Aggiornamento stato documentale non disponibile."
+                )
+            result = aggiorna_stato(
+                id_sottofase=id_sottofase_normalizzato,
+                id_documento=id_documento_normalizzato,
+                nuovo_stato=nuovo_stato,
+                note=note,
+                utente=utente,
+                data_modifica=now,
+            )
+
+        if not result.get("success"):
+            self._raise_workflow_documentale_result_error(result)
+
+        documento_aggiornato = result.get("documento")
+        return {
+            "success": True,
+            "statoDocumento": (
+                documento_aggiornato or {}
+            ).get("stato_documento", nuovo_stato),
+            "message": "Stato documentale aggiornato",
+            "workflow": self._workflow_documentale_response(documento_aggiornato),
+        }
+
+    def _workflow_documentale_response(
+        self,
+        documento: dict[str, Any] | None,
+    ) -> dict[str, Any]:
+        stato = str((documento or {}).get("stato_documento") or "").upper()
+        if not documento:
+            return {
+                "documento": None,
+                "azioniDisponibili": ["crea_bozza"],
+                "message": "Nessun documento principale presente",
+            }
+
+        return {
+            "documento": self._format_workflow_documento(documento),
+            "azioniDisponibili": self._azioni_documentali_disponibili(stato),
+            "message": self.WORKFLOW_DOCUMENTALE_MESSAGES.get(
+                stato,
+                "Stato documentale non riconosciuto",
+            ),
+        }
+
+    def _format_workflow_documento(self, documento: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "idDocumento": documento.get("id_documento_sottofase"),
+            "idDocumentoSottofase": documento.get("id_documento_sottofase"),
+            "idSottofase": documento.get("id_sottofase"),
+            "ruoloDocumento": documento.get("ruolo_documento"),
+            "tipoOrigine": documento.get("tipo_origine"),
+            "titoloDocumento": documento.get("titolo_documento"),
+            "descrizioneDocumento": documento.get("descrizione_documento"),
+            "tipoDocumento": documento.get("tipo_documento"),
+            "statoDocumento": documento.get("stato_documento"),
+            "versioneDocumento": documento.get("versione_documento"),
+            "idProtocolloCollegato": documento.get("id_protocollo_collegato"),
+            "dataCreazione": documento.get("data_creazione"),
+            "dataModifica": documento.get("data_modifica"),
+            "utenteCollegamento": documento.get("utente_collegamento"),
+        }
+
+    def _azioni_documentali_disponibili(self, stato: str) -> list[str]:
+        return [
+            azione
+            for (stato_corrente, azione), _nuovo_stato in self.WORKFLOW_DOCUMENTALE_TRANSITIONS.items()
+            if stato_corrente == stato
+        ]
+
+    def _ensure_documento_principale_workflow(
+        self,
+        documento: dict[str, Any] | None,
+        id_sottofase: int,
+    ) -> None:
+        if documento is None:
+            raise SottofaseDocumentoPrincipaleNotFoundError(
+                "Documento principale non trovato."
+            )
+        if int(documento.get("id_sottofase") or 0) != int(id_sottofase):
+            raise SottofaseDocumentoPrincipaleNotFoundError(
+                "Documento principale non appartenente alla sottofase."
+            )
+        if str(documento.get("ruolo_documento") or "").upper() != "PRINCIPALE":
+            raise SottofaseDocumentiValidationError(
+                "Il documento indicato non e principale."
+            )
+        if not documento.get("attivo"):
+            raise SottofaseDocumentiValidationError(
+                "Documento principale non attivo."
+            )
+
+    def _raise_workflow_documentale_result_error(self, result: dict[str, Any]) -> None:
+        reason = result.get("reason")
+        message = result.get("message") or "Workflow documentale non aggiornabile."
+        if reason in {"not_found", "protocollo_not_found"}:
+            raise SottofaseDocumentoPrincipaleNotFoundError(message)
+        raise SottofaseDocumentiValidationError(message)
 
     def get_allegati(self, id_sottofase: int) -> list[dict[str, Any]]:
         if self.sottofase_documenti_repository is None:
