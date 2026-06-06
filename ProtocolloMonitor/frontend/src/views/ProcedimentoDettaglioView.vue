@@ -3046,17 +3046,17 @@ onMounted(() => {
 
 .step-orizzontale-node {
   align-items: center;
-  border: 4px solid white;
+  border: 1px solid white;
   border-radius: 999px;
-  box-shadow: 0 0 0 1px rgba(var(--v-theme-on-surface), 0.16);
+  box-shadow: 0 0 0 2px rgba(var(--v-theme-on-surface), 0.12);
   color: white;
   display: flex;
-  font-size: 1rem;
   font-weight: 900;
-  height: 52px;
+  height: 104px;
   justify-content: center;
+  padding: 0;
   position: relative;
-  width: 52px;
+  width: 104px;
   z-index: 1;
 }
 
@@ -3067,8 +3067,8 @@ onMounted(() => {
 
 .step-node-avatar-img {
   filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.18));
-  height: 30px;
-  width: 30px;
+  height: 94px;
+  width: 94px;
 }
 
 .step-node-number {
@@ -3076,17 +3076,17 @@ onMounted(() => {
   background: rgba(255, 255, 255, 0.96);
   border: 1px solid rgba(var(--v-theme-on-surface), 0.16);
   border-radius: 999px;
-  bottom: -7px;
   color: rgba(var(--v-theme-on-surface), 0.78);
   display: flex;
-  font-size: 0.68rem;
+  font-size: 0.8rem;
   font-weight: 900;
-  height: 20px;
+  height: 28px;
   justify-content: center;
-  min-width: 20px;
-  padding: 0 5px;
+  left: -8px;
+  min-width: 28px;
+  padding: 0 7px;
   position: absolute;
-  right: -7px;
+  top: -8px;
 }
 
 .workflow-menu-avatar-img {
@@ -3096,8 +3096,8 @@ onMounted(() => {
 
 .step-orizzontale-item:hover .step-orizzontale-node {
   box-shadow:
-    0 0 0 1px rgba(var(--v-theme-on-surface), 0.16),
-    0 0 0 5px rgba(var(--v-theme-primary), 0.16);
+    0 0 0 2px rgba(var(--v-theme-on-surface), 0.12),
+    0 0 0 4px rgba(var(--v-theme-primary), 0.14);
 }
 
 .step-node-actions {
@@ -3109,21 +3109,21 @@ onMounted(() => {
   opacity: 0;
   pointer-events: none;
   position: absolute;
-  top: 30px;
+  top: 73px;
   transform: translateX(-50%);
   transition: opacity 0.12s ease;
-  width: 122px;
+  width: 198px;
   z-index: 2;
 }
 
 .step-node-action {
-  height: 34px;
-  min-width: 34px;
-  width: 34px;
+  height: 49px;
+  min-width: 49px;
+  width: 49px;
 }
 
 .step-node-action :deep(.v-icon) {
-  font-size: 23px;
+  font-size: 34px;
 }
 
 .step-delete-action {
@@ -3159,9 +3159,9 @@ onMounted(() => {
 .step-orizzontale-line {
   background: rgba(var(--v-theme-on-surface), 0.2);
   height: 3px;
-  left: calc(50% + 28px);
+  left: calc(50% + 54px);
   position: absolute;
-  right: calc(-50% + 28px);
+  right: calc(-50% + 54px);
   top: 50%;
   transform: translateY(-50%);
 }
@@ -3170,7 +3170,7 @@ onMounted(() => {
   font-size: 1rem;
   font-weight: 900;
   margin-bottom: 4px;
-  margin-top: 32px;
+  margin-top: 24px;
   overflow-wrap: anywhere;
 }
 
