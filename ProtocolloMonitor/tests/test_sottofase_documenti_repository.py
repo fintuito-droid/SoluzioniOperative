@@ -6,12 +6,13 @@ from backend.repositories.sottofase_documenti_repository import (
 
 
 class FakeCursor:
-    def __init__(self, results):
+    def __init__(self, results, *, rowcount=1):
         self.results = list(results)
         self.current_result = []
         self.executed_queries = []
         self.executed_params = []
         self.closed = False
+        self.rowcount = rowcount
 
     def execute(self, query, params=None):
         self.executed_queries.append(query)
@@ -41,6 +42,12 @@ class FakeConnection:
 
     def close(self):
         self.closed = True
+
+    def commit(self):
+        pass
+
+    def rollback(self):
+        pass
 
 
 class SottofaseDocumentiRepositoryForTest(SottofaseDocumentiRepository):
@@ -124,6 +131,13 @@ def test_exists_documento_principale_attivo_returns_true():
     assert cursor.executed_params == [(7, "PRINCIPALE", True)]
 
 
+def test_exists_documento_principale_alias_returns_true():
+    cursor = FakeCursor([[SimpleNamespace(Totale=1)]])
+    repository = SottofaseDocumentiRepositoryForTest(FakeConnection(cursor))
+
+    assert repository.exists_documento_principale(7) is True
+
+
 def test_get_documento_by_id_returns_document():
     cursor = FakeCursor([[make_documento_row()]])
     repository = SottofaseDocumentiRepositoryForTest(FakeConnection(cursor))
@@ -133,3 +147,49 @@ def test_get_documento_by_id_returns_document():
     assert result["id_documento_sottofase"] == 11
     assert result["nome_file"] == "documento.pdf"
     assert cursor.executed_params == [(11,)]
+
+
+def test_update_documento_principale_metadati_updates_only_allowed_fields():
+    cursor = FakeCursor([[], [make_documento_row(TitoloDocumento="Nota")]])
+    repository = SottofaseDocumentiRepositoryForTest(FakeConnection(cursor))
+
+    result = repository.update_documento_principale_metadati(
+        id_sottofase=7,
+        titolo_documento="Nota",
+        descrizione_documento="Descrizione aggiornata",
+        stato_documento="BOZZA",
+        tipo_documento="NOTA",
+        data_modifica="2026-06-06 13:00:00",
+    )
+
+    assert result["titolo_documento"] == "Nota"
+    set_clause = cursor.executed_queries[0].split("WHERE", 1)[0]
+    assert "RuoloDocumento =" not in set_clause
+    assert "TipoOrigine =" not in set_clause
+    assert "VersioneDocumento =" not in set_clause
+    assert cursor.executed_params[0] == (
+        "Nota",
+        "Descrizione aggiornata",
+        "BOZZA",
+        "NOTA",
+        "2026-06-06 13:00:00",
+        7,
+        "PRINCIPALE",
+        True,
+    )
+
+
+def test_update_documento_principale_metadati_returns_none_when_missing():
+    cursor = FakeCursor([[]], rowcount=0)
+    repository = SottofaseDocumentiRepositoryForTest(FakeConnection(cursor))
+
+    result = repository.update_documento_principale_metadati(
+        id_sottofase=7,
+        titolo_documento="Nota",
+        descrizione_documento=None,
+        stato_documento="BOZZA",
+        tipo_documento="NOTA",
+        data_modifica="2026-06-06 13:00:00",
+    )
+
+    assert result is None

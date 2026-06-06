@@ -258,6 +258,89 @@ class SottofaseDocumentiRepository(BaseRepository):
             cursor.close()
             conn.close()
 
+    def exists_documento_principale(self, id_sottofase: int) -> bool:
+        """Alias esplicito per il vincolo 0..1 documento principale attivo."""
+
+        return self.exists_documento_principale_attivo(id_sottofase)
+
+    def create_documento_principale(
+        self,
+        *,
+        id_sottofase: int,
+        data_creazione: datetime,
+    ) -> dict[str, Any]:
+        """Crea il record iniziale del documento operativo principale."""
+
+        return self.create_documento(
+            {
+                "IDSottofase": id_sottofase,
+                "RuoloDocumento": "PRINCIPALE",
+                "TipoOrigine": "GENERATO",
+                "TitoloDocumento": "Nuovo Documento",
+                "StatoDocumento": "BOZZA",
+                "VersioneDocumento": 1,
+                "Attivo": True,
+                "DataCreazione": data_creazione,
+                "DataModifica": data_creazione,
+                "DataCollegamento": data_creazione,
+            }
+        )
+
+    def update_documento_principale_metadati(
+        self,
+        *,
+        id_sottofase: int,
+        titolo_documento: str,
+        descrizione_documento: str | None,
+        stato_documento: str,
+        tipo_documento: str,
+        data_modifica: datetime,
+    ) -> dict[str, Any] | None:
+        """Aggiorna solo i metadati editabili del principale attivo."""
+
+        query = """
+            UPDATE T_SottofaseDocumenti
+            SET TitoloDocumento = ?,
+                DescrizioneDocumento = ?,
+                StatoDocumento = ?,
+                TipoDocumento = ?,
+                DataModifica = ?
+            WHERE IDSottofase = ?
+              AND RuoloDocumento = ?
+              AND Attivo = ?
+        """
+
+        conn = self._open_access_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute(
+                query,
+                (
+                    titolo_documento,
+                    descrizione_documento,
+                    stato_documento,
+                    tipo_documento,
+                    data_modifica,
+                    id_sottofase,
+                    "PRINCIPALE",
+                    True,
+                ),
+            )
+            if getattr(cursor, "rowcount", 1) == 0:
+                conn.rollback()
+                return None
+
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            cursor.close()
+            conn.close()
+
+        return self.get_documento_principale(id_sottofase)
+
     def create_documento(self, payload: dict[str, Any]) -> dict[str, Any]:
         now = payload.get("DataCreazione") or datetime.now()
         values = {

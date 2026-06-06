@@ -224,6 +224,22 @@ export function getDocumentoPrincipaleSottofase(idSottofase) {
   return fetchJson(`/protocollo-monitor/sottofasi/${idSottofase}/documento-principale`)
 }
 
+export function createDocumentoPrincipaleSottofase(idSottofase) {
+  return fetchJson(`/protocollo-monitor/sottofasi/${idSottofase}/documento-principale`, {
+    method: 'POST'
+  })
+}
+
+export function updateDocumentoPrincipaleMetadatiSottofase(idSottofase, payload) {
+  return fetchJson(
+    `/protocollo-monitor/sottofasi/${idSottofase}/documento-principale/metadati`,
+    {
+      method: 'PUT',
+      body: JSON.stringify(payload || {})
+    }
+  )
+}
+
 export function listAllegatiSottofase(idSottofase) {
   return fetchJson(`/protocollo-monitor/sottofasi/${idSottofase}/allegati`)
 }

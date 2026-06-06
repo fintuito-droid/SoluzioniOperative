@@ -482,6 +482,177 @@
                       </v-btn>
                     </div>
 
+                    <v-alert
+                      v-if="erroreDocumentoPrincipaleRedigi"
+                      type="warning"
+                      variant="tonal"
+                      density="compact"
+                      class="mt-5"
+                    >
+                      {{ erroreDocumentoPrincipaleRedigi }}
+                    </v-alert>
+
+                    <v-card
+                      class="redigi-document-card mt-5"
+                      rounded="lg"
+                      variant="tonal"
+                    >
+                      <v-card-text>
+                        <div class="redigi-document-header">
+                          <v-avatar
+                            color="primary"
+                            variant="tonal"
+                            size="42"
+                          >
+                            <v-icon size="25">
+                              mdi-file-document-outline
+                            </v-icon>
+                          </v-avatar>
+
+                          <div>
+                            <div class="redigi-document-title">
+                              Documento Principale
+                            </div>
+                            <div class="text-caption text-medium-emphasis">
+                              Documento operativo principale della sottofase
+                            </div>
+                          </div>
+                        </div>
+
+                        <v-progress-linear
+                          v-if="loadingDocumentoPrincipaleRedigi"
+                          color="primary"
+                          indeterminate
+                          rounded
+                          class="mt-4"
+                        />
+
+                        <div
+                          v-else-if="!documentoPrincipaleRedigi"
+                          class="redigi-document-empty"
+                        >
+                          <div class="font-weight-bold">
+                            Documento principale: assente
+                          </div>
+                          <v-btn
+                            color="primary"
+                            variant="flat"
+                            prepend-icon="mdi-file-plus-outline"
+                            :loading="creazioneDocumentoPrincipaleInCorso"
+                            class="mt-3"
+                            @click="creaDocumentoPrincipaleRedigi"
+                          >
+                            Crea documento principale
+                          </v-btn>
+                        </div>
+
+                        <div
+                          v-else
+                          class="redigi-document-detail"
+                        >
+                          <div class="redigi-document-form">
+                            <v-text-field
+                              v-model="documentoMetadatiForm.titoloDocumento"
+                              label="Titolo documento"
+                              variant="outlined"
+                              density="compact"
+                            />
+
+                            <v-select
+                              v-model="documentoMetadatiForm.statoDocumento"
+                              :items="statiDocumentoPrincipale"
+                              label="Stato documento"
+                              variant="outlined"
+                              density="compact"
+                            />
+
+                            <v-select
+                              v-model="documentoMetadatiForm.tipoDocumento"
+                              :items="tipiDocumentoPrincipale"
+                              label="Tipo documento"
+                              variant="outlined"
+                              density="compact"
+                            />
+
+                            <v-textarea
+                              v-model="documentoMetadatiForm.descrizioneDocumento"
+                              label="Descrizione documento"
+                              variant="outlined"
+                              rows="3"
+                              auto-grow
+                              class="redigi-document-description"
+                            />
+                          </div>
+
+                          <div class="detail-grid mt-4">
+                            <div class="detail-field">
+                              <div class="detail-label">Ruolo</div>
+                              <div class="detail-value">
+                                {{ valoreDettaglio(documentoPrincipaleRedigi.ruoloDocumento) }}
+                              </div>
+                            </div>
+
+                            <div class="detail-field">
+                              <div class="detail-label">Tipo Origine</div>
+                              <div class="detail-value">
+                                {{ valoreDettaglio(documentoPrincipaleRedigi.tipoOrigine) }}
+                              </div>
+                            </div>
+
+                            <div class="detail-field">
+                              <div class="detail-label">Versione</div>
+                              <div class="detail-value">
+                                {{ valoreDettaglio(documentoPrincipaleRedigi.versioneDocumento) }}
+                              </div>
+                            </div>
+
+                            <div class="detail-field">
+                              <div class="detail-label">Data creazione</div>
+                              <div class="detail-value">
+                                {{ valoreDettaglio(documentoPrincipaleRedigi.dataCreazione) }}
+                              </div>
+                            </div>
+
+                            <div class="detail-field">
+                              <div class="detail-label">Data modifica</div>
+                              <div class="detail-value">
+                                {{ valoreDettaglio(documentoPrincipaleRedigi.dataModifica) }}
+                              </div>
+                            </div>
+
+                            <div class="detail-field">
+                              <div class="detail-label">Percorso</div>
+                              <div class="detail-value">
+                                {{ valoreDettaglio(documentoPrincipaleRedigi.percorsoDocumento) }}
+                              </div>
+                            </div>
+                          </div>
+
+                          <v-btn
+                            color="primary"
+                            variant="tonal"
+                            prepend-icon="mdi-open-in-new"
+                            :loading="aperturaDocumentoPrincipaleInCorso"
+                            class="mt-4"
+                            @click="apriDocumentoPrincipaleRedigi"
+                          >
+                            Apri documento
+                          </v-btn>
+
+                          <v-btn
+                            color="primary"
+                            variant="flat"
+                            prepend-icon="mdi-content-save-outline"
+                            :loading="salvataggioMetadatiDocumentoInCorso"
+                            class="mt-4 ml-3"
+                            @click="salvaMetadatiDocumentoPrincipaleRedigi"
+                          >
+                            Salva metadati documento
+                          </v-btn>
+                        </div>
+                      </v-card-text>
+                    </v-card>
+
                     <v-textarea
                       v-model="noteRedigiForm"
                       label="Note operative"
@@ -724,19 +895,23 @@ import { useRoute, useRouter } from 'vue-router'
 
 import {
   apriPdfProtocolloEsterno,
+  apriDocumentoSottofase,
   avviaStepRedigi,
   completaStepRedigi,
   configuraStepOrizzontaliIstanzaFine,
   configuraStepOrizzontaliPredefinito,
   collegaProtocolloStepIstanza,
+  createDocumentoPrincipaleSottofase,
   createFaseProcedimento,
   eliminaStepOrizzontale,
+  getDocumentoPrincipaleSottofase,
   getProcedimento,
   inserisciStepOrizzontaleDopo,
   listFasiProcedimento,
   listProtocolli,
   listStepOrizzontaliFase,
   salvaNoteStepRedigi,
+  updateDocumentoPrincipaleMetadatiSottofase,
   updateFaseProcedimento
 } from '../services/procedimentoApi'
 import { statiWorkflow } from '../mock/procedimentoWorkflowMock'
@@ -758,6 +933,12 @@ const operazioneStepInCorso = ref(false)
 const stepOperativoSelezionatoId = ref(null)
 const noteRedigiForm = ref('')
 const salvataggioNoteRedigiInCorso = ref(false)
+const documentoPrincipaleRedigi = ref(null)
+const loadingDocumentoPrincipaleRedigi = ref(false)
+const creazioneDocumentoPrincipaleInCorso = ref(false)
+const aperturaDocumentoPrincipaleInCorso = ref(false)
+const salvataggioMetadatiDocumentoInCorso = ref(false)
+const erroreDocumentoPrincipaleRedigi = ref('')
 const dialogEliminaStep = ref(false)
 const stepDaEliminare = ref(null)
 const dialogProtocolloIstanza = ref(false)
@@ -778,6 +959,12 @@ const messaggioFase = ref('')
 const faseForm = reactive({
   Titolo: '',
   Descrizione: ''
+})
+const documentoMetadatiForm = reactive({
+  titoloDocumento: '',
+  descrizioneDocumento: '',
+  statoDocumento: 'BOZZA',
+  tipoDocumento: 'ALTRO'
 })
 
 const regoleFase = {
@@ -802,6 +989,24 @@ const stepInseribili = [
     titoloStep: 'Appuntamento',
     icona: 'mdi-calendar-clock'
   }
+]
+
+const statiDocumentoPrincipale = [
+  'BOZZA',
+  'IN_REVISIONE',
+  'APPROVATO',
+  'FIRMATO',
+  'PROTOCOLLATO',
+  'ARCHIVIATO'
+]
+
+const tipiDocumentoPrincipale = [
+  'NOTA',
+  'RELAZIONE',
+  'VERBALE',
+  'RICHIESTA',
+  'PARERE',
+  'ALTRO'
 ]
 
 const headersProtocolliIstanza = [
@@ -861,6 +1066,10 @@ const stepOperativoSelezionato = computed(() => {
 const stepRedigiSelezionato = computed(() => {
   const step = stepOperativoSelezionato.value
   return isStepRedigi(step) ? step : null
+})
+
+const idSottofaseDocumentaleRedigi = computed(() => {
+  return faseSelezionata.value?.idSottofase || faseSelezionata.value?.id || null
 })
 
 const statoRedigiSelezionato = computed(() => {
@@ -942,6 +1151,11 @@ async function caricaWorkflow() {
 function normalizzaFaseWorkflow(dato = {}) {
   return {
     id: dato.id_fase ?? dato.IDFase,
+    idSottofase:
+      dato.id_sottofase ??
+      dato.IDSottofase ??
+      dato.idSottofase ??
+      null,
     ordine: dato.ordine ?? dato.Ordine ?? 0,
     titolo: dato.titolo ?? dato.Titolo ?? 'Fase senza titolo',
     descrizione: dato.descrizione ?? dato.Descrizione ?? '',
@@ -1047,6 +1261,73 @@ function normalizzaProtocolloIstanza(dato = {}) {
       dato.comando_mittente ??
       dato.ComandoMittente ??
       dato.comandoMittente ??
+      ''
+  }
+}
+
+function normalizzaDocumentoPrincipale(dato = {}) {
+  if (!dato) return null
+
+  return {
+    idDocumentoSottofase:
+      dato.id_documento_sottofase ??
+      dato.IDDocumentoSottofase ??
+      dato.idDocumentoSottofase ??
+      dato.id,
+    idSottofase:
+      dato.id_sottofase ??
+      dato.IDSottofase ??
+      dato.idSottofase ??
+      null,
+    ruoloDocumento:
+      dato.ruolo_documento ??
+      dato.RuoloDocumento ??
+      dato.ruoloDocumento ??
+      '',
+    tipoOrigine:
+      dato.tipo_origine ??
+      dato.TipoOrigine ??
+      dato.tipoOrigine ??
+      '',
+    titoloDocumento:
+      dato.titolo_documento ??
+      dato.TitoloDocumento ??
+      dato.titoloDocumento ??
+      '',
+    statoDocumento:
+      dato.stato_documento ??
+      dato.StatoDocumento ??
+      dato.statoDocumento ??
+      '',
+    tipoDocumento:
+      dato.tipo_documento ??
+      dato.TipoDocumento ??
+      dato.tipoDocumento ??
+      '',
+    descrizioneDocumento:
+      dato.descrizione_documento ??
+      dato.DescrizioneDocumento ??
+      dato.descrizioneDocumento ??
+      '',
+    versioneDocumento:
+      dato.versione_documento ??
+      dato.VersioneDocumento ??
+      dato.versioneDocumento ??
+      '',
+    dataCreazione:
+      dato.data_creazione ??
+      dato.DataCreazione ??
+      dato.dataCreazione ??
+      '',
+    dataModifica:
+      dato.data_modifica ??
+      dato.DataModifica ??
+      dato.dataModifica ??
+      '',
+    percorsoDocumento:
+      dato.percorso_documento ??
+      dato.PercorsoDocumento ??
+      dato.percorsoDocumento ??
       ''
   }
 }
@@ -1204,12 +1485,16 @@ async function gestisciClickStepOrizzontale(step) {
   if (isStepRedigi(step)) {
     stepOperativoSelezionatoId.value = step.id
     noteRedigiForm.value = step.noteOperative || ''
+    await caricaDocumentoPrincipaleRedigi()
     return
   }
 
   if (!isStepIstanza(step)) {
     stepOperativoSelezionatoId.value = null
     noteRedigiForm.value = ''
+    documentoPrincipaleRedigi.value = null
+    resetFormMetadatiDocumento()
+    erroreDocumentoPrincipaleRedigi.value = ''
     return
   }
 
@@ -1236,6 +1521,138 @@ function sincronizzaStepOperativoSelezionato() {
   if (isStepRedigi(stepAggiornato)) {
     noteRedigiForm.value = stepAggiornato.noteOperative || ''
   }
+}
+
+async function caricaDocumentoPrincipaleRedigi() {
+  const idSottofase = idSottofaseDocumentaleRedigi.value
+  if (!idSottofase) {
+    documentoPrincipaleRedigi.value = null
+    erroreDocumentoPrincipaleRedigi.value =
+      'Contesto documentale della fase non disponibile.'
+    return
+  }
+
+  loadingDocumentoPrincipaleRedigi.value = true
+  erroreDocumentoPrincipaleRedigi.value = ''
+
+  try {
+    const documento = await getDocumentoPrincipaleSottofase(idSottofase)
+    documentoPrincipaleRedigi.value = normalizzaDocumentoPrincipale(documento)
+    popolaFormMetadatiDocumento(documentoPrincipaleRedigi.value)
+  } catch (error) {
+    documentoPrincipaleRedigi.value = null
+    resetFormMetadatiDocumento()
+    erroreDocumentoPrincipaleRedigi.value = messaggioErroreDocumentoPrincipale(error)
+  } finally {
+    loadingDocumentoPrincipaleRedigi.value = false
+  }
+}
+
+async function creaDocumentoPrincipaleRedigi() {
+  const idSottofase = idSottofaseDocumentaleRedigi.value
+  if (!idSottofase) return
+
+  creazioneDocumentoPrincipaleInCorso.value = true
+  erroreDocumentoPrincipaleRedigi.value = ''
+
+  try {
+    const documento = await createDocumentoPrincipaleSottofase(idSottofase)
+    documentoPrincipaleRedigi.value = normalizzaDocumentoPrincipale(documento)
+    popolaFormMetadatiDocumento(documentoPrincipaleRedigi.value)
+    messaggioFase.value = 'Documento principale creato.'
+    snackbarFase.value = true
+  } catch (error) {
+    erroreDocumentoPrincipaleRedigi.value = messaggioErroreDocumentoPrincipale(error)
+  } finally {
+    creazioneDocumentoPrincipaleInCorso.value = false
+  }
+}
+
+async function salvaMetadatiDocumentoPrincipaleRedigi() {
+  const idSottofase = idSottofaseDocumentaleRedigi.value
+  if (!idSottofase || !documentoPrincipaleRedigi.value) return
+
+  salvataggioMetadatiDocumentoInCorso.value = true
+  erroreDocumentoPrincipaleRedigi.value = ''
+
+  try {
+    await updateDocumentoPrincipaleMetadatiSottofase(idSottofase, {
+      titoloDocumento: documentoMetadatiForm.titoloDocumento,
+      descrizioneDocumento: documentoMetadatiForm.descrizioneDocumento,
+      statoDocumento: documentoMetadatiForm.statoDocumento,
+      tipoDocumento: documentoMetadatiForm.tipoDocumento
+    })
+    await caricaDocumentoPrincipaleRedigi()
+    messaggioFase.value = 'Metadati documento salvati.'
+    snackbarFase.value = true
+  } catch (error) {
+    erroreDocumentoPrincipaleRedigi.value = messaggioErroreDocumentoPrincipale(error)
+  } finally {
+    salvataggioMetadatiDocumentoInCorso.value = false
+  }
+}
+
+async function apriDocumentoPrincipaleRedigi() {
+  const idDocumento = documentoPrincipaleRedigi.value?.idDocumentoSottofase
+  if (!idDocumento) {
+    erroreDocumentoPrincipaleRedigi.value =
+      'Documento principale non apribile: identificativo mancante.'
+    return
+  }
+
+  const openedWindow = window.open('', '_blank')
+  if (!openedWindow) {
+    erroreDocumentoPrincipaleRedigi.value =
+      'Il browser ha bloccato l apertura del documento in una nuova scheda.'
+    return
+  }
+
+  openedWindow.opener = null
+  aperturaDocumentoPrincipaleInCorso.value = true
+  erroreDocumentoPrincipaleRedigi.value = ''
+
+  try {
+    const blob = await apriDocumentoSottofase(idDocumento)
+    const blobUrl = URL.createObjectURL(blob)
+    openedWindow.location.href = blobUrl
+
+    setTimeout(() => {
+      URL.revokeObjectURL(blobUrl)
+    }, 60000)
+  } catch (error) {
+    if (error.status === 404) {
+      erroreDocumentoPrincipaleRedigi.value =
+        'Documento principale creato, ma file fisico non ancora disponibile.'
+    } else {
+      erroreDocumentoPrincipaleRedigi.value =
+        'Impossibile aprire il documento principale.'
+    }
+
+    try {
+      openedWindow.close()
+    } catch {
+      // Scheda aperta solo in risposta al click utente.
+    }
+  } finally {
+    aperturaDocumentoPrincipaleInCorso.value = false
+  }
+}
+
+function popolaFormMetadatiDocumento(documento) {
+  documentoMetadatiForm.titoloDocumento = documento?.titoloDocumento || ''
+  documentoMetadatiForm.descrizioneDocumento =
+    documento?.descrizioneDocumento || ''
+  documentoMetadatiForm.statoDocumento =
+    documento?.statoDocumento || 'BOZZA'
+  documentoMetadatiForm.tipoDocumento =
+    documento?.tipoDocumento || 'ALTRO'
+}
+
+function resetFormMetadatiDocumento() {
+  documentoMetadatiForm.titoloDocumento = ''
+  documentoMetadatiForm.descrizioneDocumento = ''
+  documentoMetadatiForm.statoDocumento = 'BOZZA'
+  documentoMetadatiForm.tipoDocumento = 'ALTRO'
 }
 
 async function avviaRedigiSelezionato() {
@@ -1540,6 +1957,21 @@ function messaggioErrorePdfProtocollo(error) {
   }
 
   return 'Errore apertura PDF protocollo.'
+}
+
+function messaggioErroreDocumentoPrincipale(error) {
+  const dettaglio = error?.payload?.detail
+  if (typeof dettaglio === 'string') return dettaglio
+
+  if (error?.status === 409) {
+    return 'Esiste gia un documento principale attivo.'
+  }
+
+  if (error?.status === 404) {
+    return 'Documento principale non disponibile.'
+  }
+
+  return 'Impossibile aggiornare il documento principale.'
 }
 
 function selezionaFase(idFase) {
@@ -2118,6 +2550,37 @@ onMounted(() => {
   gap: 12px;
 }
 
+.redigi-document-card {
+  background: rgba(var(--v-theme-primary), 0.045);
+}
+
+.redigi-document-header {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+}
+
+.redigi-document-title {
+  font-size: 1.05rem;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.redigi-document-empty,
+.redigi-document-detail {
+  margin-top: 16px;
+}
+
+.redigi-document-form {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) minmax(160px, 220px) minmax(160px, 220px);
+}
+
+.redigi-document-description {
+  grid-column: 1 / -1;
+}
+
 .placeholder-title {
   font-size: 1.45rem;
   font-weight: 900;
@@ -2200,6 +2663,10 @@ onMounted(() => {
   }
 
   .detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .redigi-document-form {
     grid-template-columns: 1fr;
   }
 

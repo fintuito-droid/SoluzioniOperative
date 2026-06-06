@@ -4,8 +4,11 @@ import pytest
 from fastapi import HTTPException
 
 from backend.api.routes.protocollo_monitor import (
+    SottofaseDocumentoPrincipaleMetadatiPayload,
+    aggiorna_sottofase_documento_principale_metadati,
     apri_sottofase_documento,
     carica_documento_word_sottofase,
+    crea_sottofase_documento_principale,
     get_sottofase_documentale,
     get_sottofase_allegati,
     get_sottofase_documento_principale,
@@ -44,6 +47,10 @@ class FakeSottofaseDocumentaleService:
 
 
 class FakeSottofaseDocumentiService:
+    def __init__(self, *, duplicate=False, missing_principale=False):
+        self.duplicate = duplicate
+        self.missing_principale = missing_principale
+
     def get_documenti_sottofase(self, id_sottofase):
         return [{"id_sottofase": id_sottofase, "ruolo_documento": "ALLEGATO"}]
 
@@ -52,6 +59,36 @@ class FakeSottofaseDocumentiService:
 
     def get_allegati(self, id_sottofase):
         return [{"id_sottofase": id_sottofase, "ruolo_documento": "ALLEGATO"}]
+
+    def create_documento_principale(self, id_sottofase):
+        if self.duplicate:
+            from backend.services.sottofase_documenti_service import (
+                SottofaseDocumentoPrincipaleGiaEsistenteError,
+            )
+
+            raise SottofaseDocumentoPrincipaleGiaEsistenteError(
+                "Esiste gia un documento PRINCIPALE attivo per la sottofase."
+            )
+
+        return {"id_sottofase": id_sottofase, "ruolo_documento": "PRINCIPALE"}
+
+    def update_documento_principale_metadati(self, id_sottofase, payload):
+        if self.missing_principale:
+            from backend.services.sottofase_documenti_service import (
+                SottofaseDocumentoPrincipaleNotFoundError,
+            )
+
+            raise SottofaseDocumentoPrincipaleNotFoundError(
+                "Documento principale non trovato."
+            )
+
+        return {
+            "id_sottofase": id_sottofase,
+            "ruolo_documento": "PRINCIPALE",
+            "titolo_documento": payload["titoloDocumento"],
+            "stato_documento": payload["statoDocumento"],
+            "tipo_documento": payload["tipoDocumento"],
+        }
 
 
 class FailingSottofaseDocumentaleService:
@@ -150,13 +187,62 @@ def test_get_sottofase_documenti_returns_404_when_missing():
 def test_get_sottofase_documento_principale_returns_record():
     response = get_sottofase_documento_principale(
         7,
-        sottofase_service=FakeSottofaseDocumentaleService(
-            sottofase={"step_corrente": "REDIGI"}
-        ),
         documenti_service=FakeSottofaseDocumentiService(),
     )
 
     assert response == {"id_sottofase": 7, "ruolo_documento": "PRINCIPALE"}
+
+
+def test_crea_sottofase_documento_principale_returns_record():
+    response = crea_sottofase_documento_principale(
+        7,
+        documenti_service=FakeSottofaseDocumentiService(),
+    )
+
+    assert response == {"id_sottofase": 7, "ruolo_documento": "PRINCIPALE"}
+
+
+def test_crea_sottofase_documento_principale_returns_409_on_duplicate():
+    with pytest.raises(HTTPException) as exc_info:
+        crea_sottofase_documento_principale(
+            7,
+            documenti_service=FakeSottofaseDocumentiService(duplicate=True),
+        )
+
+    assert exc_info.value.status_code == 409
+
+
+def test_aggiorna_sottofase_documento_principale_metadati_returns_record():
+    response = aggiorna_sottofase_documento_principale_metadati(
+        7,
+        SottofaseDocumentoPrincipaleMetadatiPayload(
+            titoloDocumento="Nota",
+            descrizioneDocumento="Descrizione",
+            statoDocumento="BOZZA",
+            tipoDocumento="NOTA",
+        ),
+        documenti_service=FakeSottofaseDocumentiService(),
+    )
+
+    assert response["titolo_documento"] == "Nota"
+    assert response["stato_documento"] == "BOZZA"
+    assert response["tipo_documento"] == "NOTA"
+
+
+def test_aggiorna_sottofase_documento_principale_metadati_returns_404_when_missing():
+    with pytest.raises(HTTPException) as exc_info:
+        aggiorna_sottofase_documento_principale_metadati(
+            7,
+            SottofaseDocumentoPrincipaleMetadatiPayload(
+                titoloDocumento="Nota",
+                descrizioneDocumento="Descrizione",
+                statoDocumento="BOZZA",
+                tipoDocumento="NOTA",
+            ),
+            documenti_service=FakeSottofaseDocumentiService(missing_principale=True),
+        )
+
+    assert exc_info.value.status_code == 404
 
 
 def test_get_sottofase_allegati_returns_list():

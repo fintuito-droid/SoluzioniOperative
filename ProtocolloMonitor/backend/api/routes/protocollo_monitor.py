@@ -42,6 +42,8 @@ from backend.services.sottofase_document_upload_service import (
     SottofaseDocumentUploadWriteError,
 )
 from backend.services.sottofase_documenti_service import (
+    SottofaseDocumentoPrincipaleGiaEsistenteError,
+    SottofaseDocumentoPrincipaleNotFoundError,
     SottofaseDocumentiValidationError,
 )
 from backend.services.sottofase_partecipanti_service import (
@@ -108,6 +110,15 @@ class ProcedimentoFaseStepNotePayload(BaseModel):
     """Payload per salvare le note operative di uno step orizzontale."""
 
     noteOperative: str | None = None
+
+
+class SottofaseDocumentoPrincipaleMetadatiPayload(BaseModel):
+    """Payload per aggiornare i soli metadati editabili del principale."""
+
+    titoloDocumento: str | None = Field(default=None, max_length=255)
+    descrizioneDocumento: str | None = None
+    statoDocumento: str | None = Field(default=None, max_length=50)
+    tipoDocumento: str | None = Field(default=None, max_length=50)
 
 
 def get_container() -> DependencyContainer:
@@ -920,16 +931,48 @@ def get_sottofase_documenti(
 @router.get("/protocollo-monitor/sottofasi/{id_sottofase}/documento-principale")
 def get_sottofase_documento_principale(
     id_sottofase: int,
-    sottofase_service: Any = Depends(get_sottofase_documentale_service),
     documenti_service: Any = Depends(get_sottofase_documenti_service),
 ):
-    sottofase = sottofase_service.get_sottofase_documentale(id_sottofase)
-
-    if sottofase is None:
-        raise HTTPException(status_code=404, detail="Sottofase non trovata")
-
     try:
         return documenti_service.get_documento_principale(id_sottofase)
+    except SottofaseDocumentiValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.post(
+    "/protocollo-monitor/sottofasi/{id_sottofase}/documento-principale",
+    status_code=201,
+)
+def crea_sottofase_documento_principale(
+    id_sottofase: int,
+    documenti_service: Any = Depends(get_sottofase_documenti_service),
+):
+    try:
+        return documenti_service.create_documento_principale(id_sottofase)
+    except SottofaseDocumentoPrincipaleGiaEsistenteError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    except SottofaseDocumentiValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.put("/protocollo-monitor/sottofasi/{id_sottofase}/documento-principale/metadati")
+def aggiorna_sottofase_documento_principale_metadati(
+    id_sottofase: int,
+    payload: SottofaseDocumentoPrincipaleMetadatiPayload,
+    documenti_service: Any = Depends(get_sottofase_documenti_service),
+):
+    try:
+        payload_data = (
+            payload.model_dump()
+            if hasattr(payload, "model_dump")
+            else payload.dict()
+        )
+        return documenti_service.update_documento_principale_metadati(
+            id_sottofase,
+            payload_data,
+        )
+    except SottofaseDocumentoPrincipaleNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
     except SottofaseDocumentiValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 

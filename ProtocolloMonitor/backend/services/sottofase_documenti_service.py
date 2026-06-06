@@ -16,11 +16,31 @@ class SottofaseDocumentoPrincipaleGiaEsistenteError(SottofaseDocumentiValidation
     """La sottofase possiede gia un documento principale attivo."""
 
 
+class SottofaseDocumentoPrincipaleNotFoundError(LookupError):
+    """Documento principale attivo non presente per la sottofase."""
+
+
 class SottofaseDocumentiService:
     """Regole applicative del modello documentale unificato."""
 
     RUOLI_AMMESSI = {"PRINCIPALE", "ALLEGATO"}
     TIPI_ORIGINE_AMMESSI = {"PROTOCOLLO", "FILE", "GENERATO"}
+    STATI_DOCUMENTO_AMMESSI = {
+        "BOZZA",
+        "IN_REVISIONE",
+        "APPROVATO",
+        "FIRMATO",
+        "PROTOCOLLATO",
+        "ARCHIVIATO",
+    }
+    TIPI_DOCUMENTO_AMMESSI = {
+        "NOTA",
+        "RELAZIONE",
+        "VERBALE",
+        "RICHIESTA",
+        "PARERE",
+        "ALTRO",
+    }
 
     def __init__(
         self,
@@ -61,6 +81,109 @@ class SottofaseDocumentiService:
             return None
 
         return get_principale(self._validate_id(id_sottofase, "IDSottofase"))
+
+    def exists_documento_principale(self, id_sottofase: int) -> bool:
+        if self.sottofase_documenti_repository is None:
+            return False
+
+        exists = getattr(
+            self.sottofase_documenti_repository,
+            "exists_documento_principale",
+            None,
+        ) or getattr(
+            self.sottofase_documenti_repository,
+            "exists_documento_principale_attivo",
+            None,
+        )
+        if exists is None:
+            return False
+
+        return bool(exists(self._validate_id(id_sottofase, "IDSottofase")))
+
+    def create_documento_principale(
+        self,
+        id_sottofase: int,
+    ) -> dict[str, Any]:
+        if self.sottofase_documenti_repository is None:
+            raise SottofaseDocumentiValidationError(
+                "Repository documenti sottofase non configurato."
+            )
+
+        id_sottofase_normalizzato = self._validate_id(id_sottofase, "IDSottofase")
+        if self.exists_documento_principale(id_sottofase_normalizzato):
+            raise SottofaseDocumentoPrincipaleGiaEsistenteError(
+                "Esiste gia un documento PRINCIPALE attivo per la sottofase."
+            )
+
+        now = datetime.now()
+        self.backup_factory()
+
+        create_principale = getattr(
+            self.sottofase_documenti_repository,
+            "create_documento_principale",
+            None,
+        )
+        if create_principale is not None:
+            return create_principale(
+                id_sottofase=id_sottofase_normalizzato,
+                data_creazione=now,
+            )
+
+        return self.sottofase_documenti_repository.create_documento(
+            {
+                "IDSottofase": id_sottofase_normalizzato,
+                "RuoloDocumento": "PRINCIPALE",
+                "TipoOrigine": "GENERATO",
+                "TitoloDocumento": "Nuovo Documento",
+                "StatoDocumento": "BOZZA",
+                "VersioneDocumento": 1,
+                "Attivo": True,
+                "DataCreazione": now,
+                "DataModifica": now,
+                "DataCollegamento": now,
+            }
+        )
+
+    def update_documento_principale_metadati(
+        self,
+        id_sottofase: int,
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        if self.sottofase_documenti_repository is None:
+            raise SottofaseDocumentiValidationError(
+                "Repository documenti sottofase non configurato."
+            )
+
+        id_sottofase_normalizzato = self._validate_id(id_sottofase, "IDSottofase")
+        dati = self._normalizza_payload_metadati(payload)
+        self._valida_metadati_documento_principale(dati)
+
+        self.backup_factory()
+        update_metadati = getattr(
+            self.sottofase_documenti_repository,
+            "update_documento_principale_metadati",
+            None,
+        )
+        if update_metadati is None:
+            raise SottofaseDocumentiValidationError(
+                "Aggiornamento metadati non disponibile."
+            )
+
+        updated = update_metadati(
+            id_sottofase=id_sottofase_normalizzato,
+            titolo_documento=dati["TitoloDocumento"],
+            descrizione_documento=dati.get("DescrizioneDocumento"),
+            stato_documento=dati["StatoDocumento"],
+            tipo_documento=dati["TipoDocumento"],
+            data_modifica=datetime.now(),
+        )
+
+        if updated is None:
+            raise SottofaseDocumentoPrincipaleNotFoundError(
+                "Documento principale non trovato."
+            )
+
+        return updated
 
     def get_allegati(self, id_sottofase: int) -> list[dict[str, Any]]:
         if self.sottofase_documenti_repository is None:
@@ -293,6 +416,47 @@ class SottofaseDocumentiService:
                 dati[text_field] = self._text_or_none(dati[text_field])
 
         return dati
+
+    def _normalizza_payload_metadati(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "TitoloDocumento": self._text_or_none(
+                self._pick(payload, "TitoloDocumento", "titoloDocumento")
+            ),
+            "DescrizioneDocumento": self._text_or_none(
+                self._pick(
+                    payload,
+                    "DescrizioneDocumento",
+                    "descrizioneDocumento",
+                )
+            ),
+            "StatoDocumento": self._upper(
+                self._pick(payload, "StatoDocumento", "statoDocumento"),
+                default="BOZZA",
+            ),
+            "TipoDocumento": self._upper(
+                self._pick(payload, "TipoDocumento", "tipoDocumento"),
+                default="ALTRO",
+            ),
+        }
+
+    def _valida_metadati_documento_principale(
+        self,
+        dati: dict[str, Any],
+    ) -> None:
+        if not dati.get("TitoloDocumento"):
+            raise SottofaseDocumentiValidationError("Titolo documento obbligatorio.")
+
+        stato_documento = dati.get("StatoDocumento")
+        if stato_documento not in self.STATI_DOCUMENTO_AMMESSI:
+            raise SottofaseDocumentiValidationError(
+                f"StatoDocumento non valido: {stato_documento}"
+            )
+
+        tipo_documento = dati.get("TipoDocumento")
+        if tipo_documento not in self.TIPI_DOCUMENTO_AMMESSI:
+            raise SottofaseDocumentiValidationError(
+                f"TipoDocumento non valido: {tipo_documento}"
+            )
 
     def _valida_documento(
         self,
