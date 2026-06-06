@@ -23,6 +23,9 @@ class FakeWorkflowProcedimentoRepository:
         self.inserisci_step_calls = []
         self.elimina_step_calls = []
         self.collega_protocollo_calls = []
+        self.avvia_redigi_calls = []
+        self.completa_redigi_calls = []
+        self.note_redigi_calls = []
         self.has_step_avviati_value = False
         self.has_step_orizzontali_value = False
 
@@ -165,6 +168,48 @@ class FakeWorkflowProcedimentoRepository:
                 "codice_step": "ISTANZA",
                 "stato_step": "COMPLETATO",
                 "id_protocollo_collegato": id_protocollo,
+            }
+        ]
+
+    def avvia_step_redigi(self, *, id_fase, id_step, data_modifica):
+        self.avvia_redigi_calls.append((id_fase, id_step, data_modifica))
+        return [
+            {
+                "id_fase": id_fase,
+                "id_step_orizzontale": id_step,
+                "codice_step": "REDIGI",
+                "stato_step": "IN_CORSO",
+            }
+        ]
+
+    def completa_step_redigi(self, *, id_fase, id_step, data_modifica):
+        self.completa_redigi_calls.append((id_fase, id_step, data_modifica))
+        return [
+            {
+                "id_fase": id_fase,
+                "id_step_orizzontale": id_step,
+                "codice_step": "REDIGI",
+                "stato_step": "COMPLETATO",
+            }
+        ]
+
+    def aggiorna_note_step_redigi(
+        self,
+        *,
+        id_fase,
+        id_step,
+        note_operative,
+        data_modifica,
+    ):
+        self.note_redigi_calls.append(
+            (id_fase, id_step, note_operative, data_modifica)
+        )
+        return [
+            {
+                "id_fase": id_fase,
+                "id_step_orizzontale": id_step,
+                "codice_step": "REDIGI",
+                "note_operative": note_operative,
             }
         ]
 
@@ -542,6 +587,69 @@ def test_collega_protocollo_step_istanza_requires_protocollo():
             id_step=3,
             payload={},
         )
+
+
+def test_avvia_step_redigi_validates_and_delegates():
+    repository = FakeWorkflowProcedimentoRepository()
+    backup_calls = []
+    service = WorkflowProcedimentoService(
+        workflow_procedimento_repository=repository,
+        now_factory=lambda: FIXED_NOW,
+        backup_factory=lambda: backup_calls.append("backup"),
+    )
+
+    steps = service.avvia_step_redigi(
+        id_procedimento=7,
+        id_fase=7,
+        id_step=1,
+    )
+
+    assert steps[0]["stato_step"] == "IN_CORSO"
+    assert repository.avvia_redigi_calls == [(7, 1, FIXED_NOW)]
+    assert backup_calls == ["backup"]
+
+
+def test_completa_step_redigi_validates_and_delegates():
+    repository = FakeWorkflowProcedimentoRepository()
+    backup_calls = []
+    service = WorkflowProcedimentoService(
+        workflow_procedimento_repository=repository,
+        now_factory=lambda: FIXED_NOW,
+        backup_factory=lambda: backup_calls.append("backup"),
+    )
+
+    steps = service.completa_step_redigi(
+        id_procedimento=7,
+        id_fase=7,
+        id_step=1,
+    )
+
+    assert steps[0]["stato_step"] == "COMPLETATO"
+    assert repository.completa_redigi_calls == [(7, 1, FIXED_NOW)]
+    assert backup_calls == ["backup"]
+
+
+def test_aggiorna_note_step_redigi_validates_and_delegates():
+    repository = FakeWorkflowProcedimentoRepository()
+    backup_calls = []
+    service = WorkflowProcedimentoService(
+        workflow_procedimento_repository=repository,
+        now_factory=lambda: FIXED_NOW,
+        backup_factory=lambda: backup_calls.append("backup"),
+    )
+
+    steps = service.aggiorna_note_step_redigi(
+        id_procedimento=7,
+        id_fase=7,
+        id_step=1,
+        payload={"noteOperative": "Nota operativa"},
+    )
+
+    assert steps[0]["note_operative"] == "Nota operativa"
+    assert repository.note_redigi_calls == [
+        (7, 1, "Nota operativa", FIXED_NOW)
+    ]
+    assert backup_calls == ["backup"]
 
 
 def test_list_sottofasi_without_repository_returns_empty_list():

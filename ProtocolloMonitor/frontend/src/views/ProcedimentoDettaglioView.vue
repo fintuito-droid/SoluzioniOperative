@@ -431,7 +431,84 @@
                   Selezionare una fase per iniziare.
                 </v-alert>
 
-                <div class="work-content-placeholder">
+                <v-card
+                  v-if="stepRedigiSelezionato"
+                  class="redigi-work-panel"
+                  rounded="lg"
+                  variant="outlined"
+                >
+                  <v-card-title class="redigi-panel-title">
+                    <div>
+                      <div class="text-caption text-medium-emphasis">
+                        Step operativo
+                      </div>
+                      <div class="redigi-panel-heading">
+                        Step: Redigi
+                      </div>
+                    </div>
+
+                    <v-chip
+                      :color="coloreStatoStep(stepRedigiSelezionato.statoStep)"
+                      variant="tonal"
+                    >
+                      Stato: {{ statoRedigiSelezionato }}
+                    </v-chip>
+                  </v-card-title>
+
+                  <v-divider />
+
+                  <v-card-text>
+                    <div class="redigi-actions">
+                      <v-btn
+                        v-if="redigiAvviabile"
+                        color="primary"
+                        variant="flat"
+                        prepend-icon="mdi-play-circle-outline"
+                        :loading="operazioneStepInCorso"
+                        @click="avviaRedigiSelezionato"
+                      >
+                        Avvia lavorazione
+                      </v-btn>
+
+                      <v-btn
+                        v-if="redigiCompletabile"
+                        color="success"
+                        variant="flat"
+                        prepend-icon="mdi-check-circle-outline"
+                        :loading="operazioneStepInCorso"
+                        @click="completaRedigiSelezionato"
+                      >
+                        Completa lavorazione
+                      </v-btn>
+                    </div>
+
+                    <v-textarea
+                      v-model="noteRedigiForm"
+                      label="Note operative"
+                      variant="outlined"
+                      rows="5"
+                      auto-grow
+                      class="mt-5"
+                    />
+                  </v-card-text>
+
+                  <v-card-actions class="justify-end">
+                    <v-btn
+                      color="primary"
+                      variant="tonal"
+                      prepend-icon="mdi-content-save-outline"
+                      :loading="salvataggioNoteRedigiInCorso"
+                      @click="salvaNoteRedigiSelezionato"
+                    >
+                      Salva note
+                    </v-btn>
+                  </v-card-actions>
+                </v-card>
+
+                <div
+                  v-else
+                  class="work-content-placeholder"
+                >
                   <div class="placeholder-title">
                     Area contenuto fase
                   </div>
@@ -647,6 +724,8 @@ import { useRoute, useRouter } from 'vue-router'
 
 import {
   apriPdfProtocolloEsterno,
+  avviaStepRedigi,
+  completaStepRedigi,
   configuraStepOrizzontaliIstanzaFine,
   configuraStepOrizzontaliPredefinito,
   collegaProtocolloStepIstanza,
@@ -657,6 +736,7 @@ import {
   listFasiProcedimento,
   listProtocolli,
   listStepOrizzontaliFase,
+  salvaNoteStepRedigi,
   updateFaseProcedimento
 } from '../services/procedimentoApi'
 import { statiWorkflow } from '../mock/procedimentoWorkflowMock'
@@ -675,6 +755,9 @@ const stepOrizzontali = ref([])
 const loadingStepOrizzontali = ref(false)
 const erroreStepOrizzontali = ref('')
 const operazioneStepInCorso = ref(false)
+const stepOperativoSelezionatoId = ref(null)
+const noteRedigiForm = ref('')
+const salvataggioNoteRedigiInCorso = ref(false)
 const dialogEliminaStep = ref(false)
 const stepDaEliminare = ref(null)
 const dialogProtocolloIstanza = ref(false)
@@ -766,6 +849,29 @@ const workflowConfigurabile = computed(() => {
   return stepOrizzontali.value.every((step) => {
     return String(step.statoStep || '').toUpperCase() === 'NON_AVVIATO'
   })
+})
+
+const stepOperativoSelezionato = computed(() => {
+  return stepOrizzontali.value.find((step) => {
+    return Number(step.id) === Number(stepOperativoSelezionatoId.value)
+  })
+})
+
+const stepRedigiSelezionato = computed(() => {
+  const step = stepOperativoSelezionato.value
+  return isStepRedigi(step) ? step : null
+})
+
+const statoRedigiSelezionato = computed(() => {
+  return String(stepRedigiSelezionato.value?.statoStep || 'NON_AVVIATO').toUpperCase()
+})
+
+const redigiAvviabile = computed(() => {
+  return statoRedigiSelezionato.value === 'NON_AVVIATO'
+})
+
+const redigiCompletabile = computed(() => {
+  return statoRedigiSelezionato.value === 'IN_CORSO'
 })
 
 const protocolloCollegatoCorrente = computed(() => {
@@ -873,6 +979,21 @@ function normalizzaStepOrizzontale(dato = {}) {
       dato.StatoStep ??
       dato.statoStep ??
       'NON_AVVIATO',
+    dataAvvio:
+      dato.data_avvio ??
+      dato.DataAvvio ??
+      dato.dataAvvio ??
+      '',
+    dataCompletamento:
+      dato.data_completamento ??
+      dato.DataCompletamento ??
+      dato.dataCompletamento ??
+      '',
+    noteOperative:
+      dato.note_operative ??
+      dato.NoteOperative ??
+      dato.noteOperative ??
+      '',
     idProtocolloCollegato:
       dato.id_protocollo_collegato ??
       dato.IDProtocolloCollegato ??
@@ -1006,6 +1127,7 @@ async function caricaStepOrizzontaliFase(fase) {
 
 function aggiornaStepOrizzontali(step) {
   stepOrizzontali.value = normalizzaListaStepOrizzontali(step)
+  sincronizzaStepOperativoSelezionato()
 }
 
 function normalizzaListaStepOrizzontali(step) {
@@ -1064,6 +1186,10 @@ function isStepIstanza(step) {
   return String(step?.codiceStep || '').toUpperCase() === 'ISTANZA'
 }
 
+function isStepRedigi(step) {
+  return String(step?.codiceStep || '').toUpperCase() === 'REDIGI'
+}
+
 function isIstanzaProtocolloCompletata(step) {
   const stato = String(step?.statoStep || '').toUpperCase()
   return isStepIstanza(step) &&
@@ -1072,13 +1198,108 @@ function isIstanzaProtocolloCompletata(step) {
 }
 
 async function gestisciClickStepOrizzontale(step) {
-  if (!isStepIstanza(step)) return
+  if (isStepRedigi(step)) {
+    stepOperativoSelezionatoId.value = step.id
+    noteRedigiForm.value = step.noteOperative || ''
+    return
+  }
+
+  if (!isStepIstanza(step)) {
+    stepOperativoSelezionatoId.value = null
+    noteRedigiForm.value = ''
+    return
+  }
 
   stepIstanzaCorrente.value = step
   erroreProtocolloIstanza.value = ''
   ricercaProtocolloIstanza.value = ''
   dialogProtocolloIstanza.value = true
   await caricaProtocolliIstanza()
+}
+
+function sincronizzaStepOperativoSelezionato() {
+  if (!stepOperativoSelezionatoId.value) return
+
+  const stepAggiornato = stepOrizzontali.value.find((step) => {
+    return Number(step.id) === Number(stepOperativoSelezionatoId.value)
+  })
+
+  if (!stepAggiornato) {
+    stepOperativoSelezionatoId.value = null
+    noteRedigiForm.value = ''
+    return
+  }
+
+  if (isStepRedigi(stepAggiornato)) {
+    noteRedigiForm.value = stepAggiornato.noteOperative || ''
+  }
+}
+
+async function avviaRedigiSelezionato() {
+  if (!faseSelezionata.value || !stepRedigiSelezionato.value?.id) return
+
+  operazioneStepInCorso.value = true
+  erroreStepOrizzontali.value = ''
+
+  try {
+    const stepAggiornati = await avviaStepRedigi(
+      idProcedimento.value,
+      faseSelezionata.value.id,
+      stepRedigiSelezionato.value.id
+    )
+    aggiornaStepOrizzontali(stepAggiornati)
+    messaggioFase.value = 'Lavorazione Redigi avviata.'
+    snackbarFase.value = true
+  } catch (error) {
+    erroreStepOrizzontali.value = messaggioErroreStep(error)
+  } finally {
+    operazioneStepInCorso.value = false
+  }
+}
+
+async function completaRedigiSelezionato() {
+  if (!faseSelezionata.value || !stepRedigiSelezionato.value?.id) return
+
+  operazioneStepInCorso.value = true
+  erroreStepOrizzontali.value = ''
+
+  try {
+    const stepAggiornati = await completaStepRedigi(
+      idProcedimento.value,
+      faseSelezionata.value.id,
+      stepRedigiSelezionato.value.id
+    )
+    aggiornaStepOrizzontali(stepAggiornati)
+    messaggioFase.value = 'Lavorazione Redigi completata.'
+    snackbarFase.value = true
+  } catch (error) {
+    erroreStepOrizzontali.value = messaggioErroreStep(error)
+  } finally {
+    operazioneStepInCorso.value = false
+  }
+}
+
+async function salvaNoteRedigiSelezionato() {
+  if (!faseSelezionata.value || !stepRedigiSelezionato.value?.id) return
+
+  salvataggioNoteRedigiInCorso.value = true
+  erroreStepOrizzontali.value = ''
+
+  try {
+    const stepAggiornati = await salvaNoteStepRedigi(
+      idProcedimento.value,
+      faseSelezionata.value.id,
+      stepRedigiSelezionato.value.id,
+      { noteOperative: noteRedigiForm.value }
+    )
+    aggiornaStepOrizzontali(stepAggiornati)
+    messaggioFase.value = 'Note operative salvate.'
+    snackbarFase.value = true
+  } catch (error) {
+    erroreStepOrizzontali.value = messaggioErroreStep(error)
+  } finally {
+    salvataggioNoteRedigiInCorso.value = false
+  }
 }
 
 async function caricaProtocolliIstanza() {
@@ -1345,6 +1566,15 @@ function classeStepOrizzontale(step) {
     return 'step-orizzontale-in-corso'
   }
   return 'step-orizzontale-non-avviato'
+}
+
+function coloreStatoStep(stato) {
+  const normalizzato = String(stato || '').toUpperCase()
+  if (normalizzato === 'NON_AVVIATO') return 'grey'
+  if (normalizzato.includes('COMPLET')) return 'success'
+  if (normalizzato.includes('ANNULL')) return 'error'
+  if (normalizzato.includes('CORSO') || normalizzato === 'ACTIVE') return 'primary'
+  return 'grey'
 }
 
 function coloreFaseDot(stato) {
@@ -1856,6 +2086,33 @@ onMounted(() => {
   margin-top: 34px;
   min-height: 0;
   text-align: center;
+}
+
+.redigi-work-panel {
+  align-self: center;
+  flex: 0 0 auto;
+  margin-top: 30px;
+  max-width: 860px;
+  width: min(100%, 860px);
+}
+
+.redigi-panel-title {
+  align-items: center;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.redigi-panel-heading {
+  font-size: 1.32rem;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.redigi-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 .placeholder-title {

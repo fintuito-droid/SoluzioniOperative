@@ -300,6 +300,92 @@ class WorkflowProcedimentoService:
         except ValueError as exc:
             raise WorkflowFaseValidationError(str(exc)) from exc
 
+    def avvia_step_redigi(
+        self,
+        *,
+        id_procedimento: int,
+        id_fase: int,
+        id_step: int,
+    ) -> list[dict[str, Any]]:
+        """Avvia la lavorazione dello step Redigi."""
+
+        self._validate_fase_in_procedimento(
+            id_procedimento=id_procedimento,
+            id_fase=id_fase,
+        )
+
+        try:
+            self.backup_factory()
+            return self.workflow_procedimento_repository.avvia_step_redigi(
+                id_fase=id_fase,
+                id_step=id_step,
+                data_modifica=self.now_factory(),
+            )
+        except LookupError as exc:
+            raise WorkflowFaseNotFoundError(str(exc)) from exc
+        except ValueError as exc:
+            raise WorkflowFaseValidationError(str(exc)) from exc
+
+    def completa_step_redigi(
+        self,
+        *,
+        id_procedimento: int,
+        id_fase: int,
+        id_step: int,
+    ) -> list[dict[str, Any]]:
+        """Completa la lavorazione dello step Redigi."""
+
+        self._validate_fase_in_procedimento(
+            id_procedimento=id_procedimento,
+            id_fase=id_fase,
+        )
+
+        try:
+            self.backup_factory()
+            return self.workflow_procedimento_repository.completa_step_redigi(
+                id_fase=id_fase,
+                id_step=id_step,
+                data_modifica=self.now_factory(),
+            )
+        except LookupError as exc:
+            raise WorkflowFaseNotFoundError(str(exc)) from exc
+        except ValueError as exc:
+            raise WorkflowFaseValidationError(str(exc)) from exc
+
+    def aggiorna_note_step_redigi(
+        self,
+        *,
+        id_procedimento: int,
+        id_fase: int,
+        id_step: int,
+        payload: Any,
+    ) -> list[dict[str, Any]]:
+        """Salva le note operative dello step Redigi."""
+
+        self._validate_fase_in_procedimento(
+            id_procedimento=id_procedimento,
+            id_fase=id_fase,
+        )
+        data = self._payload_to_dict(payload)
+        note_operative = self._clean_optional(
+            data.get("noteOperative")
+            or data.get("NoteOperative")
+            or data.get("note_operative")
+        )
+
+        try:
+            self.backup_factory()
+            return self.workflow_procedimento_repository.aggiorna_note_step_redigi(
+                id_fase=id_fase,
+                id_step=id_step,
+                note_operative=note_operative,
+                data_modifica=self.now_factory(),
+            )
+        except LookupError as exc:
+            raise WorkflowFaseNotFoundError(str(exc)) from exc
+        except ValueError as exc:
+            raise WorkflowFaseValidationError(str(exc)) from exc
+
     def list_fasi_by_procedimento(
         self,
         id_procedimento: int,

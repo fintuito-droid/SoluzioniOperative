@@ -101,6 +101,12 @@ class ProcedimentoFaseStepProtocolloPayload(BaseModel):
     idProtocollo: int
 
 
+class ProcedimentoFaseStepNotePayload(BaseModel):
+    """Payload per salvare le note operative di uno step orizzontale."""
+
+    noteOperative: str | None = None
+
+
 def get_container() -> DependencyContainer:
     """Dipendenza FastAPI per creare il container della richiesta."""
 
@@ -782,6 +788,77 @@ def collega_protocollo_procedimento_fase_step_istanza(
         )
     except WorkflowFaseNotFoundError as exc:
         detail = str(exc) or "Fase, step o protocollo non trovato"
+        raise HTTPException(status_code=404, detail=detail)
+    except WorkflowFaseValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.post(
+    "/protocollo-monitor/procedimenti/{id_procedimento}/fasi/{id_fase}/"
+    "step-orizzontali/{id_step}/avvia"
+)
+def avvia_procedimento_fase_step_redigi(
+    id_procedimento: int,
+    id_fase: int,
+    id_step: int,
+    workflow_service: Any = Depends(get_workflow_procedimento_service),
+):
+    try:
+        return workflow_service.avvia_step_redigi(
+            id_procedimento=id_procedimento,
+            id_fase=id_fase,
+            id_step=id_step,
+        )
+    except WorkflowFaseNotFoundError as exc:
+        detail = str(exc) or "Fase o step non trovato"
+        raise HTTPException(status_code=404, detail=detail)
+    except WorkflowFaseValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.post(
+    "/protocollo-monitor/procedimenti/{id_procedimento}/fasi/{id_fase}/"
+    "step-orizzontali/{id_step}/completa"
+)
+def completa_procedimento_fase_step_redigi(
+    id_procedimento: int,
+    id_fase: int,
+    id_step: int,
+    workflow_service: Any = Depends(get_workflow_procedimento_service),
+):
+    try:
+        return workflow_service.completa_step_redigi(
+            id_procedimento=id_procedimento,
+            id_fase=id_fase,
+            id_step=id_step,
+        )
+    except WorkflowFaseNotFoundError as exc:
+        detail = str(exc) or "Fase o step non trovato"
+        raise HTTPException(status_code=404, detail=detail)
+    except WorkflowFaseValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.put(
+    "/protocollo-monitor/procedimenti/{id_procedimento}/fasi/{id_fase}/"
+    "step-orizzontali/{id_step}/note-operative"
+)
+def aggiorna_note_procedimento_fase_step_redigi(
+    id_procedimento: int,
+    id_fase: int,
+    id_step: int,
+    payload: ProcedimentoFaseStepNotePayload,
+    workflow_service: Any = Depends(get_workflow_procedimento_service),
+):
+    try:
+        return workflow_service.aggiorna_note_step_redigi(
+            id_procedimento=id_procedimento,
+            id_fase=id_fase,
+            id_step=id_step,
+            payload=payload,
+        )
+    except WorkflowFaseNotFoundError as exc:
+        detail = str(exc) or "Fase o step non trovato"
         raise HTTPException(status_code=404, detail=detail)
     except WorkflowFaseValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc))

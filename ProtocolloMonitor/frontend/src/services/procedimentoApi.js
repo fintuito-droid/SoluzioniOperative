@@ -180,6 +180,30 @@ export function collegaProtocolloStepIstanza(idProcedimento, idFase, idStep, pay
   )
 }
 
+export function avviaStepRedigi(idProcedimento, idFase, idStep) {
+  return fetchJson(
+    `/protocollo-monitor/procedimenti/${idProcedimento}/fasi/${idFase}/step-orizzontali/${idStep}/avvia`,
+    { method: 'POST' }
+  )
+}
+
+export function completaStepRedigi(idProcedimento, idFase, idStep) {
+  return fetchJson(
+    `/protocollo-monitor/procedimenti/${idProcedimento}/fasi/${idFase}/step-orizzontali/${idStep}/completa`,
+    { method: 'POST' }
+  )
+}
+
+export function salvaNoteStepRedigi(idProcedimento, idFase, idStep, payload) {
+  return fetchJson(
+    `/protocollo-monitor/procedimenti/${idProcedimento}/fasi/${idFase}/step-orizzontali/${idStep}/note-operative`,
+    {
+      method: 'PUT',
+      body: JSON.stringify(payload || {})
+    }
+  )
+}
+
 export function listCatalogoSottofasi(attivoOnly = true) {
   const params = new URLSearchParams({
     attivo_only: String(attivoOnly)

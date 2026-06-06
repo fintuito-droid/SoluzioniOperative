@@ -158,6 +158,7 @@ class WorkflowProcedimentoRepository(BaseRepository):
             "data_completamento": self._normalize_value(
                 self._get(row, "DataCompletamento")
             ),
+            "note_operative": self._normalize_value(self._get(row, "NoteOperative")),
             "id_protocollo_collegato": self._normalize_value(
                 self._get(row, "IDProtocolloCollegato")
             ),
@@ -420,6 +421,7 @@ class WorkflowProcedimentoRepository(BaseRepository):
                 s.StatoStep,
                 s.DataAvvio,
                 s.DataCompletamento,
+                s.NoteOperative,
                 s.IDProtocolloCollegato,
                 s.Attivo,
                 s.DataCreazione,
@@ -579,6 +581,160 @@ class WorkflowProcedimentoRepository(BaseRepository):
                     data_creazione=data_modifica,
                 )
 
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            cursor.close()
+            conn.close()
+
+        return self.list_step_orizzontali_by_fase(id_fase)
+
+    def avvia_step_redigi(
+        self,
+        *,
+        id_fase: int,
+        id_step: int,
+        data_modifica: datetime,
+    ) -> list[dict[str, Any]]:
+        """Porta uno step `REDIGI` da `NON_AVVIATO` a `IN_CORSO`."""
+
+        conn = self._open_access_connection()
+        cursor = conn.cursor()
+
+        try:
+            step = self._get_step_orizzontale_attivo(
+                cursor,
+                id_fase=id_fase,
+                id_step=id_step,
+            )
+            self._ensure_step_redigi_with_state(
+                step,
+                expected_state="NON_AVVIATO",
+                message="Lo step Redigi puo essere avviato solo da NON_AVVIATO.",
+            )
+
+            cursor.execute(
+                """
+                UPDATE T_FaseStepOrizzontali
+                SET StatoStep = ?,
+                    DataAvvio = ?,
+                    DataModifica = ?
+                WHERE IDStepOrizzontale = ?
+                    AND IDFase = ?
+                    AND Attivo = ?
+                """,
+                (
+                    "IN_CORSO",
+                    data_modifica,
+                    data_modifica,
+                    id_step,
+                    id_fase,
+                    True,
+                ),
+            )
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            cursor.close()
+            conn.close()
+
+        return self.list_step_orizzontali_by_fase(id_fase)
+
+    def completa_step_redigi(
+        self,
+        *,
+        id_fase: int,
+        id_step: int,
+        data_modifica: datetime,
+    ) -> list[dict[str, Any]]:
+        """Porta uno step `REDIGI` da `IN_CORSO` a `COMPLETATO`."""
+
+        conn = self._open_access_connection()
+        cursor = conn.cursor()
+
+        try:
+            step = self._get_step_orizzontale_attivo(
+                cursor,
+                id_fase=id_fase,
+                id_step=id_step,
+            )
+            self._ensure_step_redigi_with_state(
+                step,
+                expected_state="IN_CORSO",
+                message="Lo step Redigi puo essere completato solo da IN_CORSO.",
+            )
+
+            cursor.execute(
+                """
+                UPDATE T_FaseStepOrizzontali
+                SET StatoStep = ?,
+                    DataCompletamento = ?,
+                    DataModifica = ?
+                WHERE IDStepOrizzontale = ?
+                    AND IDFase = ?
+                    AND Attivo = ?
+                """,
+                (
+                    "COMPLETATO",
+                    data_modifica,
+                    data_modifica,
+                    id_step,
+                    id_fase,
+                    True,
+                ),
+            )
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            cursor.close()
+            conn.close()
+
+        return self.list_step_orizzontali_by_fase(id_fase)
+
+    def aggiorna_note_step_redigi(
+        self,
+        *,
+        id_fase: int,
+        id_step: int,
+        note_operative: str | None,
+        data_modifica: datetime,
+    ) -> list[dict[str, Any]]:
+        """Salva le note operative dello step `REDIGI`."""
+
+        conn = self._open_access_connection()
+        cursor = conn.cursor()
+
+        try:
+            step = self._get_step_orizzontale_attivo(
+                cursor,
+                id_fase=id_fase,
+                id_step=id_step,
+            )
+            self._ensure_step_redigi(step)
+
+            cursor.execute(
+                """
+                UPDATE T_FaseStepOrizzontali
+                SET NoteOperative = ?,
+                    DataModifica = ?
+                WHERE IDStepOrizzontale = ?
+                    AND IDFase = ?
+                    AND Attivo = ?
+                """,
+                (
+                    note_operative,
+                    data_modifica,
+                    id_step,
+                    id_fase,
+                    True,
+                ),
+            )
             conn.commit()
         except Exception:
             conn.rollback()
@@ -877,6 +1033,7 @@ class WorkflowProcedimentoRepository(BaseRepository):
                 StatoStep,
                 DataAvvio,
                 DataCompletamento,
+                NoteOperative,
                 IDProtocolloCollegato,
                 Attivo
             FROM T_FaseStepOrizzontali
@@ -887,6 +1044,27 @@ class WorkflowProcedimentoRepository(BaseRepository):
             (id_step, id_fase, True),
         )
         return cursor.fetchone()
+
+    def _ensure_step_redigi(self, step: Any | None) -> None:
+        if step is None:
+            raise LookupError("Step non trovato.")
+
+        codice_step = str(self._get(step, "CodiceStep") or "").upper()
+        if codice_step != "REDIGI":
+            raise ValueError("Operazione consentita solo sullo step Redigi.")
+
+    def _ensure_step_redigi_with_state(
+        self,
+        step: Any | None,
+        *,
+        expected_state: str,
+        message: str,
+    ) -> None:
+        self._ensure_step_redigi(step)
+
+        stato_step = str(self._get(step, "StatoStep") or "").upper()
+        if stato_step != expected_state:
+            raise ValueError(message)
 
     def _insert_step_orizzontale(
         self,

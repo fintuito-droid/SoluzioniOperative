@@ -3,10 +3,14 @@ from fastapi import HTTPException
 
 from backend.api.routes.protocollo_monitor import (
     ProcedimentoFasePayload,
+    ProcedimentoFaseStepNotePayload,
     ProcedimentoFaseStepPayload,
     ProcedimentoFaseStepProtocolloPayload,
     aggiorna_procedimento_fase,
+    aggiorna_note_procedimento_fase_step_redigi,
+    avvia_procedimento_fase_step_redigi,
     collega_protocollo_procedimento_fase_step_istanza,
+    completa_procedimento_fase_step_redigi,
     configura_procedimento_fase_step_istanza_fine,
     configura_procedimento_fase_step_predefinito,
     crea_procedimento_fase,
@@ -168,6 +172,40 @@ class FakeWorkflowProcedimentoService:
                 "codice_step": "ISTANZA",
                 "stato_step": "COMPLETATO",
                 "id_protocollo_collegato": payload.idProtocollo,
+            }
+        ]
+
+    def avvia_step_redigi(self, *, id_procedimento, id_fase, id_step):
+        if self.mode == "missing":
+            raise WorkflowFaseNotFoundError("Step non trovato.")
+        if self.mode == "validation":
+            raise WorkflowFaseValidationError("Transizione non valida.")
+        return [{"id_fase": id_fase, "codice_step": "REDIGI", "stato_step": "IN_CORSO"}]
+
+    def completa_step_redigi(self, *, id_procedimento, id_fase, id_step):
+        if self.mode == "missing":
+            raise WorkflowFaseNotFoundError("Step non trovato.")
+        if self.mode == "validation":
+            raise WorkflowFaseValidationError("Transizione non valida.")
+        return [{"id_fase": id_fase, "codice_step": "REDIGI", "stato_step": "COMPLETATO"}]
+
+    def aggiorna_note_step_redigi(
+        self,
+        *,
+        id_procedimento,
+        id_fase,
+        id_step,
+        payload,
+    ):
+        if self.mode == "missing":
+            raise WorkflowFaseNotFoundError("Step non trovato.")
+        if self.mode == "validation":
+            raise WorkflowFaseValidationError("Step non valido.")
+        return [
+            {
+                "id_fase": id_fase,
+                "codice_step": "REDIGI",
+                "note_operative": payload.noteOperative,
             }
         ]
 
@@ -416,6 +454,56 @@ def test_collega_protocollo_step_istanza_returns_404_when_missing():
 
     assert exc_info.value.status_code == 404
     assert exc_info.value.detail == "Protocollo non trovato."
+
+
+def test_avvia_step_redigi_returns_updated_steps():
+    response = avvia_procedimento_fase_step_redigi(
+        10,
+        9,
+        1,
+        workflow_service=FakeWorkflowProcedimentoService(),
+    )
+
+    assert response[0]["codice_step"] == "REDIGI"
+    assert response[0]["stato_step"] == "IN_CORSO"
+
+
+def test_completa_step_redigi_returns_updated_steps():
+    response = completa_procedimento_fase_step_redigi(
+        10,
+        9,
+        1,
+        workflow_service=FakeWorkflowProcedimentoService(),
+    )
+
+    assert response[0]["codice_step"] == "REDIGI"
+    assert response[0]["stato_step"] == "COMPLETATO"
+
+
+def test_aggiorna_note_step_redigi_returns_updated_steps():
+    response = aggiorna_note_procedimento_fase_step_redigi(
+        10,
+        9,
+        1,
+        ProcedimentoFaseStepNotePayload(noteOperative="Nota operativa"),
+        workflow_service=FakeWorkflowProcedimentoService(),
+    )
+
+    assert response[0]["codice_step"] == "REDIGI"
+    assert response[0]["note_operative"] == "Nota operativa"
+
+
+def test_avvia_step_redigi_returns_400_when_transition_invalid():
+    with pytest.raises(HTTPException) as exc_info:
+        avvia_procedimento_fase_step_redigi(
+            10,
+            9,
+            1,
+            workflow_service=FakeWorkflowProcedimentoService(mode="validation"),
+        )
+
+    assert exc_info.value.status_code == 400
+    assert exc_info.value.detail == "Transizione non valida."
 
 
 def test_get_catalogo_sottofasi_returns_active_catalog_by_default():

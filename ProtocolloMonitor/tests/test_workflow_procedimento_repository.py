@@ -721,6 +721,169 @@ def test_collega_protocollo_step_istanza_updates_step_and_bridge():
     assert connection.committed is True
 
 
+def test_avvia_step_redigi_sets_in_corso_and_data_avvio():
+    now = datetime(2026, 6, 1, 10, 36, 0)
+    cursor = FakeCursor(
+        [
+            [
+                _step_row(
+                    id_step=1,
+                    id_fase=8,
+                    codice="REDIGI",
+                    titolo="Redigi",
+                    ordine=1,
+                    now=now,
+                )
+            ],
+            [],
+            [
+                _step_row(
+                    id_step=1,
+                    id_fase=8,
+                    codice="REDIGI",
+                    titolo="Redigi",
+                    ordine=1,
+                    stato="IN_CORSO",
+                    now=now,
+                )
+            ],
+        ]
+    )
+    connection = FakeConnection(cursor)
+    repository = WorkflowProcedimentoRepositoryForTest(connection)
+
+    records = repository.avvia_step_redigi(
+        id_fase=8,
+        id_step=1,
+        data_modifica=now,
+    )
+
+    assert records[0]["stato_step"] == "IN_CORSO"
+    assert "SET StatoStep = ?" in cursor.executed_queries[1]
+    assert cursor.executed_params[1] == ("IN_CORSO", now, now, 1, 8, True)
+    assert connection.committed is True
+
+
+def test_completa_step_redigi_sets_completed_and_data_completamento():
+    now = datetime(2026, 6, 1, 10, 36, 0)
+    cursor = FakeCursor(
+        [
+            [
+                _step_row(
+                    id_step=1,
+                    id_fase=8,
+                    codice="REDIGI",
+                    titolo="Redigi",
+                    ordine=1,
+                    stato="IN_CORSO",
+                    now=now,
+                )
+            ],
+            [],
+            [
+                _step_row(
+                    id_step=1,
+                    id_fase=8,
+                    codice="REDIGI",
+                    titolo="Redigi",
+                    ordine=1,
+                    stato="COMPLETATO",
+                    now=now,
+                )
+            ],
+        ]
+    )
+    connection = FakeConnection(cursor)
+    repository = WorkflowProcedimentoRepositoryForTest(connection)
+
+    records = repository.completa_step_redigi(
+        id_fase=8,
+        id_step=1,
+        data_modifica=now,
+    )
+
+    assert records[0]["stato_step"] == "COMPLETATO"
+    assert "SET StatoStep = ?" in cursor.executed_queries[1]
+    assert cursor.executed_params[1] == ("COMPLETATO", now, now, 1, 8, True)
+    assert connection.committed is True
+
+
+def test_aggiorna_note_step_redigi_persists_note():
+    now = datetime(2026, 6, 1, 10, 36, 0)
+    cursor = FakeCursor(
+        [
+            [
+                _step_row(
+                    id_step=1,
+                    id_fase=8,
+                    codice="REDIGI",
+                    titolo="Redigi",
+                    ordine=1,
+                    now=now,
+                )
+            ],
+            [],
+            [
+                _step_row(
+                    id_step=1,
+                    id_fase=8,
+                    codice="REDIGI",
+                    titolo="Redigi",
+                    ordine=1,
+                    now=now,
+                )
+            ],
+        ]
+    )
+    connection = FakeConnection(cursor)
+    repository = WorkflowProcedimentoRepositoryForTest(connection)
+
+    records = repository.aggiorna_note_step_redigi(
+        id_fase=8,
+        id_step=1,
+        note_operative="Nota operativa",
+        data_modifica=now,
+    )
+
+    assert records[0]["codice_step"] == "REDIGI"
+    assert "SET NoteOperative = ?" in cursor.executed_queries[1]
+    assert cursor.executed_params[1] == ("Nota operativa", now, 1, 8, True)
+    assert connection.committed is True
+
+
+def test_avvia_step_redigi_rejects_non_redigi_and_rolls_back():
+    now = datetime(2026, 6, 1, 10, 36, 0)
+    cursor = FakeCursor(
+        [
+            [
+                _step_row(
+                    id_step=2,
+                    id_fase=8,
+                    codice="FIRMA",
+                    titolo="Firma",
+                    ordine=2,
+                    now=now,
+                )
+            ],
+        ]
+    )
+    connection = FakeConnection(cursor)
+    repository = WorkflowProcedimentoRepositoryForTest(connection)
+
+    try:
+        repository.avvia_step_redigi(
+            id_fase=8,
+            id_step=2,
+            data_modifica=now,
+        )
+    except ValueError as exc:
+        assert "Redigi" in str(exc)
+    else:
+        raise AssertionError("ValueError atteso")
+
+    assert connection.rolled_back is True
+
+
 def test_list_catalogo_sottofasi_filters_active_by_default():
     cursor = FakeCursor(
         [
