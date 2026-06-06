@@ -1,17 +1,31 @@
 import pytest
+from datetime import datetime
+from pathlib import Path
 
 from backend.services.sottofase_documenti_service import (
+    SottofaseAllegatoFileTooLargeError,
     SottofaseDocumentoPrincipaleGiaEsistenteError,
     SottofaseDocumentoPrincipaleNotFoundError,
+    SottofaseProtocolloAllegatoGiaEsistenteError,
+    SottofaseProtocolloAllegatoNotFoundError,
     SottofaseDocumentiService,
     SottofaseDocumentiValidationError,
 )
 
 
 class FakeSottofaseDocumentiRepository:
-    def __init__(self, *, principale_exists=False, update_missing=False):
+    def __init__(
+        self,
+        *,
+        principale_exists=False,
+        update_missing=False,
+        protocollo_allegato_exists=False,
+        protocollo_missing=False,
+    ):
         self.principale_exists = principale_exists
         self.update_missing = update_missing
+        self.protocollo_allegato_exists = protocollo_allegato_exists
+        self.protocollo_missing = protocollo_missing
         self.created_payloads = []
         self.updated_metadati = []
 
@@ -23,6 +37,9 @@ class FakeSottofaseDocumentiRepository:
 
     def get_allegati(self, id_sottofase):
         return [{"id_sottofase": id_sottofase, "ruolo_documento": "ALLEGATO"}]
+
+    def get_allegati_sottofase(self, id_sottofase):
+        return self.get_allegati(id_sottofase)
 
     def exists_documento_principale_attivo(self, id_sottofase, **kwargs):
         return self.principale_exists
@@ -62,6 +79,49 @@ class FakeSottofaseDocumentiRepository:
             "tipo_documento": kwargs["tipo_documento"],
             "data_modifica": kwargs["data_modifica"],
         }
+
+    def exists_protocollo_allegato(self, *, id_sottofase, id_protocollo):
+        return self.protocollo_allegato_exists
+
+    def get_protocollo_per_allegato(self, id_protocollo):
+        if self.protocollo_missing:
+            return None
+        return {
+            "id_protocollo": id_protocollo,
+            "oggetto": "Oggetto protocollo",
+        }
+
+    def add_protocollo_come_allegato(
+        self,
+        *,
+        id_sottofase,
+        id_protocollo,
+        protocollo,
+        data_creazione,
+    ):
+        payload = {
+            "IDSottofase": id_sottofase,
+            "RuoloDocumento": "ALLEGATO",
+            "TipoOrigine": "PROTOCOLLO",
+            "TitoloDocumento": protocollo["oggetto"],
+            "IDProtocolloCollegato": id_protocollo,
+            "DataCreazione": data_creazione,
+        }
+        self.created_payloads.append(payload)
+        return {"id_documento_sottofase": 40, **payload}
+
+    def get_next_ordine_allegato(self, id_sottofase):
+        return 3
+
+    def create_allegato_file(self, payload):
+        normalized = {
+            **payload,
+            "RuoloDocumento": "ALLEGATO",
+            "TipoOrigine": "FILE",
+            "Attivo": True,
+        }
+        self.created_payloads.append(normalized)
+        return {"id_documento_sottofase": 50, **normalized}
 
 
 def test_get_documenti_sottofase_uses_repository():
@@ -292,4 +352,114 @@ def test_update_documento_principale_metadati_raises_when_missing():
                 "statoDocumento": "BOZZA",
                 "tipoDocumento": "NOTA",
             },
+        )
+
+
+def test_add_protocollo_come_allegato_creates_record():
+    calls = []
+    repository = FakeSottofaseDocumentiRepository()
+    service = SottofaseDocumentiService(
+        sottofase_documenti_repository=repository,
+        backup_factory=lambda: calls.append("backup"),
+    )
+
+    result = service.add_protocollo_come_allegato(7, {"idProtocollo": 12})
+
+    assert calls == ["backup"]
+    assert result["RuoloDocumento"] == "ALLEGATO"
+    assert result["TipoOrigine"] == "PROTOCOLLO"
+    assert result["IDProtocolloCollegato"] == 12
+
+
+def test_add_protocollo_come_allegato_blocks_duplicate():
+    service = SottofaseDocumentiService(
+        sottofase_documenti_repository=FakeSottofaseDocumentiRepository(
+            protocollo_allegato_exists=True
+        ),
+        backup_factory=lambda: None,
+    )
+
+    with pytest.raises(SottofaseProtocolloAllegatoGiaEsistenteError):
+        service.add_protocollo_come_allegato(7, {"idProtocollo": 12})
+
+
+def test_add_protocollo_come_allegato_raises_when_protocollo_missing():
+    service = SottofaseDocumentiService(
+        sottofase_documenti_repository=FakeSottofaseDocumentiRepository(
+            protocollo_missing=True
+        ),
+        backup_factory=lambda: None,
+    )
+
+    with pytest.raises(SottofaseProtocolloAllegatoNotFoundError):
+        service.add_protocollo_come_allegato(7, {"idProtocollo": 12})
+
+
+def test_upload_file_allegato_saves_file_and_creates_record(tmp_path):
+    calls = []
+    repository = FakeSottofaseDocumentiRepository()
+    service = SottofaseDocumentiService(
+        sottofase_documenti_repository=repository,
+        backup_factory=lambda: calls.append("backup"),
+        storage_root=tmp_path,
+        now_factory=lambda: datetime(2026, 6, 6, 13, 0, 0),
+    )
+
+    result = service.upload_file_allegato(
+        id_sottofase=7,
+        file_bytes=b"contenuto allegato",
+        original_filename="planimetria.pdf",
+        content_type="application/pdf",
+    )
+
+    saved_path = tmp_path / "sottofasi" / "7" / "allegati"
+    assert calls == ["backup"]
+    assert result["id_documento_sottofase"] == 50
+    assert result["RuoloDocumento"] == "ALLEGATO"
+    assert result["TipoOrigine"] == "FILE"
+    assert result["TitoloDocumento"] == "planimetria"
+    assert result["NomeFile"] == "planimetria.pdf"
+    assert result["Estensione"] == ".pdf"
+    assert result["MimeType"] == "application/pdf"
+    assert result["DimensioneBytes"] == len(b"contenuto allegato")
+    assert result["StatoDocumento"] == "CARICATO"
+    assert result["VersioneDocumento"] == 1
+    assert result["Ordine"] == 3
+    assert str(result["PercorsoDocumento"]).startswith(str(saved_path.resolve()))
+    assert Path(result["PercorsoDocumento"]).exists() is True
+    assert len(list(saved_path.iterdir())) == 1
+
+
+def test_upload_file_allegato_rejects_invalid_extension(tmp_path):
+    service = SottofaseDocumentiService(
+        sottofase_documenti_repository=FakeSottofaseDocumentiRepository(),
+        backup_factory=lambda: None,
+        storage_root=tmp_path,
+    )
+
+    with pytest.raises(SottofaseDocumentiValidationError):
+        service.upload_file_allegato(
+            id_sottofase=7,
+            file_bytes=b"contenuto",
+            original_filename="script.exe",
+            content_type="application/octet-stream",
+        )
+
+
+def test_upload_file_allegato_rejects_too_large_file(tmp_path, monkeypatch):
+    import backend.services.sottofase_documenti_service as service_module
+
+    monkeypatch.setattr(service_module, "MAX_ALLEGATO_FILE_SIZE_BYTES", 4)
+    service = SottofaseDocumentiService(
+        sottofase_documenti_repository=FakeSottofaseDocumentiRepository(),
+        backup_factory=lambda: None,
+        storage_root=tmp_path,
+    )
+
+    with pytest.raises(SottofaseAllegatoFileTooLargeError):
+        service.upload_file_allegato(
+            id_sottofase=7,
+            file_bytes=b"12345",
+            original_filename="documento.pdf",
+            content_type="application/pdf",
         )

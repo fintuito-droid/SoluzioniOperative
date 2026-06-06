@@ -1,5 +1,9 @@
 <template>
-  <v-container fluid class="procedimento-page">
+  <v-container
+    fluid
+    class="procedimento-page"
+    :class="{ 'procedimento-page-lavorazione': modalitaVista === 'lavorazione-fase' }"
+  >
     <header class="procedimento-header">
       <v-btn
         class="btn-torna-procedimenti"
@@ -258,40 +262,40 @@
 
           <v-window-item value="lavorazione-fase">
             <div class="lavorazione-view">
-              <div class="lavorazione-toolbar">
-                <v-btn
-                  class="btn-torna-fasi"
-                  color="grey"
+              <div class="lavorazione-sticky-head">
+                <div class="lavorazione-toolbar">
+                  <v-btn
+                    class="btn-torna-fasi"
+                    color="grey"
+                    variant="tonal"
+                    prepend-icon="mdi-arrow-left"
+                    @click="tornaAlleFasiVerticali"
+                  >
+                    Torna alle fasi verticali
+                  </v-btn>
+
+                  <h1 class="lavorazione-title">
+                    {{ faseSelezionata?.titolo || 'Fase selezionata' }}
+                  </h1>
+                </div>
+
+                <v-alert
+                  v-if="erroreStepOrizzontali"
+                  type="warning"
                   variant="tonal"
-                  prepend-icon="mdi-arrow-left"
-                  @click="tornaAlleFasiVerticali"
+                  class="mb-4"
                 >
-                  Torna alle fasi verticali
-                </v-btn>
+                  {{ erroreStepOrizzontali }}
+                </v-alert>
 
-                <h1 class="lavorazione-title">
-                  {{ faseSelezionata?.titolo || 'Fase selezionata' }}
-                </h1>
-              </div>
+                <v-progress-linear
+                  v-if="loadingStepOrizzontali"
+                  color="primary"
+                  indeterminate
+                  rounded
+                  class="mb-4"
+                />
 
-              <v-alert
-                v-if="erroreStepOrizzontali"
-                type="warning"
-                variant="tonal"
-                class="mb-4"
-              >
-                {{ erroreStepOrizzontali }}
-              </v-alert>
-
-              <v-progress-linear
-                v-if="loadingStepOrizzontali"
-                color="primary"
-                indeterminate
-                rounded
-                class="mb-4"
-              />
-
-              <div class="lavorazione-content-card">
                 <div
                   v-if="workflowConfigurabile"
                   class="workflow-quick-actions"
@@ -338,7 +342,7 @@
                       </div>
 
                       <div
-                        v-if="index < stepOrizzontali.length - 1"
+                        v-if="index < stepOrizzontali.length - 1 && (index + 1) % 6 !== 0"
                         class="step-orizzontale-line"
                       />
                     </div>
@@ -430,94 +434,97 @@
                 >
                   Selezionare una fase per iniziare.
                 </v-alert>
+              </div>
 
-                <v-card
-                  v-if="stepRedigiSelezionato"
-                  class="redigi-work-panel"
-                  rounded="lg"
-                  variant="outlined"
-                >
-                  <v-card-title class="redigi-panel-title">
-                    <div>
-                      <div class="text-caption text-medium-emphasis">
-                        Step operativo
+              <div class="lavorazione-content-card">
+                <div class="step-operativo-scroll">
+                  <v-card
+                    v-if="stepRedigiSelezionato"
+                    class="redigi-work-panel"
+                    rounded="lg"
+                    variant="outlined"
+                  >
+                    <v-card-title class="redigi-panel-title">
+                      <div>
+                        <div class="text-caption text-medium-emphasis">
+                          Step operativo
+                        </div>
+                        <div class="redigi-panel-heading">
+                          Step: Redigi
+                        </div>
                       </div>
-                      <div class="redigi-panel-heading">
-                        Step: Redigi
+
+                      <v-chip
+                        :color="coloreStatoStep(stepRedigiSelezionato.statoStep)"
+                        variant="tonal"
+                      >
+                        Stato: {{ statoRedigiSelezionato }}
+                      </v-chip>
+                    </v-card-title>
+
+                    <v-divider />
+
+                    <v-card-text>
+                      <div class="redigi-actions">
+                        <v-btn
+                          v-if="redigiAvviabile"
+                          color="primary"
+                          variant="flat"
+                          prepend-icon="mdi-play-circle-outline"
+                          :loading="operazioneStepInCorso"
+                          @click="avviaRedigiSelezionato"
+                        >
+                          Avvia lavorazione
+                        </v-btn>
+
+                        <v-btn
+                          v-if="redigiCompletabile"
+                          color="success"
+                          variant="flat"
+                          prepend-icon="mdi-check-circle-outline"
+                          :loading="operazioneStepInCorso"
+                          @click="completaRedigiSelezionato"
+                        >
+                          Completa lavorazione
+                        </v-btn>
                       </div>
-                    </div>
 
-                    <v-chip
-                      :color="coloreStatoStep(stepRedigiSelezionato.statoStep)"
-                      variant="tonal"
-                    >
-                      Stato: {{ statoRedigiSelezionato }}
-                    </v-chip>
-                  </v-card-title>
-
-                  <v-divider />
-
-                  <v-card-text>
-                    <div class="redigi-actions">
-                      <v-btn
-                        v-if="redigiAvviabile"
-                        color="primary"
-                        variant="flat"
-                        prepend-icon="mdi-play-circle-outline"
-                        :loading="operazioneStepInCorso"
-                        @click="avviaRedigiSelezionato"
+                      <v-alert
+                        v-if="erroreDocumentoPrincipaleRedigi"
+                        type="warning"
+                        variant="tonal"
+                        density="compact"
+                        class="mt-5"
                       >
-                        Avvia lavorazione
-                      </v-btn>
+                        {{ erroreDocumentoPrincipaleRedigi }}
+                      </v-alert>
 
-                      <v-btn
-                        v-if="redigiCompletabile"
-                        color="success"
-                        variant="flat"
-                        prepend-icon="mdi-check-circle-outline"
-                        :loading="operazioneStepInCorso"
-                        @click="completaRedigiSelezionato"
+                      <v-card
+                        class="redigi-document-card mt-5"
+                        rounded="lg"
+                        variant="tonal"
                       >
-                        Completa lavorazione
-                      </v-btn>
-                    </div>
+                        <v-card-text>
+                          <div class="redigi-document-header">
+                            <v-avatar
+                              color="primary"
+                              variant="tonal"
+                              size="42"
+                            >
+                              <v-icon size="25">
+                                mdi-file-document-outline
+                              </v-icon>
+                            </v-avatar>
 
-                    <v-alert
-                      v-if="erroreDocumentoPrincipaleRedigi"
-                      type="warning"
-                      variant="tonal"
-                      density="compact"
-                      class="mt-5"
-                    >
-                      {{ erroreDocumentoPrincipaleRedigi }}
-                    </v-alert>
-
-                    <v-card
-                      class="redigi-document-card mt-5"
-                      rounded="lg"
-                      variant="tonal"
-                    >
-                      <v-card-text>
-                        <div class="redigi-document-header">
-                          <v-avatar
-                            color="primary"
-                            variant="tonal"
-                            size="42"
-                          >
-                            <v-icon size="25">
-                              mdi-file-document-outline
-                            </v-icon>
-                          </v-avatar>
-
-                          <div>
-                            <div class="redigi-document-title">
-                              Documento Principale
-                            </div>
-                            <div class="text-caption text-medium-emphasis">
-                              Documento operativo principale della sottofase
+                            <div>
+                              <div class="redigi-document-title">
+                                Documento Principale
+                              </div>
+                              <div class="text-caption text-medium-emphasis">
+                                Documento operativo principale della sottofase
+                              </div>
                             </div>
                           </div>
-                        </div>
 
                         <v-progress-linear
                           v-if="loadingDocumentoPrincipaleRedigi"
@@ -676,6 +683,140 @@
                   </v-card-actions>
                 </v-card>
 
+                <v-card
+                  v-else-if="stepAllegatiSelezionato"
+                  class="allegati-work-panel"
+                  rounded="lg"
+                  variant="outlined"
+                >
+                  <v-card-title class="redigi-panel-title">
+                    <div>
+                      <div class="text-caption text-medium-emphasis">
+                        Step operativo
+                      </div>
+                      <div class="redigi-panel-heading">
+                        Allegati della sottofase
+                      </div>
+                    </div>
+
+                    <v-chip
+                      color="primary"
+                      variant="tonal"
+                    >
+                      {{ allegatiSottofase.length }} allegati
+                    </v-chip>
+                  </v-card-title>
+
+                  <v-divider />
+
+                  <v-card-text>
+                    <div class="allegati-actions">
+                      <v-btn
+                        color="primary"
+                        variant="flat"
+                        prepend-icon="mdi-file-link-outline"
+                        :loading="loadingAllegatiSottofase"
+                        @click="apriDialogProtocolloAllegato"
+                      >
+                        Collega protocollo
+                      </v-btn>
+
+                      <v-btn
+                        color="primary"
+                        variant="tonal"
+                        prepend-icon="mdi-file-upload-outline"
+                        :loading="uploadAllegatoInCorso"
+                        @click="apriSelettoreFileAllegato"
+                      >
+                        Carica file
+                      </v-btn>
+
+                      <input
+                        ref="allegatoFileInput"
+                        type="file"
+                        class="d-none"
+                        :accept="allegatiFileAccept"
+                        @change="gestisciSelezioneFileAllegato"
+                      >
+                    </div>
+
+                    <v-alert
+                      v-if="erroreAllegatiSottofase"
+                      type="warning"
+                      variant="tonal"
+                      density="compact"
+                      class="mt-5"
+                    >
+                      {{ erroreAllegatiSottofase }}
+                    </v-alert>
+
+                    <v-progress-linear
+                      v-if="loadingAllegatiSottofase"
+                      color="primary"
+                      indeterminate
+                      rounded
+                      class="mt-5"
+                    />
+
+                    <v-list
+                      v-else-if="allegatiSottofase.length"
+                      class="allegati-list mt-5"
+                      density="comfortable"
+                      lines="two"
+                    >
+                      <v-list-item
+                        v-for="allegato in allegatiSottofase"
+                        :key="allegato.idDocumentoSottofase"
+                        class="allegato-item"
+                      >
+                        <template #prepend>
+                          <v-avatar
+                            color="primary"
+                            variant="tonal"
+                          >
+                            <v-icon>
+                              {{ iconaAllegato(allegato) }}
+                            </v-icon>
+                          </v-avatar>
+                        </template>
+
+                        <v-list-item-title class="font-weight-bold">
+                          {{ valoreDettaglio(allegato.titoloDocumento) }}
+                        </v-list-item-title>
+
+                        <v-list-item-subtitle>
+                          {{ valoreDettaglio(allegato.tipoOrigine) }}
+                          <span class="mx-1">|</span>
+                          {{ valoreDettaglio(allegato.nomeFile) }}
+                          <span class="mx-1">|</span>
+                          {{ valoreDettaglio(allegato.dataCreazione) }}
+                        </v-list-item-subtitle>
+
+                        <template #append>
+                          <v-btn
+                            color="primary"
+                            variant="text"
+                            prepend-icon="mdi-open-in-new"
+                            :loading="aperturaAllegatoInCorsoId === allegato.idDocumentoSottofase"
+                            @click="apriAllegatoSottofase(allegato)"
+                          >
+                            Apri
+                          </v-btn>
+                        </template>
+                      </v-list-item>
+                    </v-list>
+
+                    <v-alert
+                      v-else
+                      type="info"
+                      variant="tonal"
+                      class="mt-5"
+                    >
+                      Nessun allegato collegato alla sottofase.
+                    </v-alert>
+                  </v-card-text>
+                </v-card>
+
                 <div
                   v-else
                   class="work-content-placeholder"
@@ -686,6 +827,7 @@
                   <div class="placeholder-subtitle">
                     Selezionare uno step per iniziare.
                   </div>
+                </div>
                 </div>
               </div>
             </div>
@@ -879,6 +1021,84 @@
       </v-card>
     </v-dialog>
 
+    <v-dialog
+      v-model="dialogProtocolloAllegato"
+      max-width="980"
+    >
+      <v-card rounded="lg">
+        <v-card-title class="text-subtitle-1 font-weight-bold">
+          Collega protocollo come allegato
+        </v-card-title>
+
+        <v-card-text>
+          <v-alert
+            v-if="erroreProtocolloAllegato"
+            type="error"
+            variant="tonal"
+            density="compact"
+            class="mb-4"
+          >
+            {{ erroreProtocolloAllegato }}
+          </v-alert>
+
+          <v-text-field
+            v-model="ricercaProtocolloAllegato"
+            label="Cerca protocollo"
+            variant="outlined"
+            density="compact"
+            prepend-inner-icon="mdi-magnify"
+            clearable
+            class="mb-3"
+          />
+
+          <v-data-table
+            :headers="headersProtocolliIstanza"
+            :items="protocolliAllegatoFiltrati"
+            :loading="loadingProtocolliAllegato"
+            density="compact"
+            item-value="idProtocollo"
+            hover
+          >
+            <template #item.dataProtocollo="{ item }">
+              {{ valoreDettaglio(item.dataProtocollo) }}
+            </template>
+
+            <template #item.oggetto="{ item }">
+              <span class="protocollo-oggetto-cell">
+                {{ item.oggetto || '-' }}
+              </span>
+            </template>
+
+            <template #item.actions="{ item }">
+              <v-btn
+                color="primary"
+                variant="flat"
+                size="small"
+                :loading="collegamentoProtocolloAllegatoInCorso"
+                @click="selezionaProtocolloAllegato(item)"
+              >
+                Seleziona
+              </v-btn>
+            </template>
+
+            <template #no-data>
+              Nessun protocollo disponibile.
+            </template>
+          </v-data-table>
+        </v-card-text>
+
+        <v-card-actions class="justify-end">
+          <v-btn
+            variant="text"
+            :disabled="collegamentoProtocolloAllegatoInCorso"
+            @click="chiudiDialogProtocolloAllegato"
+          >
+            Chiudi
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <v-snackbar
       v-model="snackbarFase"
       color="success"
@@ -900,6 +1120,7 @@ import {
   completaStepRedigi,
   configuraStepOrizzontaliIstanzaFine,
   configuraStepOrizzontaliPredefinito,
+  collegaProtocolloAllegatoSottofase,
   collegaProtocolloStepIstanza,
   createDocumentoPrincipaleSottofase,
   createFaseProcedimento,
@@ -907,12 +1128,14 @@ import {
   getDocumentoPrincipaleSottofase,
   getProcedimento,
   inserisciStepOrizzontaleDopo,
+  listAllegatiSottofase,
   listFasiProcedimento,
   listProtocolli,
   listStepOrizzontaliFase,
   salvaNoteStepRedigi,
   updateDocumentoPrincipaleMetadatiSottofase,
-  updateFaseProcedimento
+  updateFaseProcedimento,
+  uploadAllegatoFileSottofase
 } from '../services/procedimentoApi'
 import { statiWorkflow } from '../mock/procedimentoWorkflowMock'
 import elencoProcedimentoIcon from '../assets/ElencoProcedimentoICO.png'
@@ -939,6 +1162,18 @@ const creazioneDocumentoPrincipaleInCorso = ref(false)
 const aperturaDocumentoPrincipaleInCorso = ref(false)
 const salvataggioMetadatiDocumentoInCorso = ref(false)
 const erroreDocumentoPrincipaleRedigi = ref('')
+const allegatiSottofase = ref([])
+const loadingAllegatiSottofase = ref(false)
+const erroreAllegatiSottofase = ref('')
+const dialogProtocolloAllegato = ref(false)
+const protocolliAllegato = ref([])
+const loadingProtocolliAllegato = ref(false)
+const collegamentoProtocolloAllegatoInCorso = ref(false)
+const erroreProtocolloAllegato = ref('')
+const ricercaProtocolloAllegato = ref('')
+const aperturaAllegatoInCorsoId = ref(null)
+const allegatoFileInput = ref(null)
+const uploadAllegatoInCorso = ref(false)
 const dialogEliminaStep = ref(false)
 const stepDaEliminare = ref(null)
 const dialogProtocolloIstanza = ref(false)
@@ -1009,6 +1244,20 @@ const tipiDocumentoPrincipale = [
   'ALTRO'
 ]
 
+const allegatiFileAccept = [
+  '.pdf',
+  '.doc',
+  '.docx',
+  '.xls',
+  '.xlsx',
+  '.ppt',
+  '.pptx',
+  '.jpg',
+  '.jpeg',
+  '.png',
+  '.txt'
+].join(',')
+
 const headersProtocolliIstanza = [
   { title: 'Numero', key: 'numeroProtocollo', sortable: true },
   { title: 'Data', key: 'dataProtocollo', sortable: true },
@@ -1068,7 +1317,16 @@ const stepRedigiSelezionato = computed(() => {
   return isStepRedigi(step) ? step : null
 })
 
+const stepAllegatiSelezionato = computed(() => {
+  const step = stepOperativoSelezionato.value
+  return isStepAllegati(step) ? step : null
+})
+
 const idSottofaseDocumentaleRedigi = computed(() => {
+  return faseSelezionata.value?.idSottofase || faseSelezionata.value?.id || null
+})
+
+const idSottofaseDocumentaleAllegati = computed(() => {
   return faseSelezionata.value?.idSottofase || faseSelezionata.value?.id || null
 })
 
@@ -1107,6 +1365,22 @@ const protocolliIstanzaFiltrati = computed(() => {
       protocollo.oggetto,
       protocollo.comandoMittente,
       protocollo.modalita
+    ]
+      .map((value) => String(value || '').toLowerCase())
+      .some((value) => value.includes(filtro))
+  })
+})
+
+const protocolliAllegatoFiltrati = computed(() => {
+  const filtro = String(ricercaProtocolloAllegato.value || '').trim().toLowerCase()
+  if (!filtro) return protocolliAllegato.value
+
+  return protocolliAllegato.value.filter((protocollo) => {
+    return [
+      protocollo.numeroProtocollo,
+      protocollo.dataProtocollo,
+      protocollo.oggetto,
+      protocollo.comandoMittente
     ]
       .map((value) => String(value || '').toLowerCase())
       .some((value) => value.includes(filtro))
@@ -1332,6 +1606,51 @@ function normalizzaDocumentoPrincipale(dato = {}) {
   }
 }
 
+function normalizzaAllegatoSottofase(dato = {}) {
+  return {
+    idDocumentoSottofase:
+      dato.id_documento_sottofase ??
+      dato.IDDocumentoSottofase ??
+      dato.idDocumentoSottofase ??
+      dato.id,
+    idSottofase:
+      dato.id_sottofase ??
+      dato.IDSottofase ??
+      dato.idSottofase ??
+      null,
+    titoloDocumento:
+      dato.titolo_documento ??
+      dato.TitoloDocumento ??
+      dato.titoloDocumento ??
+      '',
+    tipoOrigine:
+      dato.tipo_origine ??
+      dato.TipoOrigine ??
+      dato.tipoOrigine ??
+      '',
+    nomeFile:
+      dato.nome_file ??
+      dato.NomeFile ??
+      dato.nomeFile ??
+      '',
+    dataCreazione:
+      dato.data_creazione ??
+      dato.DataCreazione ??
+      dato.dataCreazione ??
+      '',
+    idProtocolloCollegato:
+      dato.id_protocollo_collegato ??
+      dato.IDProtocolloCollegato ??
+      dato.idProtocolloCollegato ??
+      null,
+    percorsoDocumento:
+      dato.percorso_documento ??
+      dato.PercorsoDocumento ??
+      dato.percorsoDocumento ??
+      ''
+  }
+}
+
 function labelStepOrizzontale(codice) {
   const labels = {
     ISTANZA: 'Istanza',
@@ -1474,6 +1793,10 @@ function isStepRedigi(step) {
   return String(step?.codiceStep || '').toUpperCase() === 'REDIGI'
 }
 
+function isStepAllegati(step) {
+  return String(step?.codiceStep || '').toUpperCase() === 'ALLEGATI'
+}
+
 function isIstanzaProtocolloCompletata(step) {
   const stato = String(step?.statoStep || '').toUpperCase()
   return isStepIstanza(step) &&
@@ -1489,12 +1812,23 @@ async function gestisciClickStepOrizzontale(step) {
     return
   }
 
+  if (isStepAllegati(step)) {
+    stepOperativoSelezionatoId.value = step.id
+    noteRedigiForm.value = ''
+    documentoPrincipaleRedigi.value = null
+    resetFormMetadatiDocumento()
+    await caricaAllegatiSottofase()
+    return
+  }
+
   if (!isStepIstanza(step)) {
     stepOperativoSelezionatoId.value = null
     noteRedigiForm.value = ''
     documentoPrincipaleRedigi.value = null
     resetFormMetadatiDocumento()
     erroreDocumentoPrincipaleRedigi.value = ''
+    allegatiSottofase.value = []
+    erroreAllegatiSottofase.value = ''
     return
   }
 
@@ -1520,6 +1854,170 @@ function sincronizzaStepOperativoSelezionato() {
 
   if (isStepRedigi(stepAggiornato)) {
     noteRedigiForm.value = stepAggiornato.noteOperative || ''
+  }
+}
+
+async function caricaAllegatiSottofase() {
+  const idSottofase = idSottofaseDocumentaleAllegati.value
+  if (!idSottofase) {
+    allegatiSottofase.value = []
+    erroreAllegatiSottofase.value =
+      'Contesto documentale della fase non disponibile.'
+    return
+  }
+
+  loadingAllegatiSottofase.value = true
+  erroreAllegatiSottofase.value = ''
+
+  try {
+    const allegati = await listAllegatiSottofase(idSottofase)
+    allegatiSottofase.value = Array.isArray(allegati)
+      ? allegati.map(normalizzaAllegatoSottofase)
+      : []
+  } catch (error) {
+    allegatiSottofase.value = []
+    erroreAllegatiSottofase.value = messaggioErroreAllegati(error)
+  } finally {
+    loadingAllegatiSottofase.value = false
+  }
+}
+
+async function apriDialogProtocolloAllegato() {
+  erroreProtocolloAllegato.value = ''
+  ricercaProtocolloAllegato.value = ''
+  dialogProtocolloAllegato.value = true
+  await caricaProtocolliAllegato()
+}
+
+async function caricaProtocolliAllegato() {
+  loadingProtocolliAllegato.value = true
+  erroreProtocolloAllegato.value = ''
+
+  try {
+    const protocolli = await listProtocolli()
+    protocolliAllegato.value = Array.isArray(protocolli)
+      ? protocolli.map(normalizzaProtocolloIstanza)
+      : []
+  } catch {
+    protocolliAllegato.value = []
+    erroreProtocolloAllegato.value =
+      'Impossibile caricare i protocolli disponibili.'
+  } finally {
+    loadingProtocolliAllegato.value = false
+  }
+}
+
+async function selezionaProtocolloAllegato(protocollo) {
+  const idSottofase = idSottofaseDocumentaleAllegati.value
+  if (!idSottofase || !protocollo?.idProtocollo) return
+
+  collegamentoProtocolloAllegatoInCorso.value = true
+  erroreProtocolloAllegato.value = ''
+
+  try {
+    await collegaProtocolloAllegatoSottofase(idSottofase, {
+      idProtocollo: protocollo.idProtocollo
+    })
+    await caricaAllegatiSottofase()
+    dialogProtocolloAllegato.value = false
+    messaggioFase.value = 'Protocollo collegato come allegato.'
+    snackbarFase.value = true
+  } catch (error) {
+    erroreProtocolloAllegato.value = messaggioErroreAllegati(error)
+  } finally {
+    collegamentoProtocolloAllegatoInCorso.value = false
+  }
+}
+
+function apriSelettoreFileAllegato() {
+  erroreAllegatiSottofase.value = ''
+  allegatoFileInput.value?.click()
+}
+
+async function gestisciSelezioneFileAllegato(event) {
+  const input = event?.target
+  const file = input?.files?.[0]
+  if (!file) return
+
+  await caricaFileAllegato(file)
+
+  if (input) {
+    input.value = ''
+  }
+}
+
+async function caricaFileAllegato(file) {
+  const idSottofase = idSottofaseDocumentaleAllegati.value
+  if (!idSottofase || !file) return
+
+  uploadAllegatoInCorso.value = true
+  erroreAllegatiSottofase.value = ''
+
+  try {
+    await uploadAllegatoFileSottofase(idSottofase, file)
+    await caricaAllegatiSottofase()
+    messaggioFase.value = 'File allegato caricato.'
+    snackbarFase.value = true
+  } catch (error) {
+    erroreAllegatiSottofase.value = messaggioErroreAllegati(error)
+  } finally {
+    uploadAllegatoInCorso.value = false
+  }
+}
+
+function chiudiDialogProtocolloAllegato() {
+  if (collegamentoProtocolloAllegatoInCorso.value) return
+
+  dialogProtocolloAllegato.value = false
+  erroreProtocolloAllegato.value = ''
+}
+
+async function apriAllegatoSottofase(allegato) {
+  if (allegato?.tipoOrigine === 'PROTOCOLLO' && allegato?.idProtocolloCollegato) {
+    erroreAllegatiSottofase.value = ''
+    try {
+      await apriPdfProtocolloEsterno(allegato.idProtocolloCollegato)
+    } catch (error) {
+      erroreAllegatiSottofase.value = messaggioErrorePdfProtocollo(error)
+    }
+    return
+  }
+
+  const idDocumento = allegato?.idDocumentoSottofase
+  if (!idDocumento) {
+    erroreAllegatiSottofase.value = 'Allegato non apribile: identificativo mancante.'
+    return
+  }
+
+  const openedWindow = window.open('', '_blank')
+  if (!openedWindow) {
+    erroreAllegatiSottofase.value =
+      'Il browser ha bloccato l apertura dell allegato in una nuova scheda.'
+    return
+  }
+
+  openedWindow.opener = null
+  aperturaAllegatoInCorsoId.value = idDocumento
+  erroreAllegatiSottofase.value = ''
+
+  try {
+    const blob = await apriDocumentoSottofase(idDocumento)
+    const blobUrl = URL.createObjectURL(blob)
+    openedWindow.location.href = blobUrl
+
+    setTimeout(() => {
+      URL.revokeObjectURL(blobUrl)
+    }, 60000)
+  } catch (error) {
+    erroreAllegatiSottofase.value = messaggioErroreAllegati(error)
+
+    try {
+      openedWindow.close()
+    } catch {
+      // Scheda aperta solo in risposta al click utente.
+    }
+  } finally {
+    aperturaAllegatoInCorsoId.value = null
   }
 }
 
@@ -1974,6 +2472,21 @@ function messaggioErroreDocumentoPrincipale(error) {
   return 'Impossibile aggiornare il documento principale.'
 }
 
+function messaggioErroreAllegati(error) {
+  const dettaglio = error?.payload?.detail
+  if (typeof dettaglio === 'string') return dettaglio
+
+  if (error?.status === 409) {
+    return 'Protocollo gia collegato alla sottofase.'
+  }
+
+  if (error?.status === 404) {
+    return 'Allegato o protocollo non disponibile.'
+  }
+
+  return 'Impossibile aggiornare gli allegati della sottofase.'
+}
+
 function selezionaFase(idFase) {
   faseSelezionataId.value = idFase
 }
@@ -1989,6 +2502,14 @@ function labelStatoWorkflow(stato) {
 function valoreDettaglio(value) {
   if (value === null || value === undefined || value === '') return '-'
   return value
+}
+
+function iconaAllegato(allegato) {
+  const tipoOrigine = String(allegato?.tipoOrigine || '').toUpperCase()
+  if (tipoOrigine === 'PROTOCOLLO') return 'mdi-file-document-outline'
+  if (tipoOrigine === 'FILE') return 'mdi-file-upload-outline'
+  if (tipoOrigine === 'GENERATO') return 'mdi-file-cog-outline'
+  return 'mdi-file-document-outline'
 }
 
 function classeStepOrizzontale(step) {
@@ -2143,6 +2664,34 @@ onMounted(() => {
   background: rgb(var(--v-theme-surface));
   min-width: 0;
   overflow: hidden;
+}
+
+.procedimento-page-lavorazione {
+  height: auto;
+  min-height: calc(100vh - 112px);
+  overflow: visible;
+}
+
+.procedimento-page-lavorazione .procedimento-shell {
+  align-items: start;
+  height: auto;
+  min-height: calc(100vh - 112px);
+  overflow: visible;
+}
+
+.procedimento-page-lavorazione .procedimento-rail {
+  height: calc(100vh - 112px);
+  position: sticky;
+  top: 0;
+}
+
+.procedimento-page-lavorazione .work-area,
+.procedimento-page-lavorazione .work-window,
+.procedimento-page-lavorazione .work-window :deep(.v-window__container),
+.procedimento-page-lavorazione .work-window :deep(.v-window-item) {
+  height: auto;
+  min-height: calc(100vh - 112px);
+  overflow: visible;
 }
 
 .fasi-verticali-view {
@@ -2333,12 +2882,28 @@ onMounted(() => {
   padding: 12px 38px 28px 26px;
 }
 
+.procedimento-page-lavorazione .lavorazione-view {
+  height: auto;
+  min-height: calc(100vh - 112px);
+  overflow: visible;
+  padding-bottom: 80px;
+}
+
+.lavorazione-sticky-head {
+  background: rgb(var(--v-theme-surface));
+  flex: 0 0 auto;
+  padding-top: 4px;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
 .lavorazione-toolbar {
   align-items: flex-start;
   display: flex;
   flex: 0 0 auto;
   justify-content: center;
-  min-height: 112px;
+  min-height: 78px;
   position: relative;
 }
 
@@ -2356,7 +2921,7 @@ onMounted(() => {
   margin: 0;
   max-width: min(100%, 760px);
   overflow-wrap: anywhere;
-  padding: 16px 28px;
+  padding: 8px 28px 12px;
   text-align: center;
 }
 
@@ -2364,11 +2929,11 @@ onMounted(() => {
   border: 1px dashed rgba(var(--v-theme-on-surface), 0.18);
   border-radius: 8px;
   display: flex;
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   flex-direction: column;
   min-height: 0;
-  overflow: hidden;
-  padding: 76px 40px 36px;
+  overflow: visible;
+  padding: 0 40px 48px;
 }
 
 .workflow-quick-actions {
@@ -2376,23 +2941,25 @@ onMounted(() => {
   flex: 0 0 auto;
   gap: 10px;
   justify-content: flex-start;
-  margin-bottom: 26px;
+  margin-bottom: 10px;
 }
 
 .stepper-orizzontale {
   align-items: start;
-  display: grid;
+  display: flex;
   flex: 0 0 auto;
-  grid-template-columns: repeat(5, minmax(120px, 1fr));
-  margin: 0 auto;
-  max-width: 1080px;
-  width: min(100%, 1080px);
+  flex-wrap: wrap;
+  justify-content: space-between;
+  margin: 0;
+  row-gap: 10px;
+  width: 100%;
 }
 
 .step-orizzontale-item {
   cursor: pointer;
+  flex: 1 0 16.666%;
   min-width: 0;
-  padding-bottom: 46px;
+  padding-bottom: 26px;
   position: relative;
   text-align: center;
 }
@@ -2476,8 +3043,8 @@ onMounted(() => {
 .step-orizzontale-title {
   font-size: 1rem;
   font-weight: 900;
-  margin-bottom: 8px;
-  margin-top: 42px;
+  margin-bottom: 4px;
+  margin-top: 32px;
   overflow-wrap: anywhere;
 }
 
@@ -2508,8 +3075,18 @@ onMounted(() => {
 }
 
 .stepper-empty {
+  flex: 0 0 auto;
   margin: 0 auto;
   max-width: 620px;
+}
+
+.step-operativo-scroll {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow: visible;
+  padding: 34px 8px 36px;
 }
 
 .work-content-placeholder {
@@ -2526,9 +3103,15 @@ onMounted(() => {
 .redigi-work-panel {
   align-self: center;
   flex: 0 0 auto;
-  margin-top: 30px;
   max-width: 860px;
   width: min(100%, 860px);
+}
+
+.allegati-work-panel {
+  align-self: center;
+  flex: 0 0 auto;
+  max-width: 920px;
+  width: min(100%, 920px);
 }
 
 .redigi-panel-title {
@@ -2548,6 +3131,21 @@ onMounted(() => {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
+}
+
+.allegati-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.allegati-list {
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  border-radius: 8px;
+}
+
+.allegato-item + .allegato-item {
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.08);
 }
 
 .redigi-document-card {
@@ -2671,7 +3269,7 @@ onMounted(() => {
   }
 
   .lavorazione-view {
-    overflow-y: auto;
+    overflow: visible;
     padding: 18px 14px 22px;
   }
 
@@ -2692,7 +3290,7 @@ onMounted(() => {
   .lavorazione-title {
     font-size: 1.55rem;
     max-width: none;
-    padding: 14px 18px;
+    padding: 10px 18px;
   }
 
   .lavorazione-content-card {
@@ -2700,10 +3298,19 @@ onMounted(() => {
     padding: 28px 16px;
   }
 
+  .step-operativo-scroll {
+    flex: 0 0 auto;
+    overflow: visible;
+    padding: 22px 2px 16px;
+  }
+
   .stepper-orizzontale {
     gap: 18px;
-    grid-template-columns: 1fr;
     max-width: 420px;
+  }
+
+  .step-orizzontale-item {
+    flex-basis: 100%;
   }
 
   .workflow-quick-actions {

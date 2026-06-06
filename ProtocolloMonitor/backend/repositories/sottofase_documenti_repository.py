@@ -206,6 +206,16 @@ class SottofaseDocumentiRepository(BaseRepository):
             cursor.close()
             conn.close()
 
+    def get_allegati_sottofase(self, id_sottofase: int) -> list[dict[str, Any]]:
+        """Alias esplicito per il pannello operativo Allegati."""
+
+        return self.get_allegati(id_sottofase)
+
+    def get_next_ordine_allegato(self, id_sottofase: int) -> int:
+        """Restituisce il prossimo ordine utile per un allegato."""
+
+        return self._get_next_ordine(id_sottofase)
+
     def get_documento_by_id(
         self,
         id_documento_sottofase: int,
@@ -262,6 +272,126 @@ class SottofaseDocumentiRepository(BaseRepository):
         """Alias esplicito per il vincolo 0..1 documento principale attivo."""
 
         return self.exists_documento_principale_attivo(id_sottofase)
+
+    def exists_protocollo_allegato(
+        self,
+        *,
+        id_sottofase: int,
+        id_protocollo: int,
+    ) -> bool:
+        """Verifica se un protocollo e gia allegato alla sottofase."""
+
+        query = """
+            SELECT COUNT(*) AS Totale
+            FROM T_SottofaseDocumenti
+            WHERE IDSottofase = ?
+              AND IDProtocolloCollegato = ?
+              AND RuoloDocumento = ?
+              AND TipoOrigine = ?
+              AND Attivo = ?
+        """
+
+        conn = self._open_access_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute(
+                query,
+                (id_sottofase, id_protocollo, "ALLEGATO", "PROTOCOLLO", True),
+            )
+            row = cursor.fetchone()
+            return self._get_count(row) > 0
+        finally:
+            cursor.close()
+            conn.close()
+
+    def get_protocollo_per_allegato(
+        self,
+        id_protocollo: int,
+    ) -> dict[str, Any] | None:
+        """Legge le informazioni minime del protocollo da allegare."""
+
+        query = """
+            SELECT
+                IDProtocollo,
+                NumeroProtocollo,
+                DataProtocollo,
+                Oggetto
+            FROM T_Protocolli
+            WHERE IDProtocollo = ?
+        """
+
+        conn = self._open_access_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute(query, (id_protocollo,))
+            row = cursor.fetchone()
+            if row is None:
+                return None
+
+            return {
+                "id_protocollo": self._normalize_value(
+                    self._get(row, "IDProtocollo")
+                ),
+                "numero_protocollo": self._normalize_value(
+                    self._get(row, "NumeroProtocollo")
+                ),
+                "data_protocollo": self._normalize_value(
+                    self._get(row, "DataProtocollo")
+                ),
+                "oggetto": self._normalize_value(self._get(row, "Oggetto")),
+            }
+        finally:
+            cursor.close()
+            conn.close()
+
+    def add_protocollo_come_allegato(
+        self,
+        *,
+        id_sottofase: int,
+        id_protocollo: int,
+        protocollo: dict[str, Any],
+        data_creazione: datetime,
+    ) -> dict[str, Any]:
+        """Crea un allegato di sottofase derivato da protocollo esistente."""
+
+        titolo_documento = (
+            protocollo.get("oggetto")
+            or protocollo.get("numero_protocollo")
+            or f"Protocollo {id_protocollo}"
+        )
+
+        return self.create_documento(
+            {
+                "IDSottofase": id_sottofase,
+                "RuoloDocumento": "ALLEGATO",
+                "TipoOrigine": "PROTOCOLLO",
+                "TitoloDocumento": titolo_documento,
+                "TipoDocumento": "PROTOCOLLO",
+                "IDProtocolloCollegato": id_protocollo,
+                "StatoDocumento": "ACQUISITO",
+                "Attivo": True,
+                "DataCollegamento": data_creazione,
+                "DataCreazione": data_creazione,
+                "DataModifica": data_creazione,
+            }
+        )
+
+    def create_allegato_file(
+        self,
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Registra un file esterno come allegato della sottofase."""
+
+        return self.create_documento(
+            {
+                **payload,
+                "RuoloDocumento": "ALLEGATO",
+                "TipoOrigine": "FILE",
+                "Attivo": True,
+            }
+        )
 
     def create_documento_principale(
         self,

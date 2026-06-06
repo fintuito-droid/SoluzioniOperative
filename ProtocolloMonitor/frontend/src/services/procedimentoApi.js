@@ -244,6 +244,23 @@ export function listAllegatiSottofase(idSottofase) {
   return fetchJson(`/protocollo-monitor/sottofasi/${idSottofase}/allegati`)
 }
 
+export function collegaProtocolloAllegatoSottofase(idSottofase, payload) {
+  return fetchJson(`/protocollo-monitor/sottofasi/${idSottofase}/allegati/protocollo`, {
+    method: 'POST',
+    body: JSON.stringify(payload || {})
+  })
+}
+
+export function uploadAllegatoFileSottofase(idSottofase, file) {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  return fetchJson(`/protocollo-monitor/sottofasi/${idSottofase}/allegati/upload`, {
+    method: 'POST',
+    body: formData
+  })
+}
+
 export function listStepOperativiSottofase(idSottofase) {
   return fetchJson(`/protocollo-monitor/sottofasi/${idSottofase}/step-operativi`)
 }

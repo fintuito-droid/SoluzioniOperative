@@ -2,10 +2,31 @@
 
 from __future__ import annotations
 
+import hashlib
+import mimetypes
+import re
 from datetime import datetime
+from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 from backend.core.access_backup import create_access_backup
+
+
+MAX_ALLEGATO_FILE_SIZE_BYTES = 25 * 1024 * 1024
+ALLOWED_ALLEGATO_EXTENSIONS = {
+    ".pdf",
+    ".doc",
+    ".docx",
+    ".xls",
+    ".xlsx",
+    ".ppt",
+    ".pptx",
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".txt",
+}
 
 
 class SottofaseDocumentiValidationError(ValueError):
@@ -18,6 +39,22 @@ class SottofaseDocumentoPrincipaleGiaEsistenteError(SottofaseDocumentiValidation
 
 class SottofaseDocumentoPrincipaleNotFoundError(LookupError):
     """Documento principale attivo non presente per la sottofase."""
+
+
+class SottofaseProtocolloAllegatoGiaEsistenteError(SottofaseDocumentiValidationError):
+    """Protocollo gia collegato come allegato alla sottofase."""
+
+
+class SottofaseProtocolloAllegatoNotFoundError(LookupError):
+    """Protocollo da collegare come allegato non trovato."""
+
+
+class SottofaseAllegatoFileTooLargeError(SottofaseDocumentiValidationError):
+    """File allegato superiore al limite ammesso."""
+
+
+class SottofaseAllegatoFileWriteError(RuntimeError):
+    """Errore durante salvataggio file o registrazione allegato."""
 
 
 class SottofaseDocumentiService:
@@ -47,9 +84,13 @@ class SottofaseDocumentiService:
         *,
         sottofase_documenti_repository: Any | None = None,
         backup_factory: Any = create_access_backup,
+        storage_root: Path | str | None = None,
+        now_factory: Any = datetime.now,
     ) -> None:
         self.sottofase_documenti_repository = sottofase_documenti_repository
         self.backup_factory = backup_factory
+        self.storage_root = Path(storage_root) if storage_root else self._default_storage_root()
+        self.now_factory = now_factory
 
     def get_documenti_sottofase(self, id_sottofase: int) -> list[dict[str, Any]]:
         if self.sottofase_documenti_repository is None:
@@ -191,6 +232,10 @@ class SottofaseDocumentiService:
 
         get_allegati = getattr(
             self.sottofase_documenti_repository,
+            "get_allegati_sottofase",
+            None,
+        ) or getattr(
+            self.sottofase_documenti_repository,
             "get_allegati",
             None,
         )
@@ -198,6 +243,176 @@ class SottofaseDocumentiService:
             return []
 
         return get_allegati(self._validate_id(id_sottofase, "IDSottofase"))
+
+    def exists_protocollo_allegato(
+        self,
+        *,
+        id_sottofase: int,
+        id_protocollo: int,
+    ) -> bool:
+        if self.sottofase_documenti_repository is None:
+            return False
+
+        exists = getattr(
+            self.sottofase_documenti_repository,
+            "exists_protocollo_allegato",
+            None,
+        )
+        if exists is None:
+            return False
+
+        return bool(
+            exists(
+                id_sottofase=self._validate_id(id_sottofase, "IDSottofase"),
+                id_protocollo=self._validate_id(id_protocollo, "IDProtocollo"),
+            )
+        )
+
+    def add_protocollo_come_allegato(
+        self,
+        id_sottofase: int,
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        if self.sottofase_documenti_repository is None:
+            raise SottofaseDocumentiValidationError(
+                "Repository documenti sottofase non configurato."
+            )
+
+        id_sottofase_normalizzato = self._validate_id(id_sottofase, "IDSottofase")
+        id_protocollo = self._validate_id(
+            self._pick(payload, "idProtocollo", "IDProtocollo", "id_protocollo"),
+            "IDProtocollo",
+        )
+
+        if self.exists_protocollo_allegato(
+            id_sottofase=id_sottofase_normalizzato,
+            id_protocollo=id_protocollo,
+        ):
+            raise SottofaseProtocolloAllegatoGiaEsistenteError(
+                "Protocollo gia collegato alla sottofase."
+            )
+
+        get_protocollo = getattr(
+            self.sottofase_documenti_repository,
+            "get_protocollo_per_allegato",
+            None,
+        )
+        if get_protocollo is None:
+            raise SottofaseDocumentiValidationError(
+                "Lettura protocollo non disponibile."
+            )
+
+        protocollo = get_protocollo(id_protocollo)
+        if protocollo is None:
+            raise SottofaseProtocolloAllegatoNotFoundError(
+                "Protocollo non trovato."
+            )
+
+        add_protocollo = getattr(
+            self.sottofase_documenti_repository,
+            "add_protocollo_come_allegato",
+            None,
+        )
+        if add_protocollo is None:
+            raise SottofaseDocumentiValidationError(
+                "Collegamento allegato protocollo non disponibile."
+            )
+
+        self.backup_factory()
+        return add_protocollo(
+            id_sottofase=id_sottofase_normalizzato,
+            id_protocollo=id_protocollo,
+            protocollo=protocollo,
+            data_creazione=self.now_factory(),
+        )
+
+    def upload_file_allegato(
+        self,
+        *,
+        id_sottofase: int,
+        file_bytes: bytes,
+        original_filename: str,
+        content_type: str | None = None,
+    ) -> dict[str, Any]:
+        if self.sottofase_documenti_repository is None:
+            raise SottofaseDocumentiValidationError(
+                "Repository documenti sottofase non configurato."
+            )
+
+        id_sottofase_normalizzato = self._validate_id(id_sottofase, "IDSottofase")
+        filename_originale = self._validate_allegato_file(
+            file_bytes=file_bytes,
+            original_filename=original_filename,
+        )
+        estensione = Path(filename_originale).suffix.lower()
+        safe_filename = self._safe_filename(filename_originale)
+        saved_filename = f"{uuid4().hex}_{safe_filename}"
+        target_dir = (
+            self.storage_root
+            / "sottofasi"
+            / str(id_sottofase_normalizzato)
+            / "allegati"
+        )
+        target_path = (target_dir / saved_filename).resolve()
+        storage_root = self.storage_root.resolve()
+
+        if not self._is_relative_to(target_path, storage_root):
+            raise SottofaseDocumentiValidationError("Percorso allegato non valido.")
+
+        now = self.now_factory()
+        mime_type = content_type or mimetypes.guess_type(filename_originale)[0]
+        if not mime_type:
+            mime_type = "application/octet-stream"
+        hash_file = hashlib.sha256(file_bytes).hexdigest()
+        titolo_documento = Path(filename_originale).stem
+        saved_path: Path | None = None
+
+        try:
+            target_dir.mkdir(parents=True, exist_ok=True)
+            target_path.write_bytes(file_bytes)
+            saved_path = target_path
+            self.backup_factory()
+
+            create_allegato = getattr(
+                self.sottofase_documenti_repository,
+                "create_allegato_file",
+                None,
+            )
+            if create_allegato is None:
+                raise SottofaseDocumentiValidationError(
+                    "Creazione allegato file non disponibile."
+                )
+
+            return create_allegato(
+                {
+                    "IDSottofase": id_sottofase_normalizzato,
+                    "TitoloDocumento": titolo_documento,
+                    "NomeFile": filename_originale,
+                    "Estensione": estensione,
+                    "PercorsoDocumento": str(target_path),
+                    "MimeType": mime_type,
+                    "DimensioneBytes": len(file_bytes),
+                    "HashFile": hash_file,
+                    "VersioneDocumento": 1,
+                    "StatoDocumento": "CARICATO",
+                    "TipoDocumento": estensione.lstrip(".").upper(),
+                    "Ordine": self._next_ordine_allegato(id_sottofase_normalizzato),
+                    "DataCollegamento": now,
+                    "DataCreazione": now,
+                    "DataModifica": now,
+                }
+            )
+        except (
+            SottofaseDocumentiValidationError,
+            SottofaseAllegatoFileTooLargeError,
+        ):
+            self._remove_saved_file(saved_path)
+            raise
+        except Exception as exc:
+            self._remove_saved_file(saved_path)
+            raise SottofaseAllegatoFileWriteError(
+                f"Upload allegato non riuscito: {exc}"
+            )
 
     def create_documento(self, payload: dict[str, Any]) -> dict[str, Any]:
         if self.sottofase_documenti_repository is None:
@@ -457,6 +672,70 @@ class SottofaseDocumentiService:
             raise SottofaseDocumentiValidationError(
                 f"TipoDocumento non valido: {tipo_documento}"
             )
+
+    def _next_ordine_allegato(self, id_sottofase: int) -> int:
+        get_next = getattr(
+            self.sottofase_documenti_repository,
+            "get_next_ordine_allegato",
+            None,
+        )
+        if get_next is None:
+            return 1
+        return int(get_next(id_sottofase))
+
+    @staticmethod
+    def _validate_allegato_file(
+        *,
+        file_bytes: bytes,
+        original_filename: str,
+    ) -> str:
+        if not file_bytes:
+            raise SottofaseDocumentiValidationError("File allegato mancante.")
+
+        filename = Path(str(original_filename or "")).name.strip()
+        if not filename:
+            raise SottofaseDocumentiValidationError("Nome file allegato mancante.")
+
+        extension = Path(filename).suffix.lower()
+        if extension not in ALLOWED_ALLEGATO_EXTENSIONS:
+            raise SottofaseDocumentiValidationError(
+                "Formato file non ammesso per gli allegati."
+            )
+
+        if len(file_bytes) > MAX_ALLEGATO_FILE_SIZE_BYTES:
+            raise SottofaseAllegatoFileTooLargeError(
+                "File troppo grande: limite massimo 25 MB."
+            )
+
+        return filename
+
+    @staticmethod
+    def _safe_filename(filename: str) -> str:
+        name = Path(filename).name
+        cleaned = re.sub(r"[^A-Za-z0-9._-]+", "_", name).strip("._")
+        return cleaned or f"allegato{Path(filename).suffix.lower()}"
+
+    @staticmethod
+    def _is_relative_to(path: Path, parent: Path) -> bool:
+        try:
+            path.relative_to(parent)
+            return True
+        except ValueError:
+            return False
+
+    @staticmethod
+    def _remove_saved_file(saved_path: Path | None) -> None:
+        if saved_path is None or not saved_path.exists():
+            return
+
+        try:
+            saved_path.unlink()
+        except OSError:
+            pass
+
+    @staticmethod
+    def _default_storage_root() -> Path:
+        return Path(__file__).resolve().parents[2] / "storage"
 
     def _valida_documento(
         self,

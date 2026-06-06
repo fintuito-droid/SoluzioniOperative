@@ -58,6 +58,15 @@ class SottofaseDocumentiRepositoryForTest(SottofaseDocumentiRepository):
         return self.connection
 
 
+class CapturingSottofaseDocumentiRepository(SottofaseDocumentiRepository):
+    def __init__(self):
+        self.created_payload = None
+
+    def create_documento(self, payload):
+        self.created_payload = payload
+        return {"id_documento_sottofase": 30, **payload}
+
+
 def make_documento_row(**overrides):
     values = {
         "IDDocumentoSottofase": 11,
@@ -123,6 +132,15 @@ def test_get_allegati_returns_only_allegati():
     assert cursor.executed_params == [(7, "ALLEGATO", True)]
 
 
+def test_get_allegati_sottofase_alias_returns_allegati():
+    cursor = FakeCursor([[make_documento_row(RuoloDocumento="ALLEGATO")]])
+    repository = SottofaseDocumentiRepositoryForTest(FakeConnection(cursor))
+
+    result = repository.get_allegati_sottofase(7)
+
+    assert result[0]["ruolo_documento"] == "ALLEGATO"
+
+
 def test_exists_documento_principale_attivo_returns_true():
     cursor = FakeCursor([[SimpleNamespace(Totale=1)]])
     repository = SottofaseDocumentiRepositoryForTest(FakeConnection(cursor))
@@ -136,6 +154,70 @@ def test_exists_documento_principale_alias_returns_true():
     repository = SottofaseDocumentiRepositoryForTest(FakeConnection(cursor))
 
     assert repository.exists_documento_principale(7) is True
+
+
+def test_exists_protocollo_allegato_returns_true():
+    cursor = FakeCursor([[SimpleNamespace(Totale=1)]])
+    repository = SottofaseDocumentiRepositoryForTest(FakeConnection(cursor))
+
+    assert repository.exists_protocollo_allegato(
+        id_sottofase=7,
+        id_protocollo=12,
+    ) is True
+    assert cursor.executed_params == [(7, 12, "ALLEGATO", "PROTOCOLLO", True)]
+
+
+def test_get_protocollo_per_allegato_returns_minimal_data():
+    cursor = FakeCursor(
+        [[
+            SimpleNamespace(
+                IDProtocollo=12,
+                NumeroProtocollo="123",
+                DataProtocollo=None,
+                Oggetto="Oggetto protocollo",
+            )
+        ]]
+    )
+    repository = SottofaseDocumentiRepositoryForTest(FakeConnection(cursor))
+
+    result = repository.get_protocollo_per_allegato(12)
+
+    assert result["id_protocollo"] == 12
+    assert result["oggetto"] == "Oggetto protocollo"
+
+
+def test_add_protocollo_come_allegato_creates_document_payload():
+    repository = CapturingSottofaseDocumentiRepository()
+
+    result = repository.add_protocollo_come_allegato(
+        id_sottofase=7,
+        id_protocollo=12,
+        protocollo={"oggetto": "Oggetto protocollo"},
+        data_creazione="2026-06-06 13:00:00",
+    )
+
+    assert result["RuoloDocumento"] == "ALLEGATO"
+    assert result["TipoOrigine"] == "PROTOCOLLO"
+    assert result["TitoloDocumento"] == "Oggetto protocollo"
+    assert result["IDProtocolloCollegato"] == 12
+
+
+def test_create_allegato_file_forces_file_allegato_payload():
+    repository = CapturingSottofaseDocumentiRepository()
+
+    result = repository.create_allegato_file(
+        {
+            "IDSottofase": 7,
+            "TitoloDocumento": "Planimetria",
+            "NomeFile": "planimetria.pdf",
+            "PercorsoDocumento": r"C:\Temp\planimetria.pdf",
+        }
+    )
+
+    assert result["RuoloDocumento"] == "ALLEGATO"
+    assert result["TipoOrigine"] == "FILE"
+    assert result["Attivo"] is True
+    assert repository.created_payload["RuoloDocumento"] == "ALLEGATO"
 
 
 def test_get_documento_by_id_returns_document():

@@ -42,8 +42,13 @@ from backend.services.sottofase_document_upload_service import (
     SottofaseDocumentUploadWriteError,
 )
 from backend.services.sottofase_documenti_service import (
+    MAX_ALLEGATO_FILE_SIZE_BYTES,
+    SottofaseAllegatoFileTooLargeError,
+    SottofaseAllegatoFileWriteError,
     SottofaseDocumentoPrincipaleGiaEsistenteError,
     SottofaseDocumentoPrincipaleNotFoundError,
+    SottofaseProtocolloAllegatoGiaEsistenteError,
+    SottofaseProtocolloAllegatoNotFoundError,
     SottofaseDocumentiValidationError,
 )
 from backend.services.sottofase_partecipanti_service import (
@@ -119,6 +124,12 @@ class SottofaseDocumentoPrincipaleMetadatiPayload(BaseModel):
     descrizioneDocumento: str | None = None
     statoDocumento: str | None = Field(default=None, max_length=50)
     tipoDocumento: str | None = Field(default=None, max_length=50)
+
+
+class SottofaseAllegatoProtocolloPayload(BaseModel):
+    """Payload per collegare un protocollo come allegato della sottofase."""
+
+    idProtocollo: int
 
 
 def get_container() -> DependencyContainer:
@@ -389,6 +400,39 @@ async def _read_documento_word_upload_request(
         "file_bytes": file_part.get("content") or b"",
         "filename": file_part.get("filename") or "",
         "utente_operatore": fields.get("utenteOperatore"),
+    }
+
+
+async def _read_allegato_file_upload_request(
+    request: Request,
+) -> dict[str, Any]:
+    """Legge il campo `file` dal multipart per upload allegati."""
+
+    content_length = request.headers.get("content-length")
+
+    if content_length:
+        try:
+            if int(content_length) > MAX_ALLEGATO_FILE_SIZE_BYTES + 1024 * 1024:
+                raise HTTPException(
+                    status_code=413,
+                    detail="File troppo grande: limite massimo 25 MB",
+                )
+        except ValueError:
+            pass
+
+    fields = _parse_multipart_form_data(
+        content_type=request.headers.get("content-type", ""),
+        body=await request.body(),
+    )
+    file_part = fields.get("file")
+
+    if not isinstance(file_part, dict):
+        raise HTTPException(status_code=400, detail="File allegato mancante")
+
+    return {
+        "file_bytes": file_part.get("content") or b"",
+        "filename": file_part.get("filename") or "",
+        "content_type": file_part.get("content_type") or "",
     }
 
 
@@ -980,18 +1024,65 @@ def aggiorna_sottofase_documento_principale_metadati(
 @router.get("/protocollo-monitor/sottofasi/{id_sottofase}/allegati")
 def get_sottofase_allegati(
     id_sottofase: int,
-    sottofase_service: Any = Depends(get_sottofase_documentale_service),
     documenti_service: Any = Depends(get_sottofase_documenti_service),
 ):
-    sottofase = sottofase_service.get_sottofase_documentale(id_sottofase)
-
-    if sottofase is None:
-        raise HTTPException(status_code=404, detail="Sottofase non trovata")
-
     try:
         return documenti_service.get_allegati(id_sottofase)
     except SottofaseDocumentiValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.post(
+    "/protocollo-monitor/sottofasi/{id_sottofase}/allegati/protocollo",
+    status_code=201,
+)
+def collega_protocollo_come_allegato_sottofase(
+    id_sottofase: int,
+    payload: SottofaseAllegatoProtocolloPayload,
+    documenti_service: Any = Depends(get_sottofase_documenti_service),
+):
+    try:
+        payload_data = (
+            payload.model_dump()
+            if hasattr(payload, "model_dump")
+            else payload.dict()
+        )
+        return documenti_service.add_protocollo_come_allegato(
+            id_sottofase,
+            payload_data,
+        )
+    except SottofaseProtocolloAllegatoGiaEsistenteError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    except SottofaseProtocolloAllegatoNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except SottofaseDocumentiValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.post(
+    "/protocollo-monitor/sottofasi/{id_sottofase}/allegati/upload",
+    status_code=201,
+)
+async def carica_allegato_file_sottofase(
+    id_sottofase: int,
+    request: Request,
+    documenti_service: Any = Depends(get_sottofase_documenti_service),
+):
+    upload_data = await _read_allegato_file_upload_request(request)
+
+    try:
+        return documenti_service.upload_file_allegato(
+            id_sottofase=id_sottofase,
+            file_bytes=upload_data["file_bytes"],
+            original_filename=upload_data["filename"],
+            content_type=upload_data["content_type"],
+        )
+    except SottofaseAllegatoFileTooLargeError as exc:
+        raise HTTPException(status_code=413, detail=str(exc))
+    except SottofaseDocumentiValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except SottofaseAllegatoFileWriteError as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @router.post("/protocollo-monitor/sottofasi/{id_sottofase}/documenti", status_code=201)

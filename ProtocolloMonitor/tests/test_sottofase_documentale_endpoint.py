@@ -4,10 +4,13 @@ import pytest
 from fastapi import HTTPException
 
 from backend.api.routes.protocollo_monitor import (
+    SottofaseAllegatoProtocolloPayload,
     SottofaseDocumentoPrincipaleMetadatiPayload,
     aggiorna_sottofase_documento_principale_metadati,
     apri_sottofase_documento,
+    carica_allegato_file_sottofase,
     carica_documento_word_sottofase,
+    collega_protocollo_come_allegato_sottofase,
     crea_sottofase_documento_principale,
     get_sottofase_documentale,
     get_sottofase_allegati,
@@ -47,9 +50,16 @@ class FakeSottofaseDocumentaleService:
 
 
 class FakeSottofaseDocumentiService:
-    def __init__(self, *, duplicate=False, missing_principale=False):
+    def __init__(
+        self,
+        *,
+        duplicate=False,
+        missing_principale=False,
+        duplicate_allegato=False,
+    ):
         self.duplicate = duplicate
         self.missing_principale = missing_principale
+        self.duplicate_allegato = duplicate_allegato
 
     def get_documenti_sottofase(self, id_sottofase):
         return [{"id_sottofase": id_sottofase, "ruolo_documento": "ALLEGATO"}]
@@ -88,6 +98,33 @@ class FakeSottofaseDocumentiService:
             "titolo_documento": payload["titoloDocumento"],
             "stato_documento": payload["statoDocumento"],
             "tipo_documento": payload["tipoDocumento"],
+        }
+
+    def add_protocollo_come_allegato(self, id_sottofase, payload):
+        if self.duplicate_allegato:
+            from backend.services.sottofase_documenti_service import (
+                SottofaseProtocolloAllegatoGiaEsistenteError,
+            )
+
+            raise SottofaseProtocolloAllegatoGiaEsistenteError(
+                "Protocollo gia collegato alla sottofase."
+            )
+
+        return {
+            "id_sottofase": id_sottofase,
+            "ruolo_documento": "ALLEGATO",
+            "tipo_origine": "PROTOCOLLO",
+            "id_protocollo_collegato": payload["idProtocollo"],
+        }
+
+    def upload_file_allegato(self, **kwargs):
+        return {
+            "id_sottofase": kwargs["id_sottofase"],
+            "ruolo_documento": "ALLEGATO",
+            "tipo_origine": "FILE",
+            "nome_file": kwargs["original_filename"],
+            "dimensione_bytes": len(kwargs["file_bytes"]),
+            "mime_type": kwargs["content_type"],
         }
 
 
@@ -133,6 +170,19 @@ def build_multipart_body():
         "Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document\r\n\r\n"
     ).encode("utf-8")
     body += b"docx-content\r\n"
+    body += f"--{boundary}--\r\n".encode("utf-8")
+
+    return body, f"multipart/form-data; boundary={boundary}"
+
+
+def build_allegato_multipart_body():
+    boundary = "----ProtocolloMonitorAllegatoBoundary"
+    body = (
+        f"--{boundary}\r\n"
+        'Content-Disposition: form-data; name="file"; filename="planimetria.pdf"\r\n'
+        "Content-Type: application/pdf\r\n\r\n"
+    ).encode("utf-8")
+    body += b"pdf-content\r\n"
     body += f"--{boundary}--\r\n".encode("utf-8")
 
     return body, f"multipart/form-data; boundary={boundary}"
@@ -248,13 +298,35 @@ def test_aggiorna_sottofase_documento_principale_metadati_returns_404_when_missi
 def test_get_sottofase_allegati_returns_list():
     response = get_sottofase_allegati(
         7,
-        sottofase_service=FakeSottofaseDocumentaleService(
-            sottofase={"step_corrente": "REDIGI"}
-        ),
         documenti_service=FakeSottofaseDocumentiService(),
     )
 
     assert response == [{"id_sottofase": 7, "ruolo_documento": "ALLEGATO"}]
+
+
+def test_collega_protocollo_come_allegato_sottofase_returns_record():
+    response = collega_protocollo_come_allegato_sottofase(
+        7,
+        SottofaseAllegatoProtocolloPayload(idProtocollo=12),
+        documenti_service=FakeSottofaseDocumentiService(),
+    )
+
+    assert response["ruolo_documento"] == "ALLEGATO"
+    assert response["tipo_origine"] == "PROTOCOLLO"
+    assert response["id_protocollo_collegato"] == 12
+
+
+def test_collega_protocollo_come_allegato_sottofase_returns_409_on_duplicate():
+    with pytest.raises(HTTPException) as exc_info:
+        collega_protocollo_come_allegato_sottofase(
+            7,
+            SottofaseAllegatoProtocolloPayload(idProtocollo=12),
+            documenti_service=FakeSottofaseDocumentiService(
+                duplicate_allegato=True
+            ),
+        )
+
+    assert exc_info.value.status_code == 409
 
 
 def test_get_sottofase_step_operativi_returns_list():
@@ -435,3 +507,21 @@ def test_carica_documento_word_sottofase_parses_multipart_and_calls_service():
             "utente_operatore": "Francesco Matranga",
         }
     ]
+
+
+def test_carica_allegato_file_sottofase_parses_multipart_and_calls_service():
+    body, content_type = build_allegato_multipart_body()
+
+    response = asyncio.run(
+        carica_allegato_file_sottofase(
+            7,
+            request=FakeRequest(body=body, content_type=content_type),
+            documenti_service=FakeSottofaseDocumentiService(),
+        )
+    )
+
+    assert response["id_sottofase"] == 7
+    assert response["ruolo_documento"] == "ALLEGATO"
+    assert response["tipo_origine"] == "FILE"
+    assert response["nome_file"] == "planimetria.pdf"
+    assert response["dimensione_bytes"] == len(b"pdf-content")
