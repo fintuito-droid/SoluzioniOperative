@@ -144,6 +144,26 @@ def test_get_allegati_sottofase_alias_returns_allegati():
     assert result[0]["ruolo_documento"] == "ALLEGATO"
 
 
+def test_get_allegati_eliminati_returns_only_deleted_allegati():
+    row = make_documento_row(
+        RuoloDocumento="ALLEGATO",
+        Attivo=False,
+        StatoDocumento="ELIMINATO",
+        DataEliminazione="2026-06-06 13:00:00",
+        UtenteEliminazione="operatore",
+        MotivoEliminazione="Motivo test",
+    )
+    cursor = FakeCursor([[row]])
+    repository = SottofaseDocumentiRepositoryForTest(FakeConnection(cursor))
+
+    result = repository.get_allegati_eliminati(7)
+
+    assert result[0]["ruolo_documento"] == "ALLEGATO"
+    assert result[0]["stato_documento"] == "ELIMINATO"
+    assert result[0]["data_eliminazione"] == "2026-06-06 13:00:00"
+    assert cursor.executed_params == [(7, "ALLEGATO", False, "ELIMINATO")]
+
+
 def test_exists_documento_principale_attivo_returns_true():
     cursor = FakeCursor([[SimpleNamespace(Totale=1)]])
     repository = SottofaseDocumentiRepositoryForTest(FakeConnection(cursor))
@@ -310,6 +330,66 @@ def test_elimina_logicamente_allegato_rejects_already_deleted():
 
     assert result["success"] is False
     assert result["reason"] == "already_deleted"
+    assert len(cursor.executed_queries) == 1
+
+
+def test_ripristina_allegato_updates_status_and_clears_audit_fields():
+    updated_row = make_documento_row(
+        RuoloDocumento="ALLEGATO",
+        Attivo=True,
+        StatoDocumento="ATTIVO",
+        DataEliminazione=None,
+        UtenteEliminazione=None,
+        MotivoEliminazione=None,
+    )
+    cursor = FakeCursor(
+        [
+            [
+                make_documento_row(
+                    RuoloDocumento="ALLEGATO",
+                    Attivo=False,
+                    StatoDocumento="ELIMINATO",
+                    DataEliminazione="2026-06-06 13:00:00",
+                )
+            ],
+            [],
+            [updated_row],
+        ]
+    )
+    repository = SottofaseDocumentiRepositoryForTest(FakeConnection(cursor))
+
+    result = repository.ripristina_allegato(
+        7,
+        11,
+        "operatore",
+        data_ripristino="2026-06-06 14:00:00",
+    )
+
+    assert result["success"] is True
+    assert result["id_documento"] == 11
+    assert result["documento"]["stato_documento"] == "ATTIVO"
+    assert result["documento"]["attivo"] is True
+    assert "DataEliminazione = NULL" in cursor.executed_queries[1]
+    assert cursor.executed_params[1] == (
+        True,
+        "ATTIVO",
+        "2026-06-06 14:00:00",
+        11,
+        7,
+        "ALLEGATO",
+        False,
+        "ELIMINATO",
+    )
+
+
+def test_ripristina_allegato_rejects_not_deleted():
+    cursor = FakeCursor([[make_documento_row(RuoloDocumento="ALLEGATO")]])
+    repository = SottofaseDocumentiRepositoryForTest(FakeConnection(cursor))
+
+    result = repository.ripristina_allegato(7, 11, "operatore")
+
+    assert result["success"] is False
+    assert result["reason"] == "not_deleted"
     assert len(cursor.executed_queries) == 1
 
 

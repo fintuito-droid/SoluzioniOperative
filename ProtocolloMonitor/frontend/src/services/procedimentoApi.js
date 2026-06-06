@@ -244,6 +244,10 @@ export function listAllegatiSottofase(idSottofase) {
   return fetchJson(`/protocollo-monitor/sottofasi/${idSottofase}/allegati`)
 }
 
+export function getAllegatiEliminati(idSottofase) {
+  return fetchJson(`/protocollo-monitor/sottofasi/${idSottofase}/allegati/eliminati`)
+}
+
 export function collegaProtocolloAllegatoSottofase(idSottofase, payload) {
   return fetchJson(`/protocollo-monitor/sottofasi/${idSottofase}/allegati/protocollo`, {
     method: 'POST',
@@ -264,6 +268,16 @@ export function uploadAllegatoFileSottofase(idSottofase, file) {
 export function eliminaAllegatoSottofase(idSottofase, idDocumento, payload) {
   return fetchJson(
     `/protocollo-monitor/sottofasi/${idSottofase}/allegati/${idDocumento}/elimina`,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload || {})
+    }
+  )
+}
+
+export function ripristinaAllegatoSottofase(idSottofase, idDocumento, payload) {
+  return fetchJson(
+    `/protocollo-monitor/sottofasi/${idSottofase}/allegati/${idDocumento}/ripristina`,
     {
       method: 'POST',
       body: JSON.stringify(payload || {})

@@ -840,6 +840,136 @@
                     >
                       Nessun allegato collegato alla sottofase.
                     </v-alert>
+
+                    <v-expansion-panels
+                      v-model="pannelloAllegatiEliminatiAperto"
+                      class="allegati-eliminati-panel mt-5"
+                      variant="accordion"
+                    >
+                      <v-expansion-panel :value="true">
+                        <v-expansion-panel-title>
+                          <div class="allegati-eliminati-title">
+                            <div>
+                              <div class="text-subtitle-2 font-weight-bold">
+                                Allegati eliminati
+                              </div>
+                              <div class="text-caption text-medium-emphasis">
+                                Storico eliminazioni e possibilita di ripristino.
+                              </div>
+                            </div>
+
+                            <v-chip
+                              color="warning"
+                              variant="tonal"
+                              size="small"
+                            >
+                              {{ allegatiEliminatiSottofase.length }} eliminati
+                            </v-chip>
+                          </div>
+                        </v-expansion-panel-title>
+
+                        <v-expansion-panel-text>
+                          <v-alert
+                            v-if="erroreAllegatiEliminati"
+                            type="warning"
+                            variant="tonal"
+                            density="compact"
+                            class="mb-4"
+                          >
+                            {{ erroreAllegatiEliminati }}
+                          </v-alert>
+
+                          <v-progress-linear
+                            v-if="loadingAllegatiEliminati"
+                            color="warning"
+                            indeterminate
+                            rounded
+                            class="mb-4"
+                          />
+
+                          <v-list
+                            v-else-if="allegatiEliminatiSottofase.length"
+                            class="allegati-eliminati-list"
+                            density="comfortable"
+                            lines="three"
+                          >
+                            <v-list-item
+                              v-for="allegato in allegatiEliminatiSottofase"
+                              :key="allegato.idDocumentoSottofase"
+                              class="allegato-eliminato-item"
+                            >
+                              <template #prepend>
+                                <v-avatar
+                                  color="warning"
+                                  variant="tonal"
+                                >
+                                  <v-icon>
+                                    {{ iconaAllegato(allegato) }}
+                                  </v-icon>
+                                </v-avatar>
+                              </template>
+
+                              <v-list-item-title class="font-weight-bold">
+                                {{ valoreDettaglio(allegato.titoloDocumento) }}
+                              </v-list-item-title>
+
+                              <v-list-item-subtitle>
+                                {{ valoreDettaglio(allegato.nomeFile) }}
+                                <span class="mx-1">|</span>
+                                {{ valoreDettaglio(allegato.tipoOrigine) }}
+                              </v-list-item-subtitle>
+
+                              <div class="allegato-audit-info mt-2">
+                                <v-chip
+                                  size="x-small"
+                                  color="error"
+                                  variant="tonal"
+                                >
+                                  Eliminato: {{ valoreDettaglio(allegato.dataEliminazione) }}
+                                </v-chip>
+                                <v-chip
+                                  size="x-small"
+                                  color="secondary"
+                                  variant="tonal"
+                                >
+                                  Utente: {{ valoreDettaglio(allegato.utenteEliminazione) }}
+                                </v-chip>
+                              </div>
+
+                              <div class="text-caption text-medium-emphasis mt-2">
+                                Motivo: {{ valoreDettaglio(allegato.motivoEliminazione) }}
+                              </div>
+
+                              <template #append>
+                                <v-tooltip text="Ripristina allegato">
+                                  <template #activator="{ props }">
+                                    <v-btn
+                                      v-bind="props"
+                                      color="success"
+                                      variant="text"
+                                      prepend-icon="mdi-restore"
+                                      :disabled="ripristinoAllegatoInCorso"
+                                      @click="apriDialogRipristinaAllegato(allegato)"
+                                    >
+                                      Ripristina
+                                    </v-btn>
+                                  </template>
+                                </v-tooltip>
+                              </template>
+                            </v-list-item>
+                          </v-list>
+
+                          <v-alert
+                            v-else
+                            type="info"
+                            variant="tonal"
+                            density="compact"
+                          >
+                            Nessun allegato eliminato.
+                          </v-alert>
+                        </v-expansion-panel-text>
+                      </v-expansion-panel>
+                    </v-expansion-panels>
                   </v-card-text>
                 </v-card>
 
@@ -1192,6 +1322,56 @@
       </v-card>
     </v-dialog>
 
+    <v-dialog
+      v-model="dialogRipristinaAllegato"
+      max-width="520"
+      persistent
+    >
+      <v-card rounded="lg">
+        <v-card-title class="text-subtitle-1 font-weight-bold">
+          Ripristina allegato
+        </v-card-title>
+
+        <v-card-text>
+          <v-alert
+            v-if="erroreRipristinoAllegato"
+            type="error"
+            variant="tonal"
+            density="compact"
+            class="mb-4"
+          >
+            {{ erroreRipristinoAllegato }}
+          </v-alert>
+
+          <p class="mb-0">
+            L'allegato
+            <strong>{{ titoloAllegatoDaRipristinare }}</strong>
+            tornera disponibile nella sottofase.
+          </p>
+        </v-card-text>
+
+        <v-card-actions class="justify-end">
+          <v-btn
+            variant="text"
+            :disabled="ripristinoAllegatoInCorso"
+            @click="chiudiDialogRipristinaAllegato"
+          >
+            Annulla
+          </v-btn>
+
+          <v-btn
+            color="success"
+            variant="flat"
+            prepend-icon="mdi-restore"
+            :loading="ripristinoAllegatoInCorso"
+            @click="confermaRipristinaAllegato"
+          >
+            Ripristina
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <v-snackbar
       v-model="snackbarFase"
       :color="snackbarFaseColor"
@@ -1219,6 +1399,7 @@ import {
   createFaseProcedimento,
   eliminaAllegatoSottofase,
   eliminaStepOrizzontale,
+  getAllegatiEliminati,
   getDocumentoPrincipaleSottofase,
   getProcedimento,
   inserisciStepOrizzontaleDopo,
@@ -1226,6 +1407,7 @@ import {
   listFasiProcedimento,
   listProtocolli,
   listStepOrizzontaliFase,
+  ripristinaAllegatoSottofase,
   salvaNoteStepRedigi,
   updateDocumentoPrincipaleMetadatiSottofase,
   updateFaseProcedimento,
@@ -1266,8 +1448,12 @@ const aperturaDocumentoPrincipaleInCorso = ref(false)
 const salvataggioMetadatiDocumentoInCorso = ref(false)
 const erroreDocumentoPrincipaleRedigi = ref('')
 const allegatiSottofase = ref([])
+const allegatiEliminatiSottofase = ref([])
 const loadingAllegatiSottofase = ref(false)
+const loadingAllegatiEliminati = ref(false)
 const erroreAllegatiSottofase = ref('')
+const erroreAllegatiEliminati = ref('')
+const pannelloAllegatiEliminatiAperto = ref(false)
 const dialogProtocolloAllegato = ref(false)
 const protocolliAllegato = ref([])
 const loadingProtocolliAllegato = ref(false)
@@ -1282,6 +1468,10 @@ const allegatoDaEliminare = ref(null)
 const motivoEliminazioneAllegato = ref('')
 const eliminazioneAllegatoInCorso = ref(false)
 const erroreEliminazioneAllegato = ref('')
+const dialogRipristinaAllegato = ref(false)
+const allegatoDaRipristinare = ref(null)
+const ripristinoAllegatoInCorso = ref(false)
+const erroreRipristinoAllegato = ref('')
 const dialogEliminaStep = ref(false)
 const stepDaEliminare = ref(null)
 const dialogProtocolloIstanza = ref(false)
@@ -1381,6 +1571,15 @@ const allegatiFileAccept = [
 
 const titoloAllegatoDaEliminare = computed(() => {
   const allegato = allegatoDaEliminare.value
+  return (
+    allegato?.titoloDocumento ||
+    allegato?.nomeFile ||
+    `Allegato ${allegato?.idDocumentoSottofase || ''}`.trim()
+  )
+})
+
+const titoloAllegatoDaRipristinare = computed(() => {
+  const allegato = allegatoDaRipristinare.value
   return (
     allegato?.titoloDocumento ||
     allegato?.nomeFile ||
@@ -1768,6 +1967,35 @@ function normalizzaAllegatoSottofase(dato = {}) {
       dato.DataCreazione ??
       dato.dataCreazione ??
       '',
+    dataModifica:
+      dato.data_modifica ??
+      dato.DataModifica ??
+      dato.dataModifica ??
+      '',
+    dataEliminazione:
+      dato.data_eliminazione ??
+      dato.DataEliminazione ??
+      dato.dataEliminazione ??
+      '',
+    utenteEliminazione:
+      dato.utente_eliminazione ??
+      dato.UtenteEliminazione ??
+      dato.utenteEliminazione ??
+      '',
+    motivoEliminazione:
+      dato.motivo_eliminazione ??
+      dato.MotivoEliminazione ??
+      dato.motivoEliminazione ??
+      '',
+    statoDocumento:
+      dato.stato_documento ??
+      dato.StatoDocumento ??
+      dato.statoDocumento ??
+      '',
+    attivo:
+      dato.attivo ??
+      dato.Attivo ??
+      true,
     idProtocolloCollegato:
       dato.id_protocollo_collegato ??
       dato.IDProtocolloCollegato ??
@@ -1985,7 +2213,7 @@ async function gestisciClickStepOrizzontale(step) {
     noteRedigiForm.value = ''
     documentoPrincipaleRedigi.value = null
     resetFormMetadatiDocumento()
-    await caricaAllegatiSottofase()
+    await aggiornaListeAllegatiSottofase()
     return
   }
 
@@ -1996,7 +2224,9 @@ async function gestisciClickStepOrizzontale(step) {
     resetFormMetadatiDocumento()
     erroreDocumentoPrincipaleRedigi.value = ''
     allegatiSottofase.value = []
+    allegatiEliminatiSottofase.value = []
     erroreAllegatiSottofase.value = ''
+    erroreAllegatiEliminati.value = ''
     return
   }
 
@@ -2025,10 +2255,18 @@ function sincronizzaStepOperativoSelezionato() {
   }
 }
 
+async function aggiornaListeAllegatiSottofase() {
+  await Promise.all([
+    caricaAllegatiSottofase(),
+    caricaAllegatiEliminatiSottofase()
+  ])
+}
+
 async function caricaAllegatiSottofase() {
   const idSottofase = idSottofaseDocumentaleAllegati.value
   if (!idSottofase) {
     allegatiSottofase.value = []
+    allegatiEliminatiSottofase.value = []
     erroreAllegatiSottofase.value =
       'Contesto documentale della fase non disponibile.'
     return
@@ -2047,6 +2285,34 @@ async function caricaAllegatiSottofase() {
     erroreAllegatiSottofase.value = messaggioErroreAllegati(error)
   } finally {
     loadingAllegatiSottofase.value = false
+  }
+}
+
+async function caricaAllegatiEliminatiSottofase() {
+  const idSottofase = idSottofaseDocumentaleAllegati.value
+  if (!idSottofase) {
+    allegatiEliminatiSottofase.value = []
+    erroreAllegatiEliminati.value =
+      'Contesto documentale della fase non disponibile.'
+    return
+  }
+
+  loadingAllegatiEliminati.value = true
+  erroreAllegatiEliminati.value = ''
+
+  try {
+    const response = await getAllegatiEliminati(idSottofase)
+    const items = Array.isArray(response)
+      ? response
+      : Array.isArray(response?.items)
+        ? response.items
+        : []
+    allegatiEliminatiSottofase.value = items.map(normalizzaAllegatoSottofase)
+  } catch (error) {
+    allegatiEliminatiSottofase.value = []
+    erroreAllegatiEliminati.value = messaggioErroreAllegati(error)
+  } finally {
+    loadingAllegatiEliminati.value = false
   }
 }
 
@@ -2086,7 +2352,7 @@ async function selezionaProtocolloAllegato(protocollo) {
     await collegaProtocolloAllegatoSottofase(idSottofase, {
       idProtocollo: protocollo.idProtocollo
     })
-    await caricaAllegatiSottofase()
+    await aggiornaListeAllegatiSottofase()
     dialogProtocolloAllegato.value = false
     mostraSnackbarFase('Protocollo collegato come allegato.', 'success')
   } catch (error) {
@@ -2122,7 +2388,7 @@ async function caricaFileAllegato(file) {
 
   try {
     await uploadAllegatoFileSottofase(idSottofase, file)
-    await caricaAllegatiSottofase()
+    await aggiornaListeAllegatiSottofase()
     mostraSnackbarFase('File allegato caricato.', 'success')
   } catch (error) {
     erroreAllegatiSottofase.value = messaggioErroreAllegati(error)
@@ -2220,7 +2486,7 @@ async function confermaEliminaAllegato() {
       motivoEliminazione: motivoEliminazioneAllegato.value,
       utenteEliminazione: 'operatore'
     })
-    await caricaAllegatiSottofase()
+    await aggiornaListeAllegatiSottofase()
     eliminazioneAllegatoInCorso.value = false
     chiudiDialogEliminaAllegato()
     mostraSnackbarFase('Allegato eliminato logicamente.', 'success')
@@ -2229,6 +2495,48 @@ async function confermaEliminaAllegato() {
     mostraSnackbarFase(erroreEliminazioneAllegato.value, 'error')
   } finally {
     eliminazioneAllegatoInCorso.value = false
+  }
+}
+
+function apriDialogRipristinaAllegato(allegato) {
+  allegatoDaRipristinare.value = allegato
+  erroreRipristinoAllegato.value = ''
+  dialogRipristinaAllegato.value = true
+}
+
+function chiudiDialogRipristinaAllegato() {
+  if (ripristinoAllegatoInCorso.value) return
+
+  dialogRipristinaAllegato.value = false
+  allegatoDaRipristinare.value = null
+  erroreRipristinoAllegato.value = ''
+}
+
+async function confermaRipristinaAllegato() {
+  const idSottofase = idSottofaseDocumentaleAllegati.value
+  const idDocumento = allegatoDaRipristinare.value?.idDocumentoSottofase
+  if (!idSottofase || !idDocumento) {
+    erroreRipristinoAllegato.value =
+      'Allegato non ripristinabile: contesto non disponibile.'
+    return
+  }
+
+  ripristinoAllegatoInCorso.value = true
+  erroreRipristinoAllegato.value = ''
+
+  try {
+    await ripristinaAllegatoSottofase(idSottofase, idDocumento, {
+      utenteRipristino: 'operatore'
+    })
+    await aggiornaListeAllegatiSottofase()
+    ripristinoAllegatoInCorso.value = false
+    chiudiDialogRipristinaAllegato()
+    mostraSnackbarFase('Allegato ripristinato.', 'success')
+  } catch (error) {
+    erroreRipristinoAllegato.value = messaggioErroreRipristinoAllegato(error)
+    mostraSnackbarFase(erroreRipristinoAllegato.value, 'error')
+  } finally {
+    ripristinoAllegatoInCorso.value = false
   }
 }
 
@@ -2711,6 +3019,25 @@ function messaggioErroreEliminazioneAllegato(error) {
   }
 
   return 'Impossibile eliminare allegato.'
+}
+
+function messaggioErroreRipristinoAllegato(error) {
+  const dettaglio = error?.payload?.detail
+  if (typeof dettaglio === 'string') return dettaglio
+
+  if (error?.status === 400) {
+    return 'Allegato non ripristinabile.'
+  }
+
+  if (error?.status === 404) {
+    return 'Allegato non trovato o non appartenente alla sottofase.'
+  }
+
+  if (error?.status === 500) {
+    return 'Errore imprevisto durante ripristino allegato.'
+  }
+
+  return 'Impossibile ripristinare allegato.'
 }
 
 function mostraSnackbarFase(messaggio, color = 'success') {
@@ -3428,6 +3755,39 @@ onMounted(() => {
 .allegati-list {
   border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
   border-radius: 8px;
+}
+
+.allegati-eliminati-panel {
+  border: 1px solid rgba(var(--v-theme-warning), 0.22);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.allegati-eliminati-title {
+  align-items: center;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.allegati-eliminati-list {
+  border: 1px dashed rgba(var(--v-theme-warning), 0.34);
+  border-radius: 8px;
+}
+
+.allegato-eliminato-item {
+  background: rgba(var(--v-theme-warning), 0.045);
+}
+
+.allegato-eliminato-item + .allegato-eliminato-item {
+  border-top: 1px solid rgba(var(--v-theme-warning), 0.16);
+}
+
+.allegato-audit-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .allegato-item + .allegato-item {

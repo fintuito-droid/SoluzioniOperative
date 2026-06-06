@@ -6,6 +6,7 @@ from fastapi import HTTPException
 from backend.api.routes.protocollo_monitor import (
     SottofaseAllegatoEliminaPayload,
     SottofaseAllegatoProtocolloPayload,
+    SottofaseAllegatoRipristinaPayload,
     SottofaseDocumentoPrincipaleMetadatiPayload,
     aggiorna_sottofase_documento_principale_metadati,
     apri_sottofase_documento,
@@ -14,11 +15,13 @@ from backend.api.routes.protocollo_monitor import (
     collega_protocollo_come_allegato_sottofase,
     crea_sottofase_documento_principale,
     elimina_allegato_sottofase,
+    get_sottofase_allegati_eliminati,
     get_sottofase_documentale,
     get_sottofase_allegati,
     get_sottofase_documento_principale,
     get_sottofase_documenti,
     get_sottofase_step_operativi,
+    ripristina_allegato_sottofase,
     scarica_sottofase_documento,
 )
 
@@ -59,12 +62,15 @@ class FakeSottofaseDocumentiService:
         missing_principale=False,
         duplicate_allegato=False,
         delete_mode=None,
+        restore_mode=None,
     ):
         self.duplicate = duplicate
         self.missing_principale = missing_principale
         self.duplicate_allegato = duplicate_allegato
         self.delete_mode = delete_mode
+        self.restore_mode = restore_mode
         self.delete_calls = []
+        self.restore_calls = []
 
     def get_documenti_sottofase(self, id_sottofase):
         return [{"id_sottofase": id_sottofase, "ruolo_documento": "ALLEGATO"}]
@@ -74,6 +80,17 @@ class FakeSottofaseDocumentiService:
 
     def get_allegati(self, id_sottofase):
         return [{"id_sottofase": id_sottofase, "ruolo_documento": "ALLEGATO"}]
+
+    def get_allegati_eliminati(self, id_sottofase):
+        return {
+            "items": [
+                {
+                    "id_sottofase": id_sottofase,
+                    "ruolo_documento": "ALLEGATO",
+                    "stato_documento": "ELIMINATO",
+                }
+            ]
+        }
 
     def create_documento_principale(self, id_sottofase):
         if self.duplicate:
@@ -159,6 +176,34 @@ class FakeSottofaseDocumentiService:
         return {
             "success": True,
             "message": "Allegato eliminato logicamente",
+            "idDocumento": id_documento,
+        }
+
+    def ripristina_allegato(self, *, id_sottofase, id_documento, payload):
+        self.restore_calls.append(
+            {
+                "id_sottofase": id_sottofase,
+                "id_documento": id_documento,
+                "payload": payload,
+            }
+        )
+        if self.restore_mode == "missing":
+            from backend.services.sottofase_documenti_service import (
+                SottofaseAllegatoNotFoundError,
+            )
+
+            raise SottofaseAllegatoNotFoundError("Documento non trovato.")
+
+        if self.restore_mode == "invalid":
+            from backend.services.sottofase_documenti_service import (
+                SottofaseAllegatoRipristinoError,
+            )
+
+            raise SottofaseAllegatoRipristinoError("Allegato non eliminato.")
+
+        return {
+            "success": True,
+            "message": "Allegato ripristinato",
             "idDocumento": id_documento,
         }
 
@@ -339,6 +384,23 @@ def test_get_sottofase_allegati_returns_list():
     assert response == [{"id_sottofase": 7, "ruolo_documento": "ALLEGATO"}]
 
 
+def test_get_sottofase_allegati_eliminati_returns_items():
+    response = get_sottofase_allegati_eliminati(
+        7,
+        documenti_service=FakeSottofaseDocumentiService(),
+    )
+
+    assert response == {
+        "items": [
+            {
+                "id_sottofase": 7,
+                "ruolo_documento": "ALLEGATO",
+                "stato_documento": "ELIMINATO",
+            }
+        ]
+    }
+
+
 def test_collega_protocollo_come_allegato_sottofase_returns_record():
     response = collega_protocollo_come_allegato_sottofase(
         7,
@@ -410,6 +472,51 @@ def test_elimina_allegato_sottofase_returns_400_when_invalid():
             11,
             SottofaseAllegatoEliminaPayload(),
             documenti_service=FakeSottofaseDocumentiService(delete_mode="invalid"),
+        )
+
+    assert exc_info.value.status_code == 400
+
+
+def test_ripristina_allegato_sottofase_returns_success():
+    service = FakeSottofaseDocumentiService()
+
+    response = ripristina_allegato_sottofase(
+        7,
+        11,
+        SottofaseAllegatoRipristinaPayload(utenteRipristino="Mario Rossi"),
+        documenti_service=service,
+    )
+
+    assert response["success"] is True
+    assert response["idDocumento"] == 11
+    assert service.restore_calls == [
+        {
+            "id_sottofase": 7,
+            "id_documento": 11,
+            "payload": {"utenteRipristino": "Mario Rossi"},
+        }
+    ]
+
+
+def test_ripristina_allegato_sottofase_returns_404_when_missing():
+    with pytest.raises(HTTPException) as exc_info:
+        ripristina_allegato_sottofase(
+            7,
+            11,
+            SottofaseAllegatoRipristinaPayload(),
+            documenti_service=FakeSottofaseDocumentiService(restore_mode="missing"),
+        )
+
+    assert exc_info.value.status_code == 404
+
+
+def test_ripristina_allegato_sottofase_returns_400_when_invalid():
+    with pytest.raises(HTTPException) as exc_info:
+        ripristina_allegato_sottofase(
+            7,
+            11,
+            SottofaseAllegatoRipristinaPayload(),
+            documenti_service=FakeSottofaseDocumentiService(restore_mode="invalid"),
         )
 
     assert exc_info.value.status_code == 400

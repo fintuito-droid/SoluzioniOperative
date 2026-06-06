@@ -65,6 +65,10 @@ class SottofaseAllegatoEliminazioneError(SottofaseDocumentiValidationError):
     """Allegato non eliminabile logicamente."""
 
 
+class SottofaseAllegatoRipristinoError(SottofaseDocumentiValidationError):
+    """Allegato non ripristinabile."""
+
+
 class SottofaseDocumentiService:
     """Regole applicative del modello documentale unificato."""
 
@@ -251,6 +255,21 @@ class SottofaseDocumentiService:
             return []
 
         return get_allegati(self._validate_id(id_sottofase, "IDSottofase"))
+
+    def get_allegati_eliminati(self, id_sottofase: int) -> dict[str, Any]:
+        if self.sottofase_documenti_repository is None:
+            return {"items": []}
+
+        get_eliminati = getattr(
+            self.sottofase_documenti_repository,
+            "get_allegati_eliminati",
+            None,
+        )
+        if get_eliminati is None:
+            return {"items": []}
+
+        items = get_eliminati(self._validate_id(id_sottofase, "IDSottofase"))
+        return {"items": items}
 
     def exists_protocollo_allegato(
         self,
@@ -579,6 +598,77 @@ class SottofaseDocumentiService:
             raise SottofaseAllegatoEliminazioneError("Allegato gia eliminato.")
 
         raise SottofaseAllegatoEliminazioneError(message)
+
+    def ripristina_allegato(
+        self,
+        *,
+        id_sottofase: int,
+        id_documento: int,
+        payload: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Ripristina un allegato eliminato logicamente."""
+
+        if self.sottofase_documenti_repository is None:
+            raise SottofaseDocumentiValidationError(
+                "Repository documenti sottofase non configurato."
+            )
+
+        ripristina = getattr(
+            self.sottofase_documenti_repository,
+            "ripristina_allegato",
+            None,
+        )
+        if ripristina is None:
+            raise SottofaseDocumentiValidationError(
+                "Ripristino allegato non disponibile."
+            )
+
+        id_sottofase_normalizzato = self._validate_id(id_sottofase, "IDSottofase")
+        id_documento_normalizzato = self._validate_id(
+            id_documento,
+            "IDDocumentoSottofase",
+        )
+        dati = payload or {}
+        utente = self._text_or_none(
+            self._pick(
+                dati,
+                "utenteRipristino",
+                "UtenteRipristino",
+                "utente_ripristino",
+            )
+        ) or "operatore"
+
+        self.backup_factory()
+        result = ripristina(
+            id_sottofase_normalizzato,
+            id_documento_normalizzato,
+            utente,
+            data_ripristino=self.now_factory(),
+        )
+
+        if result.get("success"):
+            return {
+                "success": True,
+                "message": "Allegato ripristinato",
+                "idDocumento": id_documento_normalizzato,
+                "documento": result.get("documento"),
+            }
+
+        reason = result.get("reason")
+        message = result.get("message") or "Allegato non ripristinabile."
+
+        if reason == "not_found":
+            raise SottofaseAllegatoNotFoundError(message)
+
+        if reason == "not_allegato":
+            raise SottofaseAllegatoRipristinoError(
+                "Il documento indicato non e un allegato."
+            )
+
+        if reason == "not_deleted":
+            raise SottofaseAllegatoRipristinoError("Allegato non eliminato.")
+
+        raise SottofaseAllegatoRipristinoError(message)
 
     def _normalizza_payload_creazione(self, payload: dict[str, Any]) -> dict[str, Any]:
         now = datetime.now()

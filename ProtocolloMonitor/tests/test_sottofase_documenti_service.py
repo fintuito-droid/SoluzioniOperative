@@ -6,6 +6,7 @@ from backend.services.sottofase_documenti_service import (
     SottofaseAllegatoEliminazioneError,
     SottofaseAllegatoFileTooLargeError,
     SottofaseAllegatoNotFoundError,
+    SottofaseAllegatoRipristinoError,
     SottofaseDocumentoPrincipaleGiaEsistenteError,
     SottofaseDocumentoPrincipaleNotFoundError,
     SottofaseProtocolloAllegatoGiaEsistenteError,
@@ -24,15 +25,18 @@ class FakeSottofaseDocumentiRepository:
         protocollo_allegato_exists=False,
         protocollo_missing=False,
         eliminazione_result=None,
+        ripristino_result=None,
     ):
         self.principale_exists = principale_exists
         self.update_missing = update_missing
         self.protocollo_allegato_exists = protocollo_allegato_exists
         self.protocollo_missing = protocollo_missing
         self.eliminazione_result = eliminazione_result
+        self.ripristino_result = ripristino_result
         self.created_payloads = []
         self.updated_metadati = []
         self.eliminazione_calls = []
+        self.ripristino_calls = []
 
     def get_documenti_sottofase(self, id_sottofase):
         return [{"id_sottofase": id_sottofase, "ruolo_documento": "ALLEGATO"}]
@@ -45,6 +49,16 @@ class FakeSottofaseDocumentiRepository:
 
     def get_allegati_sottofase(self, id_sottofase):
         return self.get_allegati(id_sottofase)
+
+    def get_allegati_eliminati(self, id_sottofase):
+        return [
+            {
+                "id_sottofase": id_sottofase,
+                "ruolo_documento": "ALLEGATO",
+                "stato_documento": "ELIMINATO",
+                "attivo": False,
+            }
+        ]
 
     def exists_documento_principale_attivo(self, id_sottofase, **kwargs):
         return self.principale_exists
@@ -160,6 +174,36 @@ class FakeSottofaseDocumentiRepository:
             },
         }
 
+    def ripristina_allegato(
+        self,
+        id_sottofase,
+        id_documento,
+        utente_ripristino,
+        *,
+        data_ripristino,
+    ):
+        self.ripristino_calls.append(
+            {
+                "id_sottofase": id_sottofase,
+                "id_documento": id_documento,
+                "utente_ripristino": utente_ripristino,
+                "data_ripristino": data_ripristino,
+            }
+        )
+        if self.ripristino_result is not None:
+            return self.ripristino_result
+        return {
+            "success": True,
+            "id_documento": id_documento,
+            "documento": {
+                "id_documento_sottofase": id_documento,
+                "id_sottofase": id_sottofase,
+                "ruolo_documento": "ALLEGATO",
+                "stato_documento": "ATTIVO",
+                "attivo": True,
+            },
+        }
+
 
 def test_get_documenti_sottofase_uses_repository():
     service = SottofaseDocumentiService(
@@ -189,6 +233,25 @@ def test_get_allegati_uses_repository():
     result = service.get_allegati(7)
 
     assert result[0]["ruolo_documento"] == "ALLEGATO"
+
+
+def test_get_allegati_eliminati_returns_items_wrapper():
+    service = SottofaseDocumentiService(
+        sottofase_documenti_repository=FakeSottofaseDocumentiRepository()
+    )
+
+    result = service.get_allegati_eliminati(7)
+
+    assert result == {
+        "items": [
+            {
+                "id_sottofase": 7,
+                "ruolo_documento": "ALLEGATO",
+                "stato_documento": "ELIMINATO",
+                "attivo": False,
+            }
+        ]
+    }
 
 
 def test_create_documento_rejects_invalid_role():
@@ -619,6 +682,91 @@ def test_elimina_logicamente_allegato_raises_when_already_deleted():
 
     with pytest.raises(SottofaseAllegatoEliminazioneError):
         service.elimina_logicamente_allegato(
+            id_sottofase=7,
+            id_documento=11,
+            payload={},
+        )
+
+
+def test_ripristina_allegato_uses_default_operator_and_backup():
+    calls = []
+    repository = FakeSottofaseDocumentiRepository()
+    service = SottofaseDocumentiService(
+        sottofase_documenti_repository=repository,
+        backup_factory=lambda: calls.append("backup"),
+        now_factory=lambda: datetime(2026, 6, 6, 14, 0, 0),
+    )
+
+    result = service.ripristina_allegato(
+        id_sottofase=7,
+        id_documento=11,
+        payload={},
+    )
+
+    assert calls == ["backup"]
+    assert result["success"] is True
+    assert result["idDocumento"] == 11
+    assert repository.ripristino_calls == [
+        {
+            "id_sottofase": 7,
+            "id_documento": 11,
+            "utente_ripristino": "operatore",
+            "data_ripristino": datetime(2026, 6, 6, 14, 0, 0),
+        }
+    ]
+
+
+def test_ripristina_allegato_normalizes_operator():
+    repository = FakeSottofaseDocumentiRepository()
+    service = SottofaseDocumentiService(
+        sottofase_documenti_repository=repository,
+        backup_factory=lambda: None,
+        now_factory=lambda: datetime(2026, 6, 6, 14, 0, 0),
+    )
+
+    service.ripristina_allegato(
+        id_sottofase=7,
+        id_documento=11,
+        payload={"utenteRipristino": "  Mario Rossi  "},
+    )
+
+    assert repository.ripristino_calls[0]["utente_ripristino"] == "Mario Rossi"
+
+
+def test_ripristina_allegato_raises_when_missing():
+    service = SottofaseDocumentiService(
+        sottofase_documenti_repository=FakeSottofaseDocumentiRepository(
+            ripristino_result={
+                "success": False,
+                "reason": "not_found",
+                "message": "Documento non trovato.",
+            }
+        ),
+        backup_factory=lambda: None,
+    )
+
+    with pytest.raises(SottofaseAllegatoNotFoundError):
+        service.ripristina_allegato(
+            id_sottofase=7,
+            id_documento=11,
+            payload={},
+        )
+
+
+def test_ripristina_allegato_raises_when_not_deleted():
+    service = SottofaseDocumentiService(
+        sottofase_documenti_repository=FakeSottofaseDocumentiRepository(
+            ripristino_result={
+                "success": False,
+                "reason": "not_deleted",
+                "message": "Allegato non eliminato.",
+            }
+        ),
+        backup_factory=lambda: None,
+    )
+
+    with pytest.raises(SottofaseAllegatoRipristinoError):
+        service.ripristina_allegato(
             id_sottofase=7,
             id_documento=11,
             payload={},

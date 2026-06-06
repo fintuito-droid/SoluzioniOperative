@@ -47,6 +47,7 @@ from backend.services.sottofase_documenti_service import (
     SottofaseAllegatoFileTooLargeError,
     SottofaseAllegatoFileWriteError,
     SottofaseAllegatoNotFoundError,
+    SottofaseAllegatoRipristinoError,
     SottofaseDocumentoPrincipaleGiaEsistenteError,
     SottofaseDocumentoPrincipaleNotFoundError,
     SottofaseProtocolloAllegatoGiaEsistenteError,
@@ -139,6 +140,12 @@ class SottofaseAllegatoEliminaPayload(BaseModel):
 
     motivoEliminazione: str | None = None
     utenteEliminazione: str | None = None
+
+
+class SottofaseAllegatoRipristinaPayload(BaseModel):
+    """Payload per ripristinare un allegato eliminato logicamente."""
+
+    utenteRipristino: str | None = None
 
 
 def get_container() -> DependencyContainer:
@@ -1046,6 +1053,17 @@ def get_sottofase_allegati(
         raise HTTPException(status_code=400, detail=str(exc))
 
 
+@router.get("/protocollo-monitor/sottofasi/{id_sottofase}/allegati/eliminati")
+def get_sottofase_allegati_eliminati(
+    id_sottofase: int,
+    documenti_service: Any = Depends(get_sottofase_documenti_service),
+):
+    try:
+        return documenti_service.get_allegati_eliminati(id_sottofase)
+    except SottofaseDocumentiValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
 @router.post(
     "/protocollo-monitor/sottofasi/{id_sottofase}/allegati/protocollo",
     status_code=201,
@@ -1126,6 +1144,38 @@ def elimina_allegato_sottofase(
         raise HTTPException(status_code=404, detail=str(exc))
     except (
         SottofaseAllegatoEliminazioneError,
+        SottofaseDocumentiValidationError,
+    ) as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.post(
+    "/protocollo-monitor/sottofasi/{id_sottofase}/allegati/{id_documento}/ripristina"
+)
+def ripristina_allegato_sottofase(
+    id_sottofase: int,
+    id_documento: int,
+    payload: SottofaseAllegatoRipristinaPayload | None = None,
+    documenti_service: Any = Depends(get_sottofase_documenti_service),
+):
+    try:
+        payload_data = {}
+        if payload is not None:
+            payload_data = (
+                payload.model_dump()
+                if hasattr(payload, "model_dump")
+                else payload.dict()
+            )
+
+        return documenti_service.ripristina_allegato(
+            id_sottofase=id_sottofase,
+            id_documento=id_documento,
+            payload=payload_data,
+        )
+    except SottofaseAllegatoNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except (
+        SottofaseAllegatoRipristinoError,
         SottofaseDocumentiValidationError,
     ) as exc:
         raise HTTPException(status_code=400, detail=str(exc))
