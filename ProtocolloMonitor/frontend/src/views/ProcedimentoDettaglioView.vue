@@ -804,15 +804,30 @@
                         </v-list-item-subtitle>
 
                         <template #append>
-                          <v-btn
-                            color="primary"
-                            variant="text"
-                            prepend-icon="mdi-open-in-new"
-                            :loading="aperturaAllegatoInCorsoId === allegato.idDocumentoSottofase"
-                            @click="apriAllegatoSottofase(allegato)"
-                          >
-                            Apri
-                          </v-btn>
+                          <div class="allegato-item-actions">
+                            <v-btn
+                              color="primary"
+                              variant="text"
+                              prepend-icon="mdi-open-in-new"
+                              :loading="aperturaAllegatoInCorsoId === allegato.idDocumentoSottofase"
+                              @click="apriAllegatoSottofase(allegato)"
+                            >
+                              Apri
+                            </v-btn>
+
+                            <v-tooltip text="Elimina allegato">
+                              <template #activator="{ props }">
+                                <v-btn
+                                  v-bind="props"
+                                  color="error"
+                                  variant="text"
+                                  icon="mdi-delete-outline"
+                                  :disabled="eliminazioneAllegatoInCorso"
+                                  @click="apriDialogEliminaAllegato(allegato)"
+                                />
+                              </template>
+                            </v-tooltip>
+                          </div>
                         </template>
                       </v-list-item>
                     </v-list>
@@ -1110,9 +1125,76 @@
       </v-card>
     </v-dialog>
 
+    <v-dialog
+      v-model="dialogEliminaAllegato"
+      max-width="560"
+      persistent
+    >
+      <v-card rounded="lg">
+        <v-card-title class="text-subtitle-1 font-weight-bold">
+          Elimina allegato
+        </v-card-title>
+
+        <v-card-text>
+          <v-alert
+            v-if="erroreEliminazioneAllegato"
+            type="error"
+            variant="tonal"
+            density="compact"
+            class="mb-4"
+          >
+            {{ erroreEliminazioneAllegato }}
+          </v-alert>
+
+          <p class="mb-3">
+            Confermi l'eliminazione logica dell'allegato
+            <strong>{{ titoloAllegatoDaEliminare }}</strong>?
+          </p>
+
+          <v-alert
+            type="info"
+            variant="tonal"
+            density="compact"
+            class="mb-4"
+          >
+            Il file non verra cancellato fisicamente e restera disponibile per audit.
+          </v-alert>
+
+          <v-textarea
+            v-model="motivoEliminazioneAllegato"
+            label="Motivo eliminazione"
+            variant="outlined"
+            rows="3"
+            auto-grow
+            counter="500"
+          />
+        </v-card-text>
+
+        <v-card-actions class="justify-end">
+          <v-btn
+            variant="text"
+            :disabled="eliminazioneAllegatoInCorso"
+            @click="chiudiDialogEliminaAllegato"
+          >
+            Annulla
+          </v-btn>
+
+          <v-btn
+            color="error"
+            variant="flat"
+            prepend-icon="mdi-delete-outline"
+            :loading="eliminazioneAllegatoInCorso"
+            @click="confermaEliminaAllegato"
+          >
+            Elimina
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <v-snackbar
       v-model="snackbarFase"
-      color="success"
+      :color="snackbarFaseColor"
       timeout="3000"
     >
       {{ messaggioFase }}
@@ -1135,6 +1217,7 @@ import {
   collegaProtocolloStepIstanza,
   createDocumentoPrincipaleSottofase,
   createFaseProcedimento,
+  eliminaAllegatoSottofase,
   eliminaStepOrizzontale,
   getDocumentoPrincipaleSottofase,
   getProcedimento,
@@ -1194,6 +1277,11 @@ const ricercaProtocolloAllegato = ref('')
 const aperturaAllegatoInCorsoId = ref(null)
 const allegatoFileInput = ref(null)
 const uploadAllegatoInCorso = ref(false)
+const dialogEliminaAllegato = ref(false)
+const allegatoDaEliminare = ref(null)
+const motivoEliminazioneAllegato = ref('')
+const eliminazioneAllegatoInCorso = ref(false)
+const erroreEliminazioneAllegato = ref('')
 const dialogEliminaStep = ref(false)
 const stepDaEliminare = ref(null)
 const dialogProtocolloIstanza = ref(false)
@@ -1211,6 +1299,7 @@ const salvataggioFaseInCorso = ref(false)
 const erroreFaseDialog = ref('')
 const snackbarFase = ref(false)
 const messaggioFase = ref('')
+const snackbarFaseColor = ref('success')
 const faseForm = reactive({
   Titolo: '',
   Descrizione: ''
@@ -1289,6 +1378,15 @@ const allegatiFileAccept = [
   '.png',
   '.txt'
 ].join(',')
+
+const titoloAllegatoDaEliminare = computed(() => {
+  const allegato = allegatoDaEliminare.value
+  return (
+    allegato?.titoloDocumento ||
+    allegato?.nomeFile ||
+    `Allegato ${allegato?.idDocumentoSottofase || ''}`.trim()
+  )
+})
 
 const headersProtocolliIstanza = [
   { title: 'Numero', key: 'numeroProtocollo', sortable: true },
@@ -1827,8 +1925,7 @@ async function configuraWorkflowRapidoIstanzaFine() {
       faseSelezionata.value.id
     )
     aggiornaStepOrizzontali(step)
-    messaggioFase.value = 'Workflow rapido Istanza -> Fine applicato.'
-    snackbarFase.value = true
+    mostraSnackbarFase('Workflow rapido Istanza -> Fine applicato.', 'success')
   } catch (error) {
     erroreStepOrizzontali.value = messaggioErroreStep(error)
   } finally {
@@ -1848,8 +1945,7 @@ async function configuraWorkflowPredefinito() {
       faseSelezionata.value.id
     )
     aggiornaStepOrizzontali(step)
-    messaggioFase.value = 'Workflow predefinito applicato.'
-    snackbarFase.value = true
+    mostraSnackbarFase('Workflow predefinito applicato.', 'success')
   } catch (error) {
     erroreStepOrizzontali.value = messaggioErroreStep(error)
   } finally {
@@ -1992,8 +2088,7 @@ async function selezionaProtocolloAllegato(protocollo) {
     })
     await caricaAllegatiSottofase()
     dialogProtocolloAllegato.value = false
-    messaggioFase.value = 'Protocollo collegato come allegato.'
-    snackbarFase.value = true
+    mostraSnackbarFase('Protocollo collegato come allegato.', 'success')
   } catch (error) {
     erroreProtocolloAllegato.value = messaggioErroreAllegati(error)
   } finally {
@@ -2028,8 +2123,7 @@ async function caricaFileAllegato(file) {
   try {
     await uploadAllegatoFileSottofase(idSottofase, file)
     await caricaAllegatiSottofase()
-    messaggioFase.value = 'File allegato caricato.'
-    snackbarFase.value = true
+    mostraSnackbarFase('File allegato caricato.', 'success')
   } catch (error) {
     erroreAllegatiSottofase.value = messaggioErroreAllegati(error)
   } finally {
@@ -2093,6 +2187,51 @@ async function apriAllegatoSottofase(allegato) {
   }
 }
 
+function apriDialogEliminaAllegato(allegato) {
+  allegatoDaEliminare.value = allegato
+  motivoEliminazioneAllegato.value = ''
+  erroreEliminazioneAllegato.value = ''
+  dialogEliminaAllegato.value = true
+}
+
+function chiudiDialogEliminaAllegato() {
+  if (eliminazioneAllegatoInCorso.value) return
+
+  dialogEliminaAllegato.value = false
+  allegatoDaEliminare.value = null
+  motivoEliminazioneAllegato.value = ''
+  erroreEliminazioneAllegato.value = ''
+}
+
+async function confermaEliminaAllegato() {
+  const idSottofase = idSottofaseDocumentaleAllegati.value
+  const idDocumento = allegatoDaEliminare.value?.idDocumentoSottofase
+  if (!idSottofase || !idDocumento) {
+    erroreEliminazioneAllegato.value =
+      'Allegato non eliminabile: contesto non disponibile.'
+    return
+  }
+
+  eliminazioneAllegatoInCorso.value = true
+  erroreEliminazioneAllegato.value = ''
+
+  try {
+    await eliminaAllegatoSottofase(idSottofase, idDocumento, {
+      motivoEliminazione: motivoEliminazioneAllegato.value,
+      utenteEliminazione: 'operatore'
+    })
+    await caricaAllegatiSottofase()
+    eliminazioneAllegatoInCorso.value = false
+    chiudiDialogEliminaAllegato()
+    mostraSnackbarFase('Allegato eliminato logicamente.', 'success')
+  } catch (error) {
+    erroreEliminazioneAllegato.value = messaggioErroreEliminazioneAllegato(error)
+    mostraSnackbarFase(erroreEliminazioneAllegato.value, 'error')
+  } finally {
+    eliminazioneAllegatoInCorso.value = false
+  }
+}
+
 async function caricaDocumentoPrincipaleRedigi() {
   const idSottofase = idSottofaseDocumentaleRedigi.value
   if (!idSottofase) {
@@ -2129,8 +2268,7 @@ async function creaDocumentoPrincipaleRedigi() {
     const documento = await createDocumentoPrincipaleSottofase(idSottofase)
     documentoPrincipaleRedigi.value = normalizzaDocumentoPrincipale(documento)
     popolaFormMetadatiDocumento(documentoPrincipaleRedigi.value)
-    messaggioFase.value = 'Documento principale creato.'
-    snackbarFase.value = true
+    mostraSnackbarFase('Documento principale creato.', 'success')
   } catch (error) {
     erroreDocumentoPrincipaleRedigi.value = messaggioErroreDocumentoPrincipale(error)
   } finally {
@@ -2153,8 +2291,7 @@ async function salvaMetadatiDocumentoPrincipaleRedigi() {
       tipoDocumento: documentoMetadatiForm.tipoDocumento
     })
     await caricaDocumentoPrincipaleRedigi()
-    messaggioFase.value = 'Metadati documento salvati.'
-    snackbarFase.value = true
+    mostraSnackbarFase('Metadati documento salvati.', 'success')
   } catch (error) {
     erroreDocumentoPrincipaleRedigi.value = messaggioErroreDocumentoPrincipale(error)
   } finally {
@@ -2238,8 +2375,7 @@ async function avviaRedigiSelezionato() {
       stepRedigiSelezionato.value.id
     )
     aggiornaStepOrizzontali(stepAggiornati)
-    messaggioFase.value = 'Lavorazione Redigi avviata.'
-    snackbarFase.value = true
+    mostraSnackbarFase('Lavorazione Redigi avviata.', 'success')
   } catch (error) {
     erroreStepOrizzontali.value = messaggioErroreStep(error)
   } finally {
@@ -2260,8 +2396,7 @@ async function completaRedigiSelezionato() {
       stepRedigiSelezionato.value.id
     )
     aggiornaStepOrizzontali(stepAggiornati)
-    messaggioFase.value = 'Lavorazione Redigi completata.'
-    snackbarFase.value = true
+    mostraSnackbarFase('Lavorazione Redigi completata.', 'success')
   } catch (error) {
     erroreStepOrizzontali.value = messaggioErroreStep(error)
   } finally {
@@ -2283,8 +2418,7 @@ async function salvaNoteRedigiSelezionato() {
       { noteOperative: noteRedigiForm.value }
     )
     aggiornaStepOrizzontali(stepAggiornati)
-    messaggioFase.value = 'Note operative salvate.'
-    snackbarFase.value = true
+    mostraSnackbarFase('Note operative salvate.', 'success')
   } catch (error) {
     erroreStepOrizzontali.value = messaggioErroreStep(error)
   } finally {
@@ -2341,8 +2475,7 @@ async function selezionaProtocolloIstanza(protocollo) {
       (step) => Number(step.id) === Number(stepIstanzaCorrente.value?.id)
     )
     dialogProtocolloIstanza.value = false
-    messaggioFase.value = 'Protocollo collegato allo step Istanza.'
-    snackbarFase.value = true
+    mostraSnackbarFase('Protocollo collegato allo step Istanza.', 'success')
   } catch (error) {
     erroreProtocolloIstanza.value = messaggioErroreStep(error)
   } finally {
@@ -2390,8 +2523,7 @@ async function inserisciStepDopo(step, opzione) {
       }
     )
     aggiornaStepOrizzontali(stepAggiornati)
-    messaggioFase.value = `${opzione?.titoloStep || 'Step'} inserito.`
-    snackbarFase.value = true
+    mostraSnackbarFase(`${opzione?.titoloStep || 'Step'} inserito.`, 'success')
   } catch (error) {
     erroreStepOrizzontali.value = messaggioErroreStep(error)
   } finally {
@@ -2419,8 +2551,7 @@ async function confermaEliminaStep() {
     dialogEliminaStep.value = false
     stepDaEliminare.value = null
     aggiornaStepOrizzontali(stepAggiornati)
-    messaggioFase.value = 'Step eliminato.'
-    snackbarFase.value = true
+    mostraSnackbarFase('Step eliminato.', 'success')
   } catch (error) {
     erroreStepOrizzontali.value = messaggioErroreStep(error)
   } finally {
@@ -2484,10 +2615,10 @@ async function salvaFase() {
     await caricaWorkflow()
     faseSelezionataId.value = faseNormalizzata.id
     dialogFase.value = false
-    messaggioFase.value = faseDialogMode.value === 'create'
-      ? 'Fase creata.'
-      : 'Fase aggiornata.'
-    snackbarFase.value = true
+    mostraSnackbarFase(
+      faseDialogMode.value === 'create' ? 'Fase creata.' : 'Fase aggiornata.',
+      'success'
+    )
   } catch (error) {
     erroreFaseDialog.value = messaggioErroreFase(error)
   } finally {
@@ -2557,6 +2688,35 @@ function messaggioErroreAllegati(error) {
   }
 
   return 'Impossibile aggiornare gli allegati della sottofase.'
+}
+
+function messaggioErroreEliminazioneAllegato(error) {
+  const dettaglio = error?.payload?.detail
+  if (typeof dettaglio === 'string') return dettaglio
+
+  if (error?.status === 400) {
+    return 'Allegato non eliminabile.'
+  }
+
+  if (error?.status === 404) {
+    return 'Allegato non trovato o non appartenente alla sottofase.'
+  }
+
+  if (error?.status === 410) {
+    return 'Allegato gia eliminato.'
+  }
+
+  if (error?.status === 500) {
+    return 'Errore imprevisto durante eliminazione allegato.'
+  }
+
+  return 'Impossibile eliminare allegato.'
+}
+
+function mostraSnackbarFase(messaggio, color = 'success') {
+  messaggioFase.value = messaggio
+  snackbarFaseColor.value = color
+  snackbarFase.value = true
 }
 
 function selezionaFase(idFase) {
@@ -3272,6 +3432,12 @@ onMounted(() => {
 
 .allegato-item + .allegato-item {
   border-top: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+}
+
+.allegato-item-actions {
+  align-items: center;
+  display: flex;
+  gap: 6px;
 }
 
 .redigi-document-card {

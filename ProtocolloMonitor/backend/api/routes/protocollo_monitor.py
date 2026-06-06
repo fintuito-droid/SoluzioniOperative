@@ -43,8 +43,10 @@ from backend.services.sottofase_document_upload_service import (
 )
 from backend.services.sottofase_documenti_service import (
     MAX_ALLEGATO_FILE_SIZE_BYTES,
+    SottofaseAllegatoEliminazioneError,
     SottofaseAllegatoFileTooLargeError,
     SottofaseAllegatoFileWriteError,
+    SottofaseAllegatoNotFoundError,
     SottofaseDocumentoPrincipaleGiaEsistenteError,
     SottofaseDocumentoPrincipaleNotFoundError,
     SottofaseProtocolloAllegatoGiaEsistenteError,
@@ -130,6 +132,13 @@ class SottofaseAllegatoProtocolloPayload(BaseModel):
     """Payload per collegare un protocollo come allegato della sottofase."""
 
     idProtocollo: int
+
+
+class SottofaseAllegatoEliminaPayload(BaseModel):
+    """Payload per eliminare logicamente un allegato della sottofase."""
+
+    motivoEliminazione: str | None = None
+    utenteEliminazione: str | None = None
 
 
 def get_container() -> DependencyContainer:
@@ -280,6 +289,11 @@ def _resolve_sottofase_documento_path_or_404(
 
         if documento is None:
             raise HTTPException(status_code=404, detail="Documento non trovato")
+
+        if documento.get("attivo") is False or str(
+            documento.get("stato_documento") or ""
+        ).upper() == "ELIMINATO":
+            raise HTTPException(status_code=410, detail="Documento eliminato")
 
         percorso_documento = documento.get("percorso_documento")
 
@@ -1083,6 +1097,38 @@ async def carica_allegato_file_sottofase(
         raise HTTPException(status_code=400, detail=str(exc))
     except SottofaseAllegatoFileWriteError as exc:
         raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router.post(
+    "/protocollo-monitor/sottofasi/{id_sottofase}/allegati/{id_documento}/elimina"
+)
+def elimina_allegato_sottofase(
+    id_sottofase: int,
+    id_documento: int,
+    payload: SottofaseAllegatoEliminaPayload | None = None,
+    documenti_service: Any = Depends(get_sottofase_documenti_service),
+):
+    try:
+        payload_data = {}
+        if payload is not None:
+            payload_data = (
+                payload.model_dump()
+                if hasattr(payload, "model_dump")
+                else payload.dict()
+            )
+
+        return documenti_service.elimina_logicamente_allegato(
+            id_sottofase=id_sottofase,
+            id_documento=id_documento,
+            payload=payload_data,
+        )
+    except SottofaseAllegatoNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except (
+        SottofaseAllegatoEliminazioneError,
+        SottofaseDocumentiValidationError,
+    ) as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 
 @router.post("/protocollo-monitor/sottofasi/{id_sottofase}/documenti", status_code=201)

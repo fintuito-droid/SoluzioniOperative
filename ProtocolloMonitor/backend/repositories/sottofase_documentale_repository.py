@@ -121,6 +121,7 @@ class SottofaseDocumentaleRepository(BaseRepository):
             "versione_documento": self._normalize_value(
                 self._get(row, "VersioneDocumento")
             ),
+            "stato_documento": self._normalize_value(self._get(row, "StatoDocumento")),
             "data_collegamento": self._normalize_value(
                 self._get(row, "DataCollegamento")
             ),
@@ -236,6 +237,7 @@ class SottofaseDocumentaleRepository(BaseRepository):
                 DimensioneBytes,
                 HashFile,
                 VersioneDocumento,
+                StatoDocumento,
                 DataCollegamento,
                 UtenteCollegamento,
                 Attivo,
@@ -278,6 +280,7 @@ class SottofaseDocumentaleRepository(BaseRepository):
                 DimensioneBytes,
                 HashFile,
                 VersioneDocumento,
+                StatoDocumento,
                 DataCollegamento,
                 UtenteCollegamento,
                 Attivo,

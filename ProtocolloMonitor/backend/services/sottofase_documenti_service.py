@@ -57,6 +57,14 @@ class SottofaseAllegatoFileWriteError(RuntimeError):
     """Errore durante salvataggio file o registrazione allegato."""
 
 
+class SottofaseAllegatoNotFoundError(LookupError):
+    """Allegato non trovato o non appartenente alla sottofase."""
+
+
+class SottofaseAllegatoEliminazioneError(SottofaseDocumentiValidationError):
+    """Allegato non eliminabile logicamente."""
+
+
 class SottofaseDocumentiService:
     """Regole applicative del modello documentale unificato."""
 
@@ -491,6 +499,86 @@ class SottofaseDocumentiService:
         )
         self.backup_factory()
         return self.sottofase_documenti_repository.disattiva_documento(id_documento)
+
+    def elimina_logicamente_allegato(
+        self,
+        *,
+        id_sottofase: int,
+        id_documento: int,
+        payload: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Elimina logicamente un allegato senza cancellare record o file."""
+
+        if self.sottofase_documenti_repository is None:
+            raise SottofaseDocumentiValidationError(
+                "Repository documenti sottofase non configurato."
+            )
+
+        elimina_allegato = getattr(
+            self.sottofase_documenti_repository,
+            "elimina_logicamente_allegato",
+            None,
+        )
+        if elimina_allegato is None:
+            raise SottofaseDocumentiValidationError(
+                "Eliminazione logica allegato non disponibile."
+            )
+
+        id_sottofase_normalizzato = self._validate_id(id_sottofase, "IDSottofase")
+        id_documento_normalizzato = self._validate_id(
+            id_documento,
+            "IDDocumentoSottofase",
+        )
+        dati = payload or {}
+        motivo = self._text_or_none(
+            self._pick(
+                dati,
+                "motivoEliminazione",
+                "MotivoEliminazione",
+                "motivo_eliminazione",
+            )
+        ) or "Eliminazione logica allegato"
+        utente = self._text_or_none(
+            self._pick(
+                dati,
+                "utenteEliminazione",
+                "UtenteEliminazione",
+                "utente_eliminazione",
+            )
+        ) or "operatore"
+
+        self.backup_factory()
+        result = elimina_allegato(
+            id_sottofase_normalizzato,
+            id_documento_normalizzato,
+            motivo,
+            utente,
+            data_eliminazione=self.now_factory(),
+        )
+
+        if result.get("success"):
+            return {
+                "success": True,
+                "message": "Allegato eliminato logicamente",
+                "idDocumento": id_documento_normalizzato,
+                "documento": result.get("documento"),
+            }
+
+        reason = result.get("reason")
+        message = result.get("message") or "Allegato non eliminabile."
+
+        if reason == "not_found":
+            raise SottofaseAllegatoNotFoundError(message)
+
+        if reason == "not_allegato":
+            raise SottofaseAllegatoEliminazioneError(
+                "Il documento indicato non e un allegato."
+            )
+
+        if reason == "already_deleted":
+            raise SottofaseAllegatoEliminazioneError("Allegato gia eliminato.")
+
+        raise SottofaseAllegatoEliminazioneError(message)
 
     def _normalizza_payload_creazione(self, payload: dict[str, Any]) -> dict[str, Any]:
         now = datetime.now()

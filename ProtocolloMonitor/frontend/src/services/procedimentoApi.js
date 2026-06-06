@@ -261,6 +261,16 @@ export function uploadAllegatoFileSottofase(idSottofase, file) {
   })
 }
 
+export function eliminaAllegatoSottofase(idSottofase, idDocumento, payload) {
+  return fetchJson(
+    `/protocollo-monitor/sottofasi/${idSottofase}/allegati/${idDocumento}/elimina`,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload || {})
+    }
+  )
+}
+
 export function listStepOperativiSottofase(idSottofase) {
   return fetchJson(`/protocollo-monitor/sottofasi/${idSottofase}/step-operativi`)
 }

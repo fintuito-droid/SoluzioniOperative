@@ -91,6 +91,9 @@ def make_documento_row(**overrides):
         "Attivo": True,
         "DataCreazione": None,
         "DataModifica": None,
+        "DataEliminazione": None,
+        "UtenteEliminazione": None,
+        "MotivoEliminazione": None,
     }
     values.update(overrides)
     return SimpleNamespace(**values)
@@ -229,6 +232,85 @@ def test_get_documento_by_id_returns_document():
     assert result["id_documento_sottofase"] == 11
     assert result["nome_file"] == "documento.pdf"
     assert cursor.executed_params == [(11,)]
+
+
+def test_elimina_logicamente_allegato_updates_audit_fields():
+    updated_row = make_documento_row(
+        RuoloDocumento="ALLEGATO",
+        Attivo=False,
+        StatoDocumento="ELIMINATO",
+        DataEliminazione="2026-06-06 13:00:00",
+        UtenteEliminazione="operatore",
+        MotivoEliminazione="Motivo test",
+    )
+    cursor = FakeCursor(
+        [
+            [make_documento_row(RuoloDocumento="ALLEGATO")],
+            [],
+            [updated_row],
+        ]
+    )
+    repository = SottofaseDocumentiRepositoryForTest(FakeConnection(cursor))
+
+    result = repository.elimina_logicamente_allegato(
+        7,
+        11,
+        "Motivo test",
+        "operatore",
+        data_eliminazione="2026-06-06 13:00:00",
+    )
+
+    assert result["success"] is True
+    assert result["id_documento"] == 11
+    assert result["documento"]["stato_documento"] == "ELIMINATO"
+    assert result["documento"]["attivo"] is False
+    assert "SET Attivo = ?" in cursor.executed_queries[1]
+    assert cursor.executed_params[1] == (
+        False,
+        "ELIMINATO",
+        "2026-06-06 13:00:00",
+        "operatore",
+        "Motivo test",
+        "2026-06-06 13:00:00",
+        11,
+        7,
+        "ALLEGATO",
+        True,
+    )
+
+
+def test_elimina_logicamente_allegato_rejects_non_allegato():
+    cursor = FakeCursor([[make_documento_row(RuoloDocumento="PRINCIPALE")]])
+    repository = SottofaseDocumentiRepositoryForTest(FakeConnection(cursor))
+
+    result = repository.elimina_logicamente_allegato(
+        7,
+        11,
+        "Motivo test",
+        "operatore",
+    )
+
+    assert result["success"] is False
+    assert result["reason"] == "not_allegato"
+    assert len(cursor.executed_queries) == 1
+
+
+def test_elimina_logicamente_allegato_rejects_already_deleted():
+    cursor = FakeCursor(
+        [[make_documento_row(RuoloDocumento="ALLEGATO", Attivo=False)]]
+    )
+    repository = SottofaseDocumentiRepositoryForTest(FakeConnection(cursor))
+
+    result = repository.elimina_logicamente_allegato(
+        7,
+        11,
+        "Motivo test",
+        "operatore",
+    )
+
+    assert result["success"] is False
+    assert result["reason"] == "already_deleted"
+    assert len(cursor.executed_queries) == 1
 
 
 def test_update_documento_principale_metadati_updates_only_allowed_fields():

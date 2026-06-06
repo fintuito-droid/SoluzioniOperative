@@ -33,7 +33,10 @@ class SottofaseDocumentiRepository(BaseRepository):
         UtenteCollegamento,
         Attivo,
         DataCreazione,
-        DataModifica
+        DataModifica,
+        DataEliminazione,
+        UtenteEliminazione,
+        MotivoEliminazione
     """
 
     WRITABLE_COLUMNS = {
@@ -57,6 +60,9 @@ class SottofaseDocumentiRepository(BaseRepository):
         "Attivo",
         "DataCreazione",
         "DataModifica",
+        "DataEliminazione",
+        "UtenteEliminazione",
+        "MotivoEliminazione",
     }
 
     @staticmethod
@@ -121,6 +127,15 @@ class SottofaseDocumentiRepository(BaseRepository):
             else False,
             "data_creazione": self._normalize_value(self._get(row, "DataCreazione")),
             "data_modifica": self._normalize_value(self._get(row, "DataModifica")),
+            "data_eliminazione": self._normalize_value(
+                self._get(row, "DataEliminazione")
+            ),
+            "utente_eliminazione": self._normalize_value(
+                self._get(row, "UtenteEliminazione")
+            ),
+            "motivo_eliminazione": self._normalize_value(
+                self._get(row, "MotivoEliminazione")
+            ),
         }
 
     def get_documenti_sottofase(
@@ -568,6 +583,114 @@ class SottofaseDocumentiRepository(BaseRepository):
                 "DataModifica": data_modifica or datetime.now(),
             },
         )
+
+    def elimina_logicamente_allegato(
+        self,
+        id_sottofase: int,
+        id_documento: int,
+        motivo_eliminazione: str,
+        utente_eliminazione: str,
+        *,
+        data_eliminazione: datetime | None = None,
+    ) -> dict[str, Any]:
+        """Marca un allegato come eliminato senza cancellare record o file."""
+
+        conn = self._open_access_connection()
+        cursor = conn.cursor()
+        data_operazione = data_eliminazione or datetime.now()
+
+        try:
+            cursor.execute(
+                f"""
+                SELECT {self.SELECT_COLUMNS}
+                FROM T_SottofaseDocumenti
+                WHERE IDDocumentoSottofase = ?
+                """,
+                (id_documento,),
+            )
+            row = cursor.fetchone()
+
+            if row is None:
+                return {
+                    "success": False,
+                    "reason": "not_found",
+                    "message": "Documento non trovato.",
+                }
+
+            documento = self._documento_row_to_dict(row)
+            if int(documento.get("id_sottofase") or 0) != int(id_sottofase):
+                return {
+                    "success": False,
+                    "reason": "not_found",
+                    "message": "Documento non appartenente alla sottofase.",
+                }
+
+            if str(documento.get("ruolo_documento") or "").upper() != "ALLEGATO":
+                return {
+                    "success": False,
+                    "reason": "not_allegato",
+                    "message": "Il documento indicato non e un allegato.",
+                }
+
+            stato_documento = str(documento.get("stato_documento") or "").upper()
+            if not documento.get("attivo") or stato_documento == "ELIMINATO":
+                return {
+                    "success": False,
+                    "reason": "already_deleted",
+                    "message": "Allegato gia eliminato.",
+                }
+
+            cursor.execute(
+                """
+                UPDATE T_SottofaseDocumenti
+                SET Attivo = ?,
+                    StatoDocumento = ?,
+                    DataEliminazione = ?,
+                    UtenteEliminazione = ?,
+                    MotivoEliminazione = ?,
+                    DataModifica = ?
+                WHERE IDDocumentoSottofase = ?
+                  AND IDSottofase = ?
+                  AND RuoloDocumento = ?
+                  AND Attivo = ?
+                """,
+                (
+                    False,
+                    "ELIMINATO",
+                    data_operazione,
+                    utente_eliminazione,
+                    motivo_eliminazione,
+                    data_operazione,
+                    id_documento,
+                    id_sottofase,
+                    "ALLEGATO",
+                    True,
+                ),
+            )
+
+            if getattr(cursor, "rowcount", 1) == 0:
+                conn.rollback()
+                return {
+                    "success": False,
+                    "reason": "already_deleted",
+                    "message": "Allegato gia eliminato.",
+                }
+
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            cursor.close()
+            conn.close()
+
+        documento_aggiornato = self.get_documento_by_id(id_documento)
+        return {
+            "success": True,
+            "message": "Allegato eliminato logicamente",
+            "id_documento": id_documento,
+            "documento": documento_aggiornato,
+        }
 
     def _get_next_ordine(self, id_sottofase: int) -> int:
         query = """

@@ -4,6 +4,7 @@ import pytest
 from fastapi import HTTPException
 
 from backend.api.routes.protocollo_monitor import (
+    SottofaseAllegatoEliminaPayload,
     SottofaseAllegatoProtocolloPayload,
     SottofaseDocumentoPrincipaleMetadatiPayload,
     aggiorna_sottofase_documento_principale_metadati,
@@ -12,6 +13,7 @@ from backend.api.routes.protocollo_monitor import (
     carica_documento_word_sottofase,
     collega_protocollo_come_allegato_sottofase,
     crea_sottofase_documento_principale,
+    elimina_allegato_sottofase,
     get_sottofase_documentale,
     get_sottofase_allegati,
     get_sottofase_documento_principale,
@@ -56,10 +58,13 @@ class FakeSottofaseDocumentiService:
         duplicate=False,
         missing_principale=False,
         duplicate_allegato=False,
+        delete_mode=None,
     ):
         self.duplicate = duplicate
         self.missing_principale = missing_principale
         self.duplicate_allegato = duplicate_allegato
+        self.delete_mode = delete_mode
+        self.delete_calls = []
 
     def get_documenti_sottofase(self, id_sottofase):
         return [{"id_sottofase": id_sottofase, "ruolo_documento": "ALLEGATO"}]
@@ -125,6 +130,36 @@ class FakeSottofaseDocumentiService:
             "nome_file": kwargs["original_filename"],
             "dimensione_bytes": len(kwargs["file_bytes"]),
             "mime_type": kwargs["content_type"],
+        }
+
+    def elimina_logicamente_allegato(self, *, id_sottofase, id_documento, payload):
+        self.delete_calls.append(
+            {
+                "id_sottofase": id_sottofase,
+                "id_documento": id_documento,
+                "payload": payload,
+            }
+        )
+        if self.delete_mode == "missing":
+            from backend.services.sottofase_documenti_service import (
+                SottofaseAllegatoNotFoundError,
+            )
+
+            raise SottofaseAllegatoNotFoundError("Documento non trovato.")
+
+        if self.delete_mode == "invalid":
+            from backend.services.sottofase_documenti_service import (
+                SottofaseAllegatoEliminazioneError,
+            )
+
+            raise SottofaseAllegatoEliminazioneError(
+                "Il documento indicato non e un allegato."
+            )
+
+        return {
+            "success": True,
+            "message": "Allegato eliminato logicamente",
+            "idDocumento": id_documento,
         }
 
 
@@ -329,6 +364,57 @@ def test_collega_protocollo_come_allegato_sottofase_returns_409_on_duplicate():
     assert exc_info.value.status_code == 409
 
 
+def test_elimina_allegato_sottofase_returns_success():
+    service = FakeSottofaseDocumentiService()
+
+    response = elimina_allegato_sottofase(
+        7,
+        11,
+        SottofaseAllegatoEliminaPayload(
+            motivoEliminazione="Duplicato",
+            utenteEliminazione="Mario Rossi",
+        ),
+        documenti_service=service,
+    )
+
+    assert response["success"] is True
+    assert response["idDocumento"] == 11
+    assert service.delete_calls == [
+        {
+            "id_sottofase": 7,
+            "id_documento": 11,
+            "payload": {
+                "motivoEliminazione": "Duplicato",
+                "utenteEliminazione": "Mario Rossi",
+            },
+        }
+    ]
+
+
+def test_elimina_allegato_sottofase_returns_404_when_missing():
+    with pytest.raises(HTTPException) as exc_info:
+        elimina_allegato_sottofase(
+            7,
+            11,
+            SottofaseAllegatoEliminaPayload(),
+            documenti_service=FakeSottofaseDocumentiService(delete_mode="missing"),
+        )
+
+    assert exc_info.value.status_code == 404
+
+
+def test_elimina_allegato_sottofase_returns_400_when_invalid():
+    with pytest.raises(HTTPException) as exc_info:
+        elimina_allegato_sottofase(
+            7,
+            11,
+            SottofaseAllegatoEliminaPayload(),
+            documenti_service=FakeSottofaseDocumentiService(delete_mode="invalid"),
+        )
+
+    assert exc_info.value.status_code == 400
+
+
 def test_get_sottofase_step_operativi_returns_list():
     response = get_sottofase_step_operativi(
         7,
@@ -443,6 +529,46 @@ def test_scarica_sottofase_documento_returns_404_when_path_empty():
 
     assert exc_info.value.status_code == 404
     assert exc_info.value.detail == "Documento non disponibile"
+
+
+def test_apri_sottofase_documento_returns_410_when_inactive(tmp_path):
+    document_path = tmp_path / "bozza.docx"
+    document_path.write_bytes(b"documento")
+
+    with pytest.raises(HTTPException) as exc_info:
+        apri_sottofase_documento(
+            10,
+            sottofase_service=FakeSottofaseDocumentaleService(
+                documento={
+                    "percorso_documento": str(document_path),
+                    "attivo": False,
+                    "stato_documento": "ATTIVO",
+                }
+            ),
+        )
+
+    assert exc_info.value.status_code == 410
+    assert exc_info.value.detail == "Documento eliminato"
+
+
+def test_scarica_sottofase_documento_returns_410_when_deleted(tmp_path):
+    document_path = tmp_path / "bozza.docx"
+    document_path.write_bytes(b"documento")
+
+    with pytest.raises(HTTPException) as exc_info:
+        scarica_sottofase_documento(
+            10,
+            sottofase_service=FakeSottofaseDocumentaleService(
+                documento={
+                    "percorso_documento": str(document_path),
+                    "attivo": True,
+                    "stato_documento": "ELIMINATO",
+                }
+            ),
+        )
+
+    assert exc_info.value.status_code == 410
+    assert exc_info.value.detail == "Documento eliminato"
 
 
 def test_apri_sottofase_documento_returns_404_when_file_missing(tmp_path):

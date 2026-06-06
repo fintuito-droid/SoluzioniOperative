@@ -3,7 +3,9 @@ from datetime import datetime
 from pathlib import Path
 
 from backend.services.sottofase_documenti_service import (
+    SottofaseAllegatoEliminazioneError,
     SottofaseAllegatoFileTooLargeError,
+    SottofaseAllegatoNotFoundError,
     SottofaseDocumentoPrincipaleGiaEsistenteError,
     SottofaseDocumentoPrincipaleNotFoundError,
     SottofaseProtocolloAllegatoGiaEsistenteError,
@@ -21,13 +23,16 @@ class FakeSottofaseDocumentiRepository:
         update_missing=False,
         protocollo_allegato_exists=False,
         protocollo_missing=False,
+        eliminazione_result=None,
     ):
         self.principale_exists = principale_exists
         self.update_missing = update_missing
         self.protocollo_allegato_exists = protocollo_allegato_exists
         self.protocollo_missing = protocollo_missing
+        self.eliminazione_result = eliminazione_result
         self.created_payloads = []
         self.updated_metadati = []
+        self.eliminazione_calls = []
 
     def get_documenti_sottofase(self, id_sottofase):
         return [{"id_sottofase": id_sottofase, "ruolo_documento": "ALLEGATO"}]
@@ -122,6 +127,38 @@ class FakeSottofaseDocumentiRepository:
         }
         self.created_payloads.append(normalized)
         return {"id_documento_sottofase": 50, **normalized}
+
+    def elimina_logicamente_allegato(
+        self,
+        id_sottofase,
+        id_documento,
+        motivo_eliminazione,
+        utente_eliminazione,
+        *,
+        data_eliminazione,
+    ):
+        self.eliminazione_calls.append(
+            {
+                "id_sottofase": id_sottofase,
+                "id_documento": id_documento,
+                "motivo_eliminazione": motivo_eliminazione,
+                "utente_eliminazione": utente_eliminazione,
+                "data_eliminazione": data_eliminazione,
+            }
+        )
+        if self.eliminazione_result is not None:
+            return self.eliminazione_result
+        return {
+            "success": True,
+            "id_documento": id_documento,
+            "documento": {
+                "id_documento_sottofase": id_documento,
+                "id_sottofase": id_sottofase,
+                "ruolo_documento": "ALLEGATO",
+                "stato_documento": "ELIMINATO",
+                "attivo": False,
+            },
+        }
 
 
 def test_get_documenti_sottofase_uses_repository():
@@ -462,4 +499,127 @@ def test_upload_file_allegato_rejects_too_large_file(tmp_path, monkeypatch):
             file_bytes=b"12345",
             original_filename="documento.pdf",
             content_type="application/pdf",
+        )
+
+
+def test_elimina_logicamente_allegato_uses_defaults_and_keeps_file(tmp_path):
+    calls = []
+    allegato_path = tmp_path / "allegato.pdf"
+    allegato_path.write_bytes(b"contenuto")
+    repository = FakeSottofaseDocumentiRepository(
+        eliminazione_result={
+            "success": True,
+            "id_documento": 11,
+            "documento": {
+                "id_documento_sottofase": 11,
+                "id_sottofase": 7,
+                "ruolo_documento": "ALLEGATO",
+                "stato_documento": "ELIMINATO",
+                "attivo": False,
+                "percorso_documento": str(allegato_path),
+            },
+        }
+    )
+    service = SottofaseDocumentiService(
+        sottofase_documenti_repository=repository,
+        backup_factory=lambda: calls.append("backup"),
+        now_factory=lambda: datetime(2026, 6, 6, 13, 0, 0),
+    )
+
+    result = service.elimina_logicamente_allegato(
+        id_sottofase=7,
+        id_documento=11,
+        payload={},
+    )
+
+    assert calls == ["backup"]
+    assert result["success"] is True
+    assert result["idDocumento"] == 11
+    assert repository.eliminazione_calls[0]["motivo_eliminazione"] == (
+        "Eliminazione logica allegato"
+    )
+    assert repository.eliminazione_calls[0]["utente_eliminazione"] == "operatore"
+    assert allegato_path.exists() is True
+
+
+def test_elimina_logicamente_allegato_normalizes_payload():
+    repository = FakeSottofaseDocumentiRepository()
+    service = SottofaseDocumentiService(
+        sottofase_documenti_repository=repository,
+        backup_factory=lambda: None,
+        now_factory=lambda: datetime(2026, 6, 6, 13, 0, 0),
+    )
+
+    service.elimina_logicamente_allegato(
+        id_sottofase=7,
+        id_documento=11,
+        payload={
+            "motivoEliminazione": "  Documento duplicato  ",
+            "utenteEliminazione": "  Mario Rossi  ",
+        },
+    )
+
+    assert repository.eliminazione_calls[0]["motivo_eliminazione"] == (
+        "Documento duplicato"
+    )
+    assert repository.eliminazione_calls[0]["utente_eliminazione"] == "Mario Rossi"
+
+
+def test_elimina_logicamente_allegato_raises_when_missing():
+    service = SottofaseDocumentiService(
+        sottofase_documenti_repository=FakeSottofaseDocumentiRepository(
+            eliminazione_result={
+                "success": False,
+                "reason": "not_found",
+                "message": "Documento non trovato.",
+            }
+        ),
+        backup_factory=lambda: None,
+    )
+
+    with pytest.raises(SottofaseAllegatoNotFoundError):
+        service.elimina_logicamente_allegato(
+            id_sottofase=7,
+            id_documento=11,
+            payload={},
+        )
+
+
+def test_elimina_logicamente_allegato_raises_when_not_allegato():
+    service = SottofaseDocumentiService(
+        sottofase_documenti_repository=FakeSottofaseDocumentiRepository(
+            eliminazione_result={
+                "success": False,
+                "reason": "not_allegato",
+                "message": "Il documento indicato non e un allegato.",
+            }
+        ),
+        backup_factory=lambda: None,
+    )
+
+    with pytest.raises(SottofaseAllegatoEliminazioneError):
+        service.elimina_logicamente_allegato(
+            id_sottofase=7,
+            id_documento=11,
+            payload={},
+        )
+
+
+def test_elimina_logicamente_allegato_raises_when_already_deleted():
+    service = SottofaseDocumentiService(
+        sottofase_documenti_repository=FakeSottofaseDocumentiRepository(
+            eliminazione_result={
+                "success": False,
+                "reason": "already_deleted",
+                "message": "Allegato gia eliminato.",
+            }
+        ),
+        backup_factory=lambda: None,
+    )
+
+    with pytest.raises(SottofaseAllegatoEliminazioneError):
+        service.elimina_logicamente_allegato(
+            id_sottofase=7,
+            id_documento=11,
+            payload={},
         )
