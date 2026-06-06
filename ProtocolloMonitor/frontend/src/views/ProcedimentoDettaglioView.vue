@@ -338,7 +338,14 @@
                         :class="classeStepOrizzontale(step)"
                         @click.stop="gestisciClickStepOrizzontale(step)"
                       >
-                        {{ index + 1 }}
+                        <img
+                          :src="workflowAvatarForStep(step)"
+                          alt=""
+                          class="workflow-avatar-img step-node-avatar-img"
+                        >
+                        <span class="step-node-number">
+                          {{ index + 1 }}
+                        </span>
                       </div>
 
                       <div
@@ -351,8 +358,9 @@
                       class="step-node-actions"
                     >
                       <v-btn
+                        class="step-node-action step-delete-action"
                         icon="mdi-delete-outline"
-                        size="x-small"
+                        size="small"
                         variant="text"
                         color="error"
                         :disabled="operazioneStepInCorso"
@@ -363,8 +371,9 @@
                         <template #activator="{ props }">
                           <v-btn
                             v-bind="props"
+                            class="step-node-action step-add-action"
                             icon="mdi-plus-circle-outline"
-                            size="x-small"
+                            size="small"
                             variant="text"
                             color="primary"
                             :disabled="operazioneStepInCorso"
@@ -384,9 +393,11 @@
                                 color="primary"
                                 variant="tonal"
                               >
-                                <v-icon size="17">
-                                  {{ opzione.icona }}
-                                </v-icon>
+                                <img
+                                  :src="workflowAvatarForStep(opzione.codiceStep)"
+                                  alt=""
+                                  class="workflow-avatar-img workflow-menu-avatar-img"
+                                >
                               </v-avatar>
                             </template>
 
@@ -1139,6 +1150,15 @@ import {
 } from '../services/procedimentoApi'
 import { statiWorkflow } from '../mock/procedimentoWorkflowMock'
 import elencoProcedimentoIcon from '../assets/ElencoProcedimentoICO.png'
+import allegatiSvg from '../assets/workflow/allegati.svg'
+import appuntamentoSvg from '../assets/workflow/appuntamento.svg'
+import fineSvg from '../assets/workflow/fine.svg'
+import firmaSvg from '../assets/workflow/firma.svg'
+import mailSvg from '../assets/workflow/mail.svg'
+import protocollaSvg from '../assets/workflow/protocolla.svg'
+import redigiSvg from '../assets/workflow/redigi.svg'
+import revisionaSvg from '../assets/workflow/revisiona.svg'
+import telefonaSvg from '../assets/workflow/telefona.svg'
 
 const route = useRoute()
 const router = useRouter()
@@ -1204,6 +1224,18 @@ const documentoMetadatiForm = reactive({
 
 const regoleFase = {
   titolo: (value) => Boolean(String(value || '').trim()) || 'Titolo fase obbligatorio'
+}
+
+const workflowStepAvatarMap = {
+  redigi: redigiSvg,
+  revisiona: revisionaSvg,
+  firma: firmaSvg,
+  protocolla: protocollaSvg,
+  allegati: allegatiSvg,
+  fine: fineSvg,
+  telefona: telefonaSvg,
+  mail: mailSvg,
+  appuntamento: appuntamentoSvg
 }
 
 const stepInseribili = [
@@ -1649,6 +1681,46 @@ function normalizzaAllegatoSottofase(dato = {}) {
       dato.percorsoDocumento ??
       ''
   }
+}
+
+function normalizzaChiaveWorkflowStep(stepOrCode) {
+  const value = typeof stepOrCode === 'object' && stepOrCode !== null
+    ? stepOrCode.codiceStep ??
+      stepOrCode.codice_step ??
+      stepOrCode.CodiceStep ??
+      stepOrCode.titoloStep ??
+      stepOrCode.titolo_step ??
+      stepOrCode.TitoloStep
+    : stepOrCode
+
+  const normalized = String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '_')
+    .replace(/-/g, '_')
+
+  const aliases = {
+    redazione: 'redigi',
+    revisione: 'revisiona',
+    firma_digitale: 'firma',
+    protocollo: 'protocolla',
+    protocollazione: 'protocolla',
+    allegato: 'allegati',
+    allegati_documento: 'allegati',
+    chiusura: 'fine',
+    telefono: 'telefona',
+    telefonata: 'telefona',
+    email: 'mail',
+    e_mail: 'mail',
+    appuntamenti: 'appuntamento'
+  }
+
+  return aliases[normalized] || normalized
+}
+
+function workflowAvatarForStep(stepOrCode) {
+  const key = normalizzaChiaveWorkflowStep(stepOrCode)
+  return workflowStepAvatarMap[key] || workflowStepAvatarMap.fine
 }
 
 function labelStepOrizzontale(codice) {
@@ -2988,6 +3060,40 @@ onMounted(() => {
   z-index: 1;
 }
 
+.workflow-avatar-img {
+  display: block;
+  object-fit: contain;
+}
+
+.step-node-avatar-img {
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.18));
+  height: 30px;
+  width: 30px;
+}
+
+.step-node-number {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.16);
+  border-radius: 999px;
+  bottom: -7px;
+  color: rgba(var(--v-theme-on-surface), 0.78);
+  display: flex;
+  font-size: 0.68rem;
+  font-weight: 900;
+  height: 20px;
+  justify-content: center;
+  min-width: 20px;
+  padding: 0 5px;
+  position: absolute;
+  right: -7px;
+}
+
+.workflow-menu-avatar-img {
+  height: 22px;
+  width: 22px;
+}
+
 .step-orizzontale-item:hover .step-orizzontale-node {
   box-shadow:
     0 0 0 1px rgba(var(--v-theme-on-surface), 0.16),
@@ -2997,15 +3103,35 @@ onMounted(() => {
 .step-node-actions {
   align-items: center;
   display: flex;
-  gap: 4px;
+  gap: 0;
+  justify-content: space-between;
   left: 50%;
   opacity: 0;
   pointer-events: none;
   position: absolute;
-  top: 58px;
+  top: 30px;
   transform: translateX(-50%);
   transition: opacity 0.12s ease;
+  width: 122px;
   z-index: 2;
+}
+
+.step-node-action {
+  height: 34px;
+  min-width: 34px;
+  width: 34px;
+}
+
+.step-node-action :deep(.v-icon) {
+  font-size: 23px;
+}
+
+.step-delete-action {
+  margin-left: 4px;
+}
+
+.step-add-action {
+  margin-right: 4px;
 }
 
 .step-orizzontale-item:hover .step-node-actions,
