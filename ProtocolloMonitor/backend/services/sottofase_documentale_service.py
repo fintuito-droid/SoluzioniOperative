@@ -1,25 +1,56 @@
-"""Service read-only per il quadro documentale della sottofase."""
+"""Service per il quadro documentale e agganci controllati della sottofase."""
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 
 
-class SottofaseDocumentaleService:
-    """Service minimale per comporre dati documentali della sottofase.
+class SottofaseStepAssociazioneError(Exception):
+    """Errore base per l'associazione sottofase-step."""
 
-    Il service non scrive dati e non apre connessioni direttamente. Delega al
-    repository read-only e costruisce un riepilogo utile agli endpoint FastAPI.
-    """
+
+class SottofaseStepNotFoundError(SottofaseStepAssociazioneError):
+    """Lo step orizzontale richiesto non esiste."""
+
+
+class SottofaseAssociazioneNotFoundError(SottofaseStepAssociazioneError):
+    """La sottofase richiesta non esiste."""
+
+
+class SottofaseStepFaseMismatchError(SottofaseStepAssociazioneError):
+    """Step e sottofase non appartengono alla fase richiesta."""
+
+
+class SottofaseStepAlreadyLinkedError(SottofaseStepAssociazioneError):
+    """Lo step ha gia una sottofase attiva collegata."""
+
+
+class SottofaseAlreadyLinkedError(SottofaseStepAssociazioneError):
+    """La sottofase e gia collegata a un altro step."""
+
+
+class SottofaseNotAssociableError(SottofaseStepAssociazioneError):
+    """La sottofase non puo essere associata."""
+
+
+class SottofaseStepAssociazioneWriteError(SottofaseStepAssociazioneError):
+    """La scrittura di associazione non e riuscita."""
+
+
+class SottofaseDocumentaleService:
+    """Service per comporre dati documentali e associare sottofasi a step."""
 
     def __init__(
         self,
         *,
         sottofase_documentale_repository: Any | None = None,
         sottofase_assegnazioni_service: Any | None = None,
+        now_factory: Any | None = None,
     ) -> None:
         self.sottofase_documentale_repository = sottofase_documentale_repository
         self.sottofase_assegnazioni_service = sottofase_assegnazioni_service
+        self.now_factory = now_factory or datetime.now
 
     def get_sottofase_documentale(
         self,
@@ -166,6 +197,88 @@ class SottofaseDocumentaleService:
             "assegnazioni_auto_report": assegnazioni_auto_report,
         }
 
+    def associa_sottofase_a_step_orizzontale(
+        self,
+        *,
+        id_fase: int,
+        id_step_orizzontale: int,
+        id_sottofase: int,
+        utente: str | None = None,
+    ) -> dict[str, Any]:
+        """Associa una sottofase esistente a uno step orizzontale."""
+
+        repository = self.sottofase_documentale_repository
+        if repository is None:
+            raise SottofaseStepAssociazioneWriteError(
+                "Repository sottofase documentale non configurato."
+            )
+
+        step = repository.get_step_orizzontale_context(id_step_orizzontale)
+        if step is None:
+            raise SottofaseStepNotFoundError("Step orizzontale non trovato.")
+
+        sottofase = repository.get_sottofase_aggancio_context(id_sottofase)
+        if sottofase is None:
+            raise SottofaseAssociazioneNotFoundError("Sottofase non trovata.")
+
+        step_id_fase = self._safe_int(step.get("id_fase"))
+        sottofase_id_fase = self._safe_int(sottofase.get("id_fase"))
+        expected_id_fase = self._safe_int(id_fase)
+
+        if step_id_fase != expected_id_fase:
+            raise SottofaseStepFaseMismatchError(
+                "Lo step appartiene a una fase diversa."
+            )
+
+        if sottofase_id_fase != expected_id_fase:
+            raise SottofaseStepFaseMismatchError(
+                "La sottofase appartiene a una fase diversa."
+            )
+
+        if not bool(sottofase.get("attivo")):
+            raise SottofaseNotAssociableError("La sottofase e inattiva.")
+
+        stato_sottofase = str(sottofase.get("stato_sottofase") or "").upper()
+        if stato_sottofase in {"ANNULLATA", "ARCHIVIATA"}:
+            raise SottofaseNotAssociableError(
+                "La sottofase annullata o archiviata non puo essere associata."
+            )
+
+        current_step = self._safe_int(sottofase.get("id_step_orizzontale"))
+        if current_step and current_step != self._safe_int(id_step_orizzontale):
+            raise SottofaseAlreadyLinkedError(
+                "La sottofase e gia collegata a un altro step."
+            )
+
+        active_sottofase = repository.get_sottofase_attiva_by_step(
+            id_step_orizzontale
+        )
+        if active_sottofase is not None and self._safe_int(
+            active_sottofase.get("id_sottofase")
+        ) != self._safe_int(id_sottofase):
+            raise SottofaseStepAlreadyLinkedError(
+                "Lo step ha gia un'altra sottofase attiva collegata."
+            )
+
+        utente_aggancio = (utente or "system").strip() or "system"
+
+        try:
+            result = repository.associa_sottofase_a_step(
+                id_sottofase=id_sottofase,
+                id_step_orizzontale=id_step_orizzontale,
+                data_aggancio=self.now_factory(),
+                utente_aggancio=utente_aggancio,
+            )
+        except Exception as exc:
+            raise SottofaseStepAssociazioneWriteError(
+                f"Associazione sottofase-step non riuscita: {exc}"
+            ) from exc
+
+        return {
+            **result,
+            "id_fase": id_fase,
+        }
+
     def _applica_assegnazioni_auto(self, id_sottofase: int) -> dict[str, Any] | None:
         """Applica regole automatiche senza bloccare il caricamento."""
 
@@ -189,3 +302,10 @@ class SottofaseDocumentaleService:
                 "errore": str(exc),
                 "non_bloccante": True,
             }
+
+    @staticmethod
+    def _safe_int(value: Any) -> int:
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return 0

@@ -283,6 +283,62 @@ def _step_row(
     )
 
 
+def test_list_step_orizzontali_by_fase_includes_linked_active_sottofase():
+    now = datetime(2026, 6, 1, 10, 36, 0)
+    linked_step = _step_row(
+        id_step=10,
+        id_fase=8,
+        codice="REDIGI",
+        titolo="Redigi",
+        ordine=1,
+        stato="IN_CORSO",
+        now=now,
+    )
+    linked_step.SottofaseIDSottofase = 25
+    linked_step.SottofaseIDFase = 8
+    linked_step.SottofaseIDStepOrizzontale = 10
+    linked_step.SottofaseTitolo = "Fascicolo documentale"
+    linked_step.SottofaseStatoSottofase = "IN_LAVORAZIONE"
+    linked_step.SottofaseTipoAggancio = "STEP"
+    linked_step.SottofasePrincipale = False
+    linked_step.SottofaseAttivo = True
+    cursor = FakeCursor(
+        [
+            [
+                linked_step,
+                _step_row(
+                    id_step=11,
+                    id_fase=8,
+                    codice="REVISIONA",
+                    titolo="Revisiona",
+                    ordine=2,
+                    now=now,
+                ),
+            ],
+        ]
+    )
+    repository = WorkflowProcedimentoRepositoryForTest(FakeConnection(cursor))
+
+    records = repository.list_step_orizzontali_by_fase(8)
+
+    assert records[0]["has_sottofase_documentale"] is True
+    assert records[0]["sottofase_attiva"] == {
+        "id_sottofase": 25,
+        "id_fase": 8,
+        "id_step_orizzontale": 10,
+        "titolo": "Fascicolo documentale",
+        "stato_sottofase": "IN_LAVORAZIONE",
+        "tipo_aggancio": "STEP",
+        "sottofase_principale": False,
+        "attivo": True,
+    }
+    assert records[1]["has_sottofase_documentale"] is False
+    assert records[1]["sottofase_attiva"] is None
+    assert "TOP 1" in cursor.executed_queries[0]
+    assert "sf.IDStepOrizzontale = s.IDStepOrizzontale" in cursor.executed_queries[0]
+    assert "sf.Attivo = TRUE" in cursor.executed_queries[0]
+
+
 def test_list_step_orizzontali_by_fase_returns_fixed_steps():
     now = datetime(2026, 6, 1, 10, 36, 0)
     cursor = FakeCursor(

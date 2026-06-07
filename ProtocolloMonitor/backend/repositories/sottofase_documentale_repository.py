@@ -1,4 +1,4 @@
-"""Repository read-only per il modello documentale della sottofase.
+"""Repository per il modello documentale della sottofase.
 
 Il modulo legge le estensioni introdotte nello Step 30L:
 
@@ -6,9 +6,8 @@ Il modulo legge le estensioni introdotte nello Step 30L:
 - documenti collegati in `T_SottofaseDocumenti`;
 - step interni in `T_SottofaseStepOperativi`.
 
-Il repository e volutamente solo in lettura: non inserisce documenti, non cambia
-stati e non aggiorna path. Le future scritture dovranno passare da metodi
-separati e testati, mantenendo chiaro il confine tra lettura e mutazione.
+Le letture non modificano dati. Le scritture ammesse sono comandi espliciti e
+testati, mantenendo chiaro il confine tra lettura e mutazione.
 """
 
 from __future__ import annotations
@@ -337,3 +336,208 @@ class SottofaseDocumentaleRepository(BaseRepository):
         finally:
             cursor.close()
             conn.close()
+
+    def get_step_orizzontale_context(
+        self,
+        id_step_orizzontale: int,
+    ) -> dict[str, Any] | None:
+        """Legge i dati minimi di uno step orizzontale per validazioni."""
+
+        query = """
+            SELECT
+                IDStepOrizzontale,
+                IDFase,
+                CodiceStep,
+                TitoloStep,
+                StatoStep,
+                Attivo
+            FROM T_FaseStepOrizzontali
+            WHERE IDStepOrizzontale = ?
+        """
+
+        conn = self._open_access_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute(query, (id_step_orizzontale,))
+            row = cursor.fetchone()
+            if not row:
+                return None
+
+            return {
+                "id_step_orizzontale": self._normalize_value(
+                    self._get(row, "IDStepOrizzontale")
+                ),
+                "id_fase": self._normalize_value(self._get(row, "IDFase")),
+                "codice_step": self._normalize_value(self._get(row, "CodiceStep")),
+                "titolo_step": self._normalize_value(self._get(row, "TitoloStep")),
+                "stato_step": self._normalize_value(self._get(row, "StatoStep")),
+                "attivo": bool(self._get(row, "Attivo"))
+                if self._get(row, "Attivo") is not None
+                else False,
+            }
+        finally:
+            cursor.close()
+            conn.close()
+
+    def get_sottofase_aggancio_context(
+        self,
+        id_sottofase: int,
+    ) -> dict[str, Any] | None:
+        """Legge i dati minimi della sottofase per l'aggancio allo step."""
+
+        query = """
+            SELECT
+                IDSottofase,
+                IDFase,
+                IDStepOrizzontale,
+                TipoAggancio,
+                SottofasePrincipale,
+                StatoSottofase,
+                Attivo
+            FROM T_ProcedimentoSottofasi
+            WHERE IDSottofase = ?
+        """
+
+        conn = self._open_access_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute(query, (id_sottofase,))
+            row = cursor.fetchone()
+            if not row:
+                return None
+
+            return {
+                "id_sottofase": self._normalize_value(self._get(row, "IDSottofase")),
+                "id_fase": self._normalize_value(self._get(row, "IDFase")),
+                "id_step_orizzontale": self._normalize_value(
+                    self._get(row, "IDStepOrizzontale")
+                ),
+                "tipo_aggancio": self._normalize_value(
+                    self._get(row, "TipoAggancio")
+                ),
+                "sottofase_principale": bool(self._get(row, "SottofasePrincipale"))
+                if self._get(row, "SottofasePrincipale") is not None
+                else False,
+                "stato_sottofase": self._normalize_value(
+                    self._get(row, "StatoSottofase")
+                ),
+                "attivo": bool(self._get(row, "Attivo"))
+                if self._get(row, "Attivo") is not None
+                else False,
+            }
+        finally:
+            cursor.close()
+            conn.close()
+
+    def get_sottofase_attiva_by_step(
+        self,
+        id_step_orizzontale: int,
+    ) -> dict[str, Any] | None:
+        """Restituisce la prima sottofase attiva collegata allo step, se presente."""
+
+        query = """
+            SELECT TOP 1
+                IDSottofase,
+                IDFase,
+                IDStepOrizzontale,
+                TipoAggancio,
+                SottofasePrincipale,
+                StatoSottofase,
+                Attivo
+            FROM T_ProcedimentoSottofasi
+            WHERE IDStepOrizzontale = ?
+                AND Attivo = TRUE
+            ORDER BY IDSottofase ASC
+        """
+
+        conn = self._open_access_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute(query, (id_step_orizzontale,))
+            row = cursor.fetchone()
+            if not row:
+                return None
+
+            return {
+                "id_sottofase": self._normalize_value(self._get(row, "IDSottofase")),
+                "id_fase": self._normalize_value(self._get(row, "IDFase")),
+                "id_step_orizzontale": self._normalize_value(
+                    self._get(row, "IDStepOrizzontale")
+                ),
+                "tipo_aggancio": self._normalize_value(
+                    self._get(row, "TipoAggancio")
+                ),
+                "sottofase_principale": bool(self._get(row, "SottofasePrincipale"))
+                if self._get(row, "SottofasePrincipale") is not None
+                else False,
+                "stato_sottofase": self._normalize_value(
+                    self._get(row, "StatoSottofase")
+                ),
+                "attivo": bool(self._get(row, "Attivo"))
+                if self._get(row, "Attivo") is not None
+                else False,
+            }
+        finally:
+            cursor.close()
+            conn.close()
+
+    def associa_sottofase_a_step(
+        self,
+        *,
+        id_sottofase: int,
+        id_step_orizzontale: int,
+        data_aggancio: datetime,
+        utente_aggancio: str,
+    ) -> dict[str, Any]:
+        """Aggancia una sottofase esistente a uno step orizzontale."""
+
+        query = """
+            UPDATE T_ProcedimentoSottofasi
+            SET IDStepOrizzontale = ?,
+                TipoAggancio = ?,
+                SottofasePrincipale = ?,
+                DataAggancio = ?,
+                UtenteAggancio = ?,
+                StatoSottofase = IIF(StatoSottofase IS NULL, ?, StatoSottofase)
+            WHERE IDSottofase = ?
+        """
+
+        conn = self._open_access_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute(
+                query,
+                (
+                    id_step_orizzontale,
+                    "STEP",
+                    True,
+                    data_aggancio,
+                    utente_aggancio,
+                    "BOZZA",
+                    id_sottofase,
+                ),
+            )
+            rowcount = getattr(cursor, "rowcount", 1)
+            if rowcount == 0:
+                conn.rollback()
+                raise RuntimeError("Aggancio sottofase non applicato.")
+
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            cursor.close()
+            conn.close()
+
+        return {
+            "success": True,
+            "id_step_orizzontale": id_step_orizzontale,
+            "id_sottofase": id_sottofase,
+            "tipo_aggancio": "STEP",
+            "sottofase_principale": True,
+        }

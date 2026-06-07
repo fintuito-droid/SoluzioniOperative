@@ -7,11 +7,13 @@ from backend.api.routes.protocollo_monitor import (
     SottofaseAllegatoEliminaPayload,
     SottofaseAllegatoProtocolloPayload,
     SottofaseAllegatoRipristinaPayload,
+    SottofaseStepAssociazionePayload,
     SottofaseWorkflowDocumentaleAzionePayload,
     SottofaseWorkflowDocumentaleBozzaPayload,
     SottofaseDocumentoPrincipaleMetadatiPayload,
     aggiorna_sottofase_documento_principale_metadati,
     apri_sottofase_documento,
+    associa_sottofase_a_step_orizzontale,
     carica_allegato_file_sottofase,
     carica_documento_word_sottofase,
     collega_protocollo_come_allegato_sottofase,
@@ -29,13 +31,26 @@ from backend.api.routes.protocollo_monitor import (
     ripristina_allegato_sottofase,
     scarica_sottofase_documento,
 )
+from backend.services.sottofase_documentale_service import (
+    SottofaseStepAlreadyLinkedError,
+    SottofaseStepNotFoundError,
+)
 
 
 class FakeSottofaseDocumentaleService:
-    def __init__(self, *, sottofase=None, quadro=None, documento=None):
+    def __init__(
+        self,
+        *,
+        sottofase=None,
+        quadro=None,
+        documento=None,
+        associa_raises=None,
+    ):
         self.sottofase = sottofase
         self.quadro = quadro
         self.documento = documento
+        self.associa_raises = associa_raises
+        self.associa_calls = []
 
     def get_quadro_documentale(self, id_sottofase):
         if self.quadro is None:
@@ -57,6 +72,20 @@ class FakeSottofaseDocumentaleService:
         if self.documento is None:
             return None
         return {**self.documento, "id_documento_sottofase": id_documento}
+
+    def associa_sottofase_a_step_orizzontale(self, **kwargs):
+        self.associa_calls.append(kwargs)
+        if self.associa_raises:
+            raise self.associa_raises
+
+        return {
+            "success": True,
+            "id_fase": kwargs["id_fase"],
+            "id_step_orizzontale": kwargs["id_step_orizzontale"],
+            "id_sottofase": kwargs["id_sottofase"],
+            "tipo_aggancio": "STEP",
+            "sottofase_principale": True,
+        }
 
 
 class FakeSottofaseDocumentiService:
@@ -365,6 +394,83 @@ def test_get_sottofase_documentale_returns_404_when_missing():
 
     assert exc_info.value.status_code == 404
     assert exc_info.value.detail == "Sottofase non trovata"
+
+
+def test_associa_sottofase_a_step_orizzontale_returns_success():
+    service = FakeSottofaseDocumentaleService()
+
+    response = associa_sottofase_a_step_orizzontale(
+        3,
+        10,
+        25,
+        payload=SottofaseStepAssociazionePayload(utente="mario"),
+        sottofase_service=service,
+    )
+
+    assert response == {
+        "success": True,
+        "id_fase": 3,
+        "id_step_orizzontale": 10,
+        "id_sottofase": 25,
+        "tipo_aggancio": "STEP",
+        "sottofase_principale": True,
+    }
+    assert service.associa_calls == [
+        {
+            "id_fase": 3,
+            "id_step_orizzontale": 10,
+            "id_sottofase": 25,
+            "utente": "mario",
+        }
+    ]
+
+
+def test_associa_sottofase_a_step_orizzontale_uses_default_payload():
+    service = FakeSottofaseDocumentaleService()
+
+    associa_sottofase_a_step_orizzontale(
+        3,
+        10,
+        25,
+        payload=None,
+        sottofase_service=service,
+    )
+
+    assert service.associa_calls[0]["utente"] == "system"
+
+
+def test_associa_sottofase_a_step_orizzontale_returns_404_when_step_missing():
+    with pytest.raises(HTTPException) as exc_info:
+        associa_sottofase_a_step_orizzontale(
+            3,
+            10,
+            25,
+            payload=None,
+            sottofase_service=FakeSottofaseDocumentaleService(
+                associa_raises=SottofaseStepNotFoundError(
+                    "Step orizzontale non trovato."
+                )
+            ),
+        )
+
+    assert exc_info.value.status_code == 404
+
+
+def test_associa_sottofase_a_step_orizzontale_returns_409_when_already_linked():
+    with pytest.raises(HTTPException) as exc_info:
+        associa_sottofase_a_step_orizzontale(
+            3,
+            10,
+            25,
+            payload=None,
+            sottofase_service=FakeSottofaseDocumentaleService(
+                associa_raises=SottofaseStepAlreadyLinkedError(
+                    "Lo step ha gia un'altra sottofase attiva collegata."
+                )
+            ),
+        )
+
+    assert exc_info.value.status_code == 409
 
 
 def test_get_sottofase_documenti_returns_list():

@@ -145,6 +145,32 @@ class WorkflowProcedimentoRepository(BaseRepository):
     def _step_orizzontale_row_to_dict(self, row: Any) -> dict[str, Any]:
         """Converte una riga `T_FaseStepOrizzontali` in dizionario snake_case."""
 
+        id_sottofase = self._normalize_value(self._get(row, "SottofaseIDSottofase"))
+        sottofase_attiva = None
+        if id_sottofase is not None:
+            sottofase_attiva = {
+                "id_sottofase": id_sottofase,
+                "id_fase": self._normalize_value(self._get(row, "SottofaseIDFase")),
+                "id_step_orizzontale": self._normalize_value(
+                    self._get(row, "SottofaseIDStepOrizzontale")
+                ),
+                "titolo": self._normalize_value(self._get(row, "SottofaseTitolo")),
+                "stato_sottofase": self._normalize_value(
+                    self._get(row, "SottofaseStatoSottofase")
+                ),
+                "tipo_aggancio": self._normalize_value(
+                    self._get(row, "SottofaseTipoAggancio")
+                ),
+                "sottofase_principale": bool(
+                    self._get(row, "SottofasePrincipale")
+                )
+                if self._get(row, "SottofasePrincipale") is not None
+                else False,
+                "attivo": bool(self._get(row, "SottofaseAttivo"))
+                if self._get(row, "SottofaseAttivo") is not None
+                else False,
+            }
+
         return {
             "id_step_orizzontale": self._normalize_value(
                 self._get(row, "IDStepOrizzontale")
@@ -176,6 +202,8 @@ class WorkflowProcedimentoRepository(BaseRepository):
             else False,
             "data_creazione": self._normalize_value(self._get(row, "DataCreazione")),
             "data_modifica": self._normalize_value(self._get(row, "DataModifica")),
+            "sottofase_attiva": sottofase_attiva,
+            "has_sottofase_documentale": sottofase_attiva is not None,
         }
 
     def list_fasi_by_procedimento(
@@ -428,7 +456,63 @@ class WorkflowProcedimentoRepository(BaseRepository):
                 s.DataModifica,
                 p.NumeroProtocollo AS NumeroProtocolloCollegato,
                 p.DataProtocollo AS DataProtocolloCollegato,
-                p.Oggetto AS OggettoProtocolloCollegato
+                p.Oggetto AS OggettoProtocolloCollegato,
+                (
+                    SELECT TOP 1 sf.IDSottofase
+                    FROM T_ProcedimentoSottofasi AS sf
+                    WHERE sf.IDStepOrizzontale = s.IDStepOrizzontale
+                        AND sf.Attivo = TRUE
+                    ORDER BY sf.IDSottofase ASC
+                ) AS SottofaseIDSottofase,
+                (
+                    SELECT TOP 1 sf.IDFase
+                    FROM T_ProcedimentoSottofasi AS sf
+                    WHERE sf.IDStepOrizzontale = s.IDStepOrizzontale
+                        AND sf.Attivo = TRUE
+                    ORDER BY sf.IDSottofase ASC
+                ) AS SottofaseIDFase,
+                (
+                    SELECT TOP 1 sf.IDStepOrizzontale
+                    FROM T_ProcedimentoSottofasi AS sf
+                    WHERE sf.IDStepOrizzontale = s.IDStepOrizzontale
+                        AND sf.Attivo = TRUE
+                    ORDER BY sf.IDSottofase ASC
+                ) AS SottofaseIDStepOrizzontale,
+                (
+                    SELECT TOP 1 sf.Titolo
+                    FROM T_ProcedimentoSottofasi AS sf
+                    WHERE sf.IDStepOrizzontale = s.IDStepOrizzontale
+                        AND sf.Attivo = TRUE
+                    ORDER BY sf.IDSottofase ASC
+                ) AS SottofaseTitolo,
+                (
+                    SELECT TOP 1 sf.StatoSottofase
+                    FROM T_ProcedimentoSottofasi AS sf
+                    WHERE sf.IDStepOrizzontale = s.IDStepOrizzontale
+                        AND sf.Attivo = TRUE
+                    ORDER BY sf.IDSottofase ASC
+                ) AS SottofaseStatoSottofase,
+                (
+                    SELECT TOP 1 sf.TipoAggancio
+                    FROM T_ProcedimentoSottofasi AS sf
+                    WHERE sf.IDStepOrizzontale = s.IDStepOrizzontale
+                        AND sf.Attivo = TRUE
+                    ORDER BY sf.IDSottofase ASC
+                ) AS SottofaseTipoAggancio,
+                (
+                    SELECT TOP 1 sf.SottofasePrincipale
+                    FROM T_ProcedimentoSottofasi AS sf
+                    WHERE sf.IDStepOrizzontale = s.IDStepOrizzontale
+                        AND sf.Attivo = TRUE
+                    ORDER BY sf.IDSottofase ASC
+                ) AS SottofasePrincipale,
+                (
+                    SELECT TOP 1 sf.Attivo
+                    FROM T_ProcedimentoSottofasi AS sf
+                    WHERE sf.IDStepOrizzontale = s.IDStepOrizzontale
+                        AND sf.Attivo = TRUE
+                    ORDER BY sf.IDSottofase ASC
+                ) AS SottofaseAttivo
             FROM T_FaseStepOrizzontali AS s
                 LEFT JOIN T_Protocolli AS p
                     ON s.IDProtocolloCollegato = p.IDProtocollo

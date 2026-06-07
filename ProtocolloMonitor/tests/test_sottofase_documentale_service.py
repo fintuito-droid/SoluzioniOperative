@@ -1,5 +1,11 @@
 from backend.services.sottofase_documentale_service import (
+    SottofaseAlreadyLinkedError,
+    SottofaseAssociazioneNotFoundError,
     SottofaseDocumentaleService,
+    SottofaseNotAssociableError,
+    SottofaseStepAlreadyLinkedError,
+    SottofaseStepFaseMismatchError,
+    SottofaseStepNotFoundError,
 )
 
 
@@ -33,6 +39,52 @@ class FailingSottofaseDocumentaleRepository:
 
     def list_step_operativi_by_sottofase(self, id_sottofase):
         raise RuntimeError("errore test")
+
+
+_DEFAULT = object()
+
+
+class FakeAssociazioneRepository:
+    def __init__(
+        self,
+        *,
+        step=_DEFAULT,
+        sottofase=_DEFAULT,
+        active_sottofase=None,
+    ):
+        self.step = step if step is not _DEFAULT else {
+            "id_step_orizzontale": 10,
+            "id_fase": 3,
+            "attivo": True,
+        }
+        self.sottofase = sottofase if sottofase is not _DEFAULT else {
+            "id_sottofase": 25,
+            "id_fase": 3,
+            "id_step_orizzontale": None,
+            "stato_sottofase": "BOZZA",
+            "attivo": True,
+        }
+        self.active_sottofase = active_sottofase
+        self.associa_calls = []
+
+    def get_step_orizzontale_context(self, id_step_orizzontale):
+        return self.step
+
+    def get_sottofase_aggancio_context(self, id_sottofase):
+        return self.sottofase
+
+    def get_sottofase_attiva_by_step(self, id_step_orizzontale):
+        return self.active_sottofase
+
+    def associa_sottofase_a_step(self, **kwargs):
+        self.associa_calls.append(kwargs)
+        return {
+            "success": True,
+            "id_step_orizzontale": kwargs["id_step_orizzontale"],
+            "id_sottofase": kwargs["id_sottofase"],
+            "tipo_aggancio": "STEP",
+            "sottofase_principale": True,
+        }
 
 
 class FakeAssegnazioniService:
@@ -173,3 +225,225 @@ def test_service_returns_safe_fallbacks_when_repository_fails():
     assert service.list_documenti_by_sottofase(1) == []
     assert service.list_step_operativi_by_sottofase(1) == []
     assert service.get_quadro_documentale(1) is None
+
+
+def test_associa_sottofase_a_step_orizzontale_validates_and_delegates():
+    repository = FakeAssociazioneRepository()
+    service = SottofaseDocumentaleService(
+        sottofase_documentale_repository=repository,
+        now_factory=lambda: "2026-06-07 08:00:00",
+    )
+
+    result = service.associa_sottofase_a_step_orizzontale(
+        id_fase=3,
+        id_step_orizzontale=10,
+        id_sottofase=25,
+        utente="mario",
+    )
+
+    assert result == {
+        "success": True,
+        "id_step_orizzontale": 10,
+        "id_sottofase": 25,
+        "tipo_aggancio": "STEP",
+        "sottofase_principale": True,
+        "id_fase": 3,
+    }
+    assert repository.associa_calls == [
+        {
+            "id_sottofase": 25,
+            "id_step_orizzontale": 10,
+            "data_aggancio": "2026-06-07 08:00:00",
+            "utente_aggancio": "mario",
+        }
+    ]
+
+
+def test_associa_sottofase_a_step_orizzontale_uses_system_user_by_default():
+    repository = FakeAssociazioneRepository()
+    service = SottofaseDocumentaleService(
+        sottofase_documentale_repository=repository,
+        now_factory=lambda: "now",
+    )
+
+    service.associa_sottofase_a_step_orizzontale(
+        id_fase=3,
+        id_step_orizzontale=10,
+        id_sottofase=25,
+        utente="",
+    )
+
+    assert repository.associa_calls[0]["utente_aggancio"] == "system"
+
+
+def test_associa_sottofase_a_step_orizzontale_blocks_missing_step():
+    service = SottofaseDocumentaleService(
+        sottofase_documentale_repository=FakeAssociazioneRepository(step=None)
+    )
+
+    try:
+        service.associa_sottofase_a_step_orizzontale(
+            id_fase=3,
+            id_step_orizzontale=10,
+            id_sottofase=25,
+        )
+    except SottofaseStepNotFoundError:
+        pass
+    else:
+        raise AssertionError("Expected SottofaseStepNotFoundError")
+
+
+def test_associa_sottofase_a_step_orizzontale_blocks_missing_sottofase():
+    service = SottofaseDocumentaleService(
+        sottofase_documentale_repository=FakeAssociazioneRepository(sottofase=None)
+    )
+
+    try:
+        service.associa_sottofase_a_step_orizzontale(
+            id_fase=3,
+            id_step_orizzontale=10,
+            id_sottofase=25,
+        )
+    except SottofaseAssociazioneNotFoundError:
+        pass
+    else:
+        raise AssertionError("Expected SottofaseAssociazioneNotFoundError")
+
+
+def test_associa_sottofase_a_step_orizzontale_blocks_step_fase_mismatch():
+    service = SottofaseDocumentaleService(
+        sottofase_documentale_repository=FakeAssociazioneRepository(
+            step={"id_step_orizzontale": 10, "id_fase": 4, "attivo": True}
+        )
+    )
+
+    try:
+        service.associa_sottofase_a_step_orizzontale(
+            id_fase=3,
+            id_step_orizzontale=10,
+            id_sottofase=25,
+        )
+    except SottofaseStepFaseMismatchError:
+        pass
+    else:
+        raise AssertionError("Expected SottofaseStepFaseMismatchError")
+
+
+def test_associa_sottofase_a_step_orizzontale_blocks_sottofase_fase_mismatch():
+    service = SottofaseDocumentaleService(
+        sottofase_documentale_repository=FakeAssociazioneRepository(
+            sottofase={
+                "id_sottofase": 25,
+                "id_fase": 4,
+                "id_step_orizzontale": None,
+                "stato_sottofase": "BOZZA",
+                "attivo": True,
+            }
+        )
+    )
+
+    try:
+        service.associa_sottofase_a_step_orizzontale(
+            id_fase=3,
+            id_step_orizzontale=10,
+            id_sottofase=25,
+        )
+    except SottofaseStepFaseMismatchError:
+        pass
+    else:
+        raise AssertionError("Expected SottofaseStepFaseMismatchError")
+
+
+def test_associa_sottofase_a_step_orizzontale_blocks_step_already_linked():
+    service = SottofaseDocumentaleService(
+        sottofase_documentale_repository=FakeAssociazioneRepository(
+            active_sottofase={"id_sottofase": 99, "id_step_orizzontale": 10}
+        )
+    )
+
+    try:
+        service.associa_sottofase_a_step_orizzontale(
+            id_fase=3,
+            id_step_orizzontale=10,
+            id_sottofase=25,
+        )
+    except SottofaseStepAlreadyLinkedError:
+        pass
+    else:
+        raise AssertionError("Expected SottofaseStepAlreadyLinkedError")
+
+
+def test_associa_sottofase_a_step_orizzontale_blocks_sottofase_linked_elsewhere():
+    service = SottofaseDocumentaleService(
+        sottofase_documentale_repository=FakeAssociazioneRepository(
+            sottofase={
+                "id_sottofase": 25,
+                "id_fase": 3,
+                "id_step_orizzontale": 99,
+                "stato_sottofase": "BOZZA",
+                "attivo": True,
+            }
+        )
+    )
+
+    try:
+        service.associa_sottofase_a_step_orizzontale(
+            id_fase=3,
+            id_step_orizzontale=10,
+            id_sottofase=25,
+        )
+    except SottofaseAlreadyLinkedError:
+        pass
+    else:
+        raise AssertionError("Expected SottofaseAlreadyLinkedError")
+
+
+def test_associa_sottofase_a_step_orizzontale_blocks_inactive_sottofase():
+    service = SottofaseDocumentaleService(
+        sottofase_documentale_repository=FakeAssociazioneRepository(
+            sottofase={
+                "id_sottofase": 25,
+                "id_fase": 3,
+                "id_step_orizzontale": None,
+                "stato_sottofase": "BOZZA",
+                "attivo": False,
+            }
+        )
+    )
+
+    try:
+        service.associa_sottofase_a_step_orizzontale(
+            id_fase=3,
+            id_step_orizzontale=10,
+            id_sottofase=25,
+        )
+    except SottofaseNotAssociableError:
+        pass
+    else:
+        raise AssertionError("Expected SottofaseNotAssociableError")
+
+
+def test_associa_sottofase_a_step_orizzontale_blocks_annullata_or_archiviata():
+    for stato in ("ANNULLATA", "ARCHIVIATA"):
+        service = SottofaseDocumentaleService(
+            sottofase_documentale_repository=FakeAssociazioneRepository(
+                sottofase={
+                    "id_sottofase": 25,
+                    "id_fase": 3,
+                    "id_step_orizzontale": None,
+                    "stato_sottofase": stato,
+                    "attivo": True,
+                }
+            )
+        )
+
+        try:
+            service.associa_sottofase_a_step_orizzontale(
+                id_fase=3,
+                id_step_orizzontale=10,
+                id_sottofase=25,
+            )
+        except SottofaseNotAssociableError:
+            pass
+        else:
+            raise AssertionError("Expected SottofaseNotAssociableError")

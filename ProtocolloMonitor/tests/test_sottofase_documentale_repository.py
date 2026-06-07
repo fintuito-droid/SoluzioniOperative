@@ -12,6 +12,7 @@ class FakeCursor:
         self.executed_queries = []
         self.executed_params = []
         self.closed = False
+        self.rowcount = 1
 
     def execute(self, query, params=None):
         self.executed_queries.append(query)
@@ -34,10 +35,18 @@ class FakeCursor:
 class FakeConnection:
     def __init__(self, cursor):
         self.cursor_instance = cursor
+        self.committed = False
+        self.rolled_back = False
         self.closed = False
 
     def cursor(self):
         return self.cursor_instance
+
+    def commit(self):
+        self.committed = True
+
+    def rollback(self):
+        self.rolled_back = True
 
     def close(self):
         self.closed = True
@@ -126,6 +135,33 @@ def make_step_row(**overrides):
     return SimpleNamespace(**values)
 
 
+def make_step_orizzontale_row(**overrides):
+    values = {
+        "IDStepOrizzontale": 10,
+        "IDFase": 3,
+        "CodiceStep": "REDIGI",
+        "TitoloStep": "Redigi",
+        "StatoStep": "NON_AVVIATO",
+        "Attivo": True,
+    }
+    values.update(overrides)
+    return SimpleNamespace(**values)
+
+
+def make_sottofase_aggancio_row(**overrides):
+    values = {
+        "IDSottofase": 25,
+        "IDFase": 3,
+        "IDStepOrizzontale": None,
+        "TipoAggancio": None,
+        "SottofasePrincipale": False,
+        "StatoSottofase": "BOZZA",
+        "Attivo": True,
+    }
+    values.update(overrides)
+    return SimpleNamespace(**values)
+
+
 def test_get_sottofase_documentale_returns_read_only_record():
     cursor = FakeCursor([[make_sottofase_row()]])
     repository = SottofaseDocumentaleRepositoryForTest(FakeConnection(cursor))
@@ -184,3 +220,75 @@ def test_list_step_operativi_by_sottofase_returns_steps():
     assert records[0]["stato_step"] == "IN_CORSO"
     assert "FROM T_SottofaseStepOperativi" in cursor.executed_queries[0]
     assert cursor.executed_params == [(1,)]
+
+
+def test_get_step_orizzontale_context_returns_record():
+    cursor = FakeCursor([[make_step_orizzontale_row()]])
+    repository = SottofaseDocumentaleRepositoryForTest(FakeConnection(cursor))
+
+    record = repository.get_step_orizzontale_context(10)
+
+    assert record["id_step_orizzontale"] == 10
+    assert record["id_fase"] == 3
+    assert record["attivo"] is True
+    assert "FROM T_FaseStepOrizzontali" in cursor.executed_queries[0]
+    assert cursor.executed_params == [(10,)]
+
+
+def test_get_sottofase_aggancio_context_returns_record():
+    cursor = FakeCursor([[make_sottofase_aggancio_row()]])
+    repository = SottofaseDocumentaleRepositoryForTest(FakeConnection(cursor))
+
+    record = repository.get_sottofase_aggancio_context(25)
+
+    assert record["id_sottofase"] == 25
+    assert record["id_step_orizzontale"] is None
+    assert record["attivo"] is True
+    assert "FROM T_ProcedimentoSottofasi" in cursor.executed_queries[0]
+    assert cursor.executed_params == [(25,)]
+
+
+def test_get_sottofase_attiva_by_step_returns_first_active_record():
+    cursor = FakeCursor([[make_sottofase_aggancio_row(IDStepOrizzontale=10)]])
+    repository = SottofaseDocumentaleRepositoryForTest(FakeConnection(cursor))
+
+    record = repository.get_sottofase_attiva_by_step(10)
+
+    assert record["id_sottofase"] == 25
+    assert record["id_step_orizzontale"] == 10
+    assert "TOP 1" in cursor.executed_queries[0]
+    assert cursor.executed_params == [(10,)]
+
+
+def test_associa_sottofase_a_step_updates_only_bridge_fields():
+    cursor = FakeCursor([[]])
+    connection = FakeConnection(cursor)
+    repository = SottofaseDocumentaleRepositoryForTest(connection)
+
+    result = repository.associa_sottofase_a_step(
+        id_sottofase=25,
+        id_step_orizzontale=10,
+        data_aggancio="2026-06-07 08:00:00",
+        utente_aggancio="mario",
+    )
+
+    assert result == {
+        "success": True,
+        "id_step_orizzontale": 10,
+        "id_sottofase": 25,
+        "tipo_aggancio": "STEP",
+        "sottofase_principale": True,
+    }
+    assert "UPDATE T_ProcedimentoSottofasi" in cursor.executed_queries[0]
+    assert "T_SottofaseDocumenti" not in cursor.executed_queries[0]
+    assert cursor.executed_params[0] == (
+        10,
+        "STEP",
+        True,
+        "2026-06-07 08:00:00",
+        "mario",
+        "BOZZA",
+        25,
+    )
+    assert connection.committed is True
+    assert connection.rolled_back is False

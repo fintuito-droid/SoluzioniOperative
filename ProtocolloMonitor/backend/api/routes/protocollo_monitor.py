@@ -67,6 +67,15 @@ from backend.services.sottofase_assegnazioni_service import (
     SottofaseAssegnazioniNotFoundError,
     SottofaseAssegnazioniWriteError,
 )
+from backend.services.sottofase_documentale_service import (
+    SottofaseAlreadyLinkedError,
+    SottofaseAssociazioneNotFoundError,
+    SottofaseNotAssociableError,
+    SottofaseStepAlreadyLinkedError,
+    SottofaseStepAssociazioneWriteError,
+    SottofaseStepFaseMismatchError,
+    SottofaseStepNotFoundError,
+)
 
 
 router = APIRouter()
@@ -119,6 +128,12 @@ class ProcedimentoFaseStepNotePayload(BaseModel):
     """Payload per salvare le note operative di uno step orizzontale."""
 
     noteOperative: str | None = None
+
+
+class SottofaseStepAssociazionePayload(BaseModel):
+    """Payload opzionale per associare sottofase e step orizzontale."""
+
+    utente: str | None = Field(default="system", max_length=100)
 
 
 class SottofaseDocumentoPrincipaleMetadatiPayload(BaseModel):
@@ -763,6 +778,38 @@ def get_procedimento_fase_step_orizzontali(
         )
     except WorkflowFaseNotFoundError:
         raise HTTPException(status_code=404, detail="Fase non trovata")
+
+
+@router.post(
+    "/protocollo-monitor/procedimenti/fasi/{id_fase}/step-orizzontali/"
+    "{id_step_orizzontale}/associa-sottofase/{id_sottofase}"
+)
+def associa_sottofase_a_step_orizzontale(
+    id_fase: int,
+    id_step_orizzontale: int,
+    id_sottofase: int,
+    payload: SottofaseStepAssociazionePayload | None = None,
+    sottofase_service: Any = Depends(get_sottofase_documentale_service),
+):
+    try:
+        return sottofase_service.associa_sottofase_a_step_orizzontale(
+            id_fase=id_fase,
+            id_step_orizzontale=id_step_orizzontale,
+            id_sottofase=id_sottofase,
+            utente=payload.utente if payload else "system",
+        )
+    except (SottofaseStepNotFoundError, SottofaseAssociazioneNotFoundError) as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except SottofaseStepFaseMismatchError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except (
+        SottofaseStepAlreadyLinkedError,
+        SottofaseAlreadyLinkedError,
+        SottofaseNotAssociableError,
+    ) as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    except SottofaseStepAssociazioneWriteError as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @router.post(
