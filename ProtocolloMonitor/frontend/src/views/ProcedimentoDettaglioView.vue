@@ -489,11 +489,43 @@
 
                       <div>
                         <div class="text-caption text-medium-emphasis">
-                          Step selezionato
+                          Stato e Lavorazione
                         </div>
                         <div class="step-context-title">
                           {{ stepAzioniSelezionato.titoloStep }}
                         </div>
+                      </div>
+                    </div>
+
+                    <div class="step-context-status">
+                      <v-chip
+                        :color="coloreVisualState(stepAzioniSelezionato.visualState)"
+                        variant="tonal"
+                        size="small"
+                      >
+                        {{ labelVisualState(stepAzioniSelezionato.visualState) }}
+                      </v-chip>
+
+                      <div
+                        v-if="stepAzioniSelezionato.outputs.length"
+                        class="step-context-outputs"
+                      >
+                        <button
+                          v-for="output in stepAzioniSelezionato.outputs"
+                          :key="output.key"
+                          type="button"
+                          class="step-output-action"
+                          :title="output.label"
+                          :aria-label="output.label"
+                          @click.stop="gestisciClickOutputStep(stepAzioniSelezionato, output)"
+                        >
+                          <v-icon
+                            size="24"
+                            :color="output.color"
+                          >
+                            {{ output.icon }}
+                          </v-icon>
+                        </button>
                       </div>
                     </div>
 
@@ -542,8 +574,20 @@
                 </v-card>
               </div>
 
-              <div class="lavorazione-content-card">
-                <div class="step-operativo-scroll">
+              <v-expansion-panels
+                v-if="stepAzioniSelezionato"
+                class="lavorazione-content-card advanced-work-panel"
+                variant="accordion"
+              >
+                <v-expansion-panel>
+                  <v-expansion-panel-title>
+                    <div class="advanced-work-title">
+                      Dati operativi avanzati
+                    </div>
+                  </v-expansion-panel-title>
+
+                  <v-expansion-panel-text>
+                    <div class="step-operativo-scroll">
                   <v-card
                     v-if="stepRedigiSelezionato"
                     class="redigi-work-panel"
@@ -1449,8 +1493,10 @@
                     Selezionare uno step per iniziare.
                   </div>
                 </div>
-                </div>
-              </div>
+                    </div>
+                  </v-expansion-panel-text>
+                </v-expansion-panel>
+              </v-expansion-panels>
             </div>
           </v-window-item>
         </v-window>
@@ -3277,6 +3323,16 @@ function labelVisualState(visualState) {
   return labels[visualState] || visualState
 }
 
+function coloreVisualState(visualState) {
+  const colori = {
+    idle: 'grey',
+    locked: 'grey',
+    active: 'primary',
+    completed: 'success'
+  }
+  return colori[visualState] || 'grey'
+}
+
 function apriDettagliStep(step) {
   stepDettagliSelezionato.value = step
   dialogDettagliStep.value = true
@@ -4903,6 +4959,20 @@ onMounted(() => {
   min-width: 220px;
 }
 
+.step-context-status {
+  align-items: center;
+  display: flex;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.step-context-outputs {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+}
+
 .step-context-title {
   font-size: 1.08rem;
   font-weight: 900;
@@ -4921,6 +4991,24 @@ onMounted(() => {
 .step-context-locked-message {
   flex: 1 1 260px;
   margin: 0;
+}
+
+.advanced-work-panel {
+  background: transparent;
+  border-style: solid;
+  margin-top: 18px;
+  padding: 0;
+}
+
+.advanced-work-panel :deep(.v-expansion-panel-title) {
+  font-size: 0.92rem;
+  font-weight: 850;
+  letter-spacing: 0;
+  min-height: 46px;
+}
+
+.advanced-work-title {
+  color: rgba(var(--v-theme-on-surface), 0.74);
 }
 
 .stepper-orizzontale {
