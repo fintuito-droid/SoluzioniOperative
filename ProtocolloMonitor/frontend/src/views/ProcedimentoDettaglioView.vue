@@ -614,20 +614,33 @@
                           </div>
 
                           <div v-else>
-                            <div class="detail-grid">
-                              <div class="detail-field">
-                                <div class="detail-label">Documento</div>
-                                <div class="detail-value">
-                                  {{ valoreDettaglio(documentoWorkflowPrincipale?.titoloDocumento) }}
-                                </div>
-                              </div>
-                              <div class="detail-field">
-                                <div class="detail-label">Messaggio</div>
-                                <div class="detail-value">
-                                  {{ workflowDocumentaleReadyMessage }}
-                                </div>
-                              </div>
-                            </div>
+                            <v-expansion-panels
+                              class="technical-details-panel mb-4"
+                              variant="accordion"
+                            >
+                              <v-expansion-panel>
+                                <v-expansion-panel-title>
+                                  Dettagli documento e workflow
+                                </v-expansion-panel-title>
+
+                                <v-expansion-panel-text>
+                                  <div class="detail-grid">
+                                    <div class="detail-field">
+                                      <div class="detail-label">Documento</div>
+                                      <div class="detail-value">
+                                        {{ valoreDettaglio(documentoWorkflowPrincipale?.titoloDocumento) }}
+                                      </div>
+                                    </div>
+                                    <div class="detail-field">
+                                      <div class="detail-label">Messaggio</div>
+                                      <div class="detail-value">
+                                        {{ workflowDocumentaleReadyMessage }}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </v-expansion-panel-text>
+                              </v-expansion-panel>
+                            </v-expansion-panels>
 
                             <v-textarea
                               v-if="canCompletaRedazioneWorkflow"
@@ -722,82 +735,21 @@
                           v-else
                           class="redigi-document-detail"
                         >
-                          <div class="redigi-document-form">
-                            <v-text-field
-                              v-model="documentoMetadatiForm.titoloDocumento"
-                              label="Titolo documento"
-                              variant="outlined"
-                              density="compact"
-                            />
-
-                            <v-select
-                              v-model="documentoMetadatiForm.statoDocumento"
-                              :items="statiDocumentoPrincipale"
-                              label="Stato documento"
-                              variant="outlined"
-                              density="compact"
-                            />
-
-                            <v-select
-                              v-model="documentoMetadatiForm.tipoDocumento"
-                              :items="tipiDocumentoPrincipale"
-                              label="Tipo documento"
-                              variant="outlined"
-                              density="compact"
-                            />
-
-                            <v-textarea
-                              v-model="documentoMetadatiForm.descrizioneDocumento"
-                              label="Descrizione documento"
-                              variant="outlined"
-                              rows="3"
-                              auto-grow
-                              class="redigi-document-description"
-                            />
-                          </div>
-
-                          <div class="detail-grid mt-4">
-                            <div class="detail-field">
-                              <div class="detail-label">Ruolo</div>
-                              <div class="detail-value">
-                                {{ valoreDettaglio(documentoPrincipaleRedigi.ruoloDocumento) }}
+                          <div class="document-operational-summary">
+                            <div>
+                              <div class="detail-label">Documento</div>
+                              <div class="redigi-document-title">
+                                {{ valoreDettaglio(documentoPrincipaleRedigi.titoloDocumento) }}
                               </div>
                             </div>
 
-                            <div class="detail-field">
-                              <div class="detail-label">Tipo Origine</div>
-                              <div class="detail-value">
-                                {{ valoreDettaglio(documentoPrincipaleRedigi.tipoOrigine) }}
-                              </div>
-                            </div>
-
-                            <div class="detail-field">
-                              <div class="detail-label">Versione</div>
-                              <div class="detail-value">
-                                {{ valoreDettaglio(documentoPrincipaleRedigi.versioneDocumento) }}
-                              </div>
-                            </div>
-
-                            <div class="detail-field">
-                              <div class="detail-label">Data creazione</div>
-                              <div class="detail-value">
-                                {{ valoreDettaglio(documentoPrincipaleRedigi.dataCreazione) }}
-                              </div>
-                            </div>
-
-                            <div class="detail-field">
-                              <div class="detail-label">Data modifica</div>
-                              <div class="detail-value">
-                                {{ valoreDettaglio(documentoPrincipaleRedigi.dataModifica) }}
-                              </div>
-                            </div>
-
-                            <div class="detail-field">
-                              <div class="detail-label">Percorso</div>
-                              <div class="detail-value">
-                                {{ valoreDettaglio(documentoPrincipaleRedigi.percorsoDocumento) }}
-                              </div>
-                            </div>
+                            <v-chip
+                              :color="coloreStatoDocumentoWorkflow(documentoPrincipaleRedigi.statoDocumento)"
+                              variant="tonal"
+                              size="small"
+                            >
+                              {{ valoreDettaglio(documentoPrincipaleRedigi.statoDocumento) }}
+                            </v-chip>
                           </div>
 
                           <v-btn
@@ -811,41 +763,144 @@
                             Apri documento
                           </v-btn>
 
-                          <v-btn
-                            color="primary"
-                            variant="flat"
-                            prepend-icon="mdi-content-save-outline"
-                            :loading="salvataggioMetadatiDocumentoInCorso"
-                            class="mt-4 ml-3"
-                            @click="salvaMetadatiDocumentoPrincipaleRedigi"
+                          <v-expansion-panels
+                            class="technical-details-panel mt-4"
+                            variant="accordion"
                           >
-                            Salva metadati documento
-                          </v-btn>
+                            <v-expansion-panel>
+                              <v-expansion-panel-title>
+                                Metadati e informazioni tecniche
+                              </v-expansion-panel-title>
+
+                              <v-expansion-panel-text>
+                                <div class="redigi-document-form">
+                                  <v-text-field
+                                    v-model="documentoMetadatiForm.titoloDocumento"
+                                    label="Titolo documento"
+                                    variant="outlined"
+                                    density="compact"
+                                  />
+
+                                  <v-select
+                                    v-model="documentoMetadatiForm.statoDocumento"
+                                    :items="statiDocumentoPrincipale"
+                                    label="Stato documento"
+                                    variant="outlined"
+                                    density="compact"
+                                  />
+
+                                  <v-select
+                                    v-model="documentoMetadatiForm.tipoDocumento"
+                                    :items="tipiDocumentoPrincipale"
+                                    label="Tipo documento"
+                                    variant="outlined"
+                                    density="compact"
+                                  />
+
+                                  <v-textarea
+                                    v-model="documentoMetadatiForm.descrizioneDocumento"
+                                    label="Descrizione documento"
+                                    variant="outlined"
+                                    rows="3"
+                                    auto-grow
+                                    class="redigi-document-description"
+                                  />
+                                </div>
+
+                                <div class="detail-grid mt-4">
+                                  <div class="detail-field">
+                                    <div class="detail-label">Ruolo</div>
+                                    <div class="detail-value">
+                                      {{ valoreDettaglio(documentoPrincipaleRedigi.ruoloDocumento) }}
+                                    </div>
+                                  </div>
+
+                                  <div class="detail-field">
+                                    <div class="detail-label">Tipo Origine</div>
+                                    <div class="detail-value">
+                                      {{ valoreDettaglio(documentoPrincipaleRedigi.tipoOrigine) }}
+                                    </div>
+                                  </div>
+
+                                  <div class="detail-field">
+                                    <div class="detail-label">Versione</div>
+                                    <div class="detail-value">
+                                      {{ valoreDettaglio(documentoPrincipaleRedigi.versioneDocumento) }}
+                                    </div>
+                                  </div>
+
+                                  <div class="detail-field">
+                                    <div class="detail-label">Data creazione</div>
+                                    <div class="detail-value">
+                                      {{ valoreDettaglio(documentoPrincipaleRedigi.dataCreazione) }}
+                                    </div>
+                                  </div>
+
+                                  <div class="detail-field">
+                                    <div class="detail-label">Data modifica</div>
+                                    <div class="detail-value">
+                                      {{ valoreDettaglio(documentoPrincipaleRedigi.dataModifica) }}
+                                    </div>
+                                  </div>
+
+                                  <div class="detail-field">
+                                    <div class="detail-label">Percorso</div>
+                                    <div class="detail-value">
+                                      {{ valoreDettaglio(documentoPrincipaleRedigi.percorsoDocumento) }}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <v-btn
+                                  color="primary"
+                                  variant="flat"
+                                  prepend-icon="mdi-content-save-outline"
+                                  :loading="salvataggioMetadatiDocumentoInCorso"
+                                  class="mt-4"
+                                  @click="salvaMetadatiDocumentoPrincipaleRedigi"
+                                >
+                                  Salva metadati documento
+                                </v-btn>
+                              </v-expansion-panel-text>
+                            </v-expansion-panel>
+                          </v-expansion-panels>
                         </div>
                       </v-card-text>
                     </v-card>
 
-                    <v-textarea
-                      v-model="noteRedigiForm"
-                      label="Note operative"
-                      variant="outlined"
-                      rows="5"
-                      auto-grow
-                      class="mt-5"
-                    />
-                  </v-card-text>
-
-                  <v-card-actions class="justify-end">
-                    <v-btn
-                      color="primary"
-                      variant="tonal"
-                      prepend-icon="mdi-content-save-outline"
-                      :loading="salvataggioNoteRedigiInCorso"
-                      @click="salvaNoteRedigiSelezionato"
+                    <v-expansion-panels
+                      class="technical-details-panel mt-5"
+                      variant="accordion"
                     >
-                      Salva note
-                    </v-btn>
-                  </v-card-actions>
+                      <v-expansion-panel>
+                        <v-expansion-panel-title>
+                          Note operative interne
+                        </v-expansion-panel-title>
+
+                        <v-expansion-panel-text>
+                          <v-textarea
+                            v-model="noteRedigiForm"
+                            label="Note operative"
+                            variant="outlined"
+                            rows="5"
+                            auto-grow
+                          />
+
+                          <div class="technical-details-actions">
+                            <v-btn
+                              color="primary"
+                              variant="tonal"
+                              prepend-icon="mdi-content-save-outline"
+                              :loading="salvataggioNoteRedigiInCorso"
+                              @click="salvaNoteRedigiSelezionato"
+                            >
+                              Salva note
+                            </v-btn>
+                          </div>
+                        </v-expansion-panel-text>
+                      </v-expansion-panel>
+                    </v-expansion-panels>
+                  </v-card-text>
                 </v-card>
 
                 <v-card
@@ -921,48 +976,78 @@
                       v-else
                       class="workflow-documentale-body"
                     >
-                      <div class="detail-grid">
-                        <div class="detail-field">
-                          <div class="detail-label">Titolo documento</div>
-                          <div class="detail-value">
+                      <div class="document-operational-summary">
+                        <div>
+                          <div class="detail-label">Documento</div>
+                          <div class="redigi-document-title">
                             {{ valoreDettaglio(documentoWorkflowPrincipale.titoloDocumento) }}
                           </div>
                         </div>
 
-                        <div class="detail-field">
-                          <div class="detail-label">Stato</div>
-                          <div class="detail-value">
-                            {{ valoreDettaglio(statoWorkflowDocumento) }}
-                          </div>
-                        </div>
-
-                        <div class="detail-field">
-                          <div class="detail-label">Ultima modifica</div>
-                          <div class="detail-value">
-                            {{ valoreDettaglio(documentoWorkflowPrincipale.dataModifica) }}
-                          </div>
-                        </div>
-
-                        <div class="detail-field">
-                          <div class="detail-label">Protocollo collegato</div>
-                          <div class="detail-value">
-                            {{ valoreDettaglio(documentoWorkflowPrincipale.idProtocolloCollegato) }}
-                          </div>
-                        </div>
+                        <v-chip
+                          :color="coloreStatoDocumentoWorkflow(statoWorkflowDocumento)"
+                          variant="tonal"
+                          size="small"
+                        >
+                          {{ valoreDettaglio(statoWorkflowDocumento) }}
+                        </v-chip>
                       </div>
 
-                      <div class="detail-description-box">
-                        {{ valoreDettaglio(documentoWorkflowPrincipale.descrizioneDocumento) }}
-                      </div>
-
-                      <v-alert
-                        type="info"
-                        variant="tonal"
-                        density="compact"
-                        class="mb-4"
+                      <v-expansion-panels
+                        class="technical-details-panel"
+                        variant="accordion"
                       >
-                        {{ workflowDocumentaleReadyMessage }}
-                      </v-alert>
+                        <v-expansion-panel>
+                          <v-expansion-panel-title>
+                            Dettagli documento e collegamenti
+                          </v-expansion-panel-title>
+
+                          <v-expansion-panel-text>
+                            <div class="detail-grid">
+                              <div class="detail-field">
+                                <div class="detail-label">Titolo documento</div>
+                                <div class="detail-value">
+                                  {{ valoreDettaglio(documentoWorkflowPrincipale.titoloDocumento) }}
+                                </div>
+                              </div>
+
+                              <div class="detail-field">
+                                <div class="detail-label">Stato</div>
+                                <div class="detail-value">
+                                  {{ valoreDettaglio(statoWorkflowDocumento) }}
+                                </div>
+                              </div>
+
+                              <div class="detail-field">
+                                <div class="detail-label">Ultima modifica</div>
+                                <div class="detail-value">
+                                  {{ valoreDettaglio(documentoWorkflowPrincipale.dataModifica) }}
+                                </div>
+                              </div>
+
+                              <div class="detail-field">
+                                <div class="detail-label">Protocollo collegato</div>
+                                <div class="detail-value">
+                                  {{ valoreDettaglio(documentoWorkflowPrincipale.idProtocolloCollegato) }}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div class="detail-description-box">
+                              {{ valoreDettaglio(documentoWorkflowPrincipale.descrizioneDocumento) }}
+                            </div>
+
+                            <v-alert
+                              type="info"
+                              variant="tonal"
+                              density="compact"
+                              class="mb-0"
+                            >
+                              {{ workflowDocumentaleReadyMessage }}
+                            </v-alert>
+                          </v-expansion-panel-text>
+                        </v-expansion-panel>
+                      </v-expansion-panels>
 
                       <v-textarea
                         v-if="canApprovaRevisioneWorkflow || canFirmaWorkflow || canProtocollaWorkflow"
@@ -1183,11 +1268,7 @@
                         </v-list-item-title>
 
                         <v-list-item-subtitle>
-                          {{ valoreDettaglio(allegato.tipoOrigine) }}
-                          <span class="mx-1">|</span>
                           {{ valoreDettaglio(allegato.nomeFile) }}
-                          <span class="mx-1">|</span>
-                          {{ valoreDettaglio(allegato.dataCreazione) }}
                         </v-list-item-subtitle>
 
                         <template #append>
@@ -1227,6 +1308,75 @@
                     >
                       Nessun allegato collegato alla sottofase.
                     </v-alert>
+
+                    <v-expansion-panels
+                      v-if="allegatiSottofase.length"
+                      class="technical-details-panel mt-4"
+                      variant="accordion"
+                    >
+                      <v-expansion-panel>
+                        <v-expansion-panel-title>
+                          Dettagli allegati correnti
+                        </v-expansion-panel-title>
+
+                        <v-expansion-panel-text>
+                          <div class="attachment-detail-list">
+                            <div
+                              v-for="allegato in allegatiSottofase"
+                              :key="`dettagli-${allegato.idDocumentoSottofase}`"
+                              class="attachment-detail-item"
+                            >
+                              <div class="font-weight-bold">
+                                {{ valoreDettaglio(allegato.titoloDocumento) }}
+                              </div>
+                              <div class="detail-grid mt-3">
+                                <div class="detail-field">
+                                  <div class="detail-label">Tipo origine</div>
+                                  <div class="detail-value">
+                                    {{ valoreDettaglio(allegato.tipoOrigine) }}
+                                  </div>
+                                </div>
+
+                                <div class="detail-field">
+                                  <div class="detail-label">Nome file</div>
+                                  <div class="detail-value">
+                                    {{ valoreDettaglio(allegato.nomeFile) }}
+                                  </div>
+                                </div>
+
+                                <div class="detail-field">
+                                  <div class="detail-label">Data creazione</div>
+                                  <div class="detail-value">
+                                    {{ valoreDettaglio(allegato.dataCreazione) }}
+                                  </div>
+                                </div>
+
+                                <div class="detail-field">
+                                  <div class="detail-label">Data modifica</div>
+                                  <div class="detail-value">
+                                    {{ valoreDettaglio(allegato.dataModifica) }}
+                                  </div>
+                                </div>
+
+                                <div class="detail-field">
+                                  <div class="detail-label">Protocollo collegato</div>
+                                  <div class="detail-value">
+                                    {{ valoreDettaglio(allegato.idProtocolloCollegato) }}
+                                  </div>
+                                </div>
+
+                                <div class="detail-field">
+                                  <div class="detail-label">Percorso</div>
+                                  <div class="detail-value">
+                                    {{ valoreDettaglio(allegato.percorsoDocumento) }}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </v-expansion-panel-text>
+                      </v-expansion-panel>
+                    </v-expansion-panels>
 
                     <v-expansion-panels
                       v-model="pannelloAllegatiEliminatiAperto"
@@ -4386,6 +4536,47 @@ onMounted(() => {
 .detail-actions {
   justify-content: flex-end;
   padding: 16px 24px 20px;
+}
+
+.technical-details-panel {
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.technical-details-panel :deep(.v-expansion-panel-title) {
+  font-size: 0.86rem;
+  font-weight: 850;
+  letter-spacing: 0;
+  min-height: 42px;
+  padding: 10px 16px;
+}
+
+.technical-details-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
+.document-operational-summary {
+  align-items: center;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  border-radius: 8px;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+}
+
+.attachment-detail-list {
+  display: grid;
+  gap: 16px;
+}
+
+.attachment-detail-item + .attachment-detail-item {
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  padding-top: 16px;
 }
 
 .lavorazione-view {
