@@ -324,24 +324,27 @@
                 </div>
 
                 <div
-                  v-if="stepOrizzontali.length"
+                  v-if="workflowVisualPoints.length"
                   class="stepper-orizzontale"
                 >
                   <div
-                    v-for="(step, index) in stepOrizzontali"
+                    v-for="(step, index) in workflowVisualPoints"
                     :key="step.id || step.codiceStep"
                     class="step-orizzontale-item"
+                    :class="{ 'step-orizzontale-item--locked': !step.attivabile }"
                   >
                     <div class="step-orizzontale-node-wrap">
                       <div
                         class="step-orizzontale-node"
                         :class="classeStepOrizzontale(step)"
+                        :aria-disabled="!step.attivabile"
                         @click.stop="gestisciClickStepOrizzontale(step)"
                       >
                         <img
                           :src="workflowAvatarForStep(step)"
                           alt=""
                           class="workflow-avatar-img step-node-avatar-img"
+                          :class="{ 'workflow-avatar-img--muted': step.avatarState === 'locked' }"
                         >
                         <span class="step-node-number">
                           {{ index + 1 }}
@@ -349,7 +352,7 @@
                       </div>
 
                       <div
-                        v-if="index < stepOrizzontali.length - 1 && (index + 1) % 6 !== 0"
+                        v-if="index < workflowVisualPoints.length - 1 && (index + 1) % 6 !== 0"
                         class="step-orizzontale-line"
                       />
                     </div>
@@ -413,27 +416,45 @@
                       {{ step.titoloStep }}
                     </div>
 
-                    <button
-                      v-if="isIstanzaProtocolloCompletata(step)"
-                      type="button"
-                      class="step-istanza-linked"
-                      title="Apri PDF protocollo collegato"
-                      aria-label="Apri PDF protocollo collegato"
-                      @click.stop="apriPdfProtocolloIstanza(step)"
+                    <div
+                      v-if="step.outputs.length"
+                      class="step-node-outputs"
                     >
-                      <v-icon
-                        size="34"
-                        color="primary"
+                      <v-tooltip
+                        v-for="output in step.outputs"
+                        :key="output.key"
+                        location="bottom"
                       >
-                        mdi-file-document-outline
-                      </v-icon>
-                      <v-icon
-                        size="30"
-                        color="success"
-                      >
-                        mdi-check-circle
-                      </v-icon>
-                    </button>
+                        <template #activator="{ props }">
+                          <button
+                            v-bind="props"
+                            type="button"
+                            class="step-output-action"
+                            :title="output.label"
+                            :aria-label="output.label"
+                            @click.stop="gestisciClickOutputStep(step, output)"
+                          >
+                            <v-icon
+                              size="26"
+                              :color="output.color"
+                            >
+                              {{ output.icon }}
+                            </v-icon>
+                          </button>
+                        </template>
+                        <span>{{ output.label }}</span>
+                      </v-tooltip>
+                    </div>
+
+                    <v-btn
+                      class="step-details-action"
+                      size="x-small"
+                      variant="text"
+                      prepend-icon="mdi-information-outline"
+                      @click.stop="apriDettagliStep(step)"
+                    >
+                      Dettagli
+                    </v-btn>
                   </div>
                 </div>
 
@@ -1738,6 +1759,128 @@
       </v-card>
     </v-dialog>
 
+    <v-dialog
+      v-model="dialogDettagliStep"
+      max-width="760"
+    >
+      <v-card rounded="lg">
+        <v-card-title class="text-subtitle-1 font-weight-bold">
+          Dettagli step
+        </v-card-title>
+
+        <v-card-text v-if="stepDettagliSelezionato">
+          <div class="detail-grid">
+            <div class="detail-field">
+              <div class="detail-label">Titolo</div>
+              <div class="detail-value">
+                {{ valoreDettaglio(stepDettagliSelezionato.titoloStep) }}
+              </div>
+            </div>
+
+            <div class="detail-field">
+              <div class="detail-label">Codice</div>
+              <div class="detail-value">
+                {{ valoreDettaglio(stepDettagliSelezionato.codiceStep) }}
+              </div>
+            </div>
+
+            <div class="detail-field">
+              <div class="detail-label">Stato step</div>
+              <div class="detail-value">
+                {{ valoreDettaglio(stepDettagliSelezionato.statoStep) }}
+              </div>
+            </div>
+
+            <div class="detail-field">
+              <div class="detail-label">Stato visuale</div>
+              <div class="detail-value">
+                {{ valoreDettaglio(labelVisualState(stepDettagliSelezionato.visualState)) }}
+              </div>
+            </div>
+
+            <div class="detail-field">
+              <div class="detail-label">Ordine</div>
+              <div class="detail-value">
+                {{ valoreDettaglio(stepDettagliSelezionato.ordine) }}
+              </div>
+            </div>
+
+            <div class="detail-field">
+              <div class="detail-label">Attivabile</div>
+              <div class="detail-value">
+                {{ stepDettagliSelezionato.attivabile ? 'Si' : 'No' }}
+              </div>
+            </div>
+
+            <div class="detail-field">
+              <div class="detail-label">Data avvio</div>
+              <div class="detail-value">
+                {{ valoreDettaglio(stepDettagliSelezionato.dataAvvio) }}
+              </div>
+            </div>
+
+            <div class="detail-field">
+              <div class="detail-label">Data completamento</div>
+              <div class="detail-value">
+                {{ valoreDettaglio(stepDettagliSelezionato.dataCompletamento) }}
+              </div>
+            </div>
+
+            <div class="detail-field">
+              <div class="detail-label">Sottofase documentale</div>
+              <div class="detail-value">
+                {{ stepDettagliSelezionato.hasSottofaseDocumentale ? 'Presente' : 'Assente' }}
+              </div>
+            </div>
+
+            <div class="detail-field">
+              <div class="detail-label">ID sottofase</div>
+              <div class="detail-value">
+                {{ valoreDettaglio(stepDettagliSelezionato.sottofaseAttiva?.idSottofase) }}
+              </div>
+            </div>
+
+            <div class="detail-field">
+              <div class="detail-label">Stato sottofase</div>
+              <div class="detail-value">
+                {{ valoreDettaglio(stepDettagliSelezionato.sottofaseAttiva?.statoSottofase) }}
+              </div>
+            </div>
+
+            <div class="detail-field">
+              <div class="detail-label">Protocollo collegato</div>
+              <div class="detail-value">
+                {{ valoreDettaglio(stepDettagliSelezionato.numeroProtocolloCollegato) }}
+              </div>
+            </div>
+
+            <div class="detail-field detail-field-wide">
+              <div class="detail-label">Oggetto protocollo</div>
+              <div class="detail-value">
+                {{ valoreDettaglio(stepDettagliSelezionato.oggettoProtocolloCollegato) }}
+              </div>
+            </div>
+
+            <div class="detail-field detail-field-wide">
+              <div class="detail-label">Note operative</div>
+              <div class="detail-value">
+                {{ valoreDettaglio(stepDettagliSelezionato.noteOperative) }}
+              </div>
+            </div>
+          </div>
+        </v-card-text>
+
+        <v-card-actions class="justify-end">
+          <v-btn
+            variant="text"
+            @click="dialogDettagliStep = false"
+          >
+            Chiudi
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <v-snackbar
       v-model="snackbarFase"
       :color="snackbarFaseColor"
@@ -1808,6 +1951,8 @@ const loadingStepOrizzontali = ref(false)
 const erroreStepOrizzontali = ref('')
 const operazioneStepInCorso = ref(false)
 const stepOperativoSelezionatoId = ref(null)
+const dialogDettagliStep = ref(false)
+const stepDettagliSelezionato = ref(null)
 const noteRedigiForm = ref('')
 const salvataggioNoteRedigiInCorso = ref(false)
 const documentoPrincipaleRedigi = ref(null)
@@ -2020,6 +2165,21 @@ const workflowConfigurabile = computed(() => {
   })
 })
 
+const workflowVisualPoints = computed(() => {
+  return stepOrizzontali.value.map((step, index, steps) => {
+    const previousStep = index > 0 ? steps[index - 1] : null
+    const visualState = getVisualState(step, previousStep)
+
+    return {
+      ...step,
+      visualState,
+      attivabile: isStepAttivabile(step, previousStep),
+      outputs: getStepOutputs(step),
+      avatarState: getAvatarState(step, previousStep)
+    }
+  })
+})
+
 const stepOperativoSelezionato = computed(() => {
   return stepOrizzontali.value.find((step) => {
     return Number(step.id) === Number(stepOperativoSelezionatoId.value)
@@ -2042,15 +2202,30 @@ const stepAllegatiSelezionato = computed(() => {
 })
 
 const idSottofaseDocumentaleRedigi = computed(() => {
-  return faseSelezionata.value?.idSottofase || faseSelezionata.value?.id || null
+  return (
+    idSottofaseDaStep(stepRedigiSelezionato.value) ||
+    faseSelezionata.value?.idSottofase ||
+    faseSelezionata.value?.id ||
+    null
+  )
 })
 
 const idSottofaseDocumentaleWorkflow = computed(() => {
-  return faseSelezionata.value?.idSottofase || faseSelezionata.value?.id || null
+  return (
+    idSottofaseDaStep(stepDocumentaleSelezionato.value) ||
+    faseSelezionata.value?.idSottofase ||
+    faseSelezionata.value?.id ||
+    null
+  )
 })
 
 const idSottofaseDocumentaleAllegati = computed(() => {
-  return faseSelezionata.value?.idSottofase || faseSelezionata.value?.id || null
+  return (
+    idSottofaseDaStep(stepAllegatiSelezionato.value) ||
+    faseSelezionata.value?.idSottofase ||
+    faseSelezionata.value?.id ||
+    null
+  )
 })
 
 const statoRedigiSelezionato = computed(() => {
@@ -2226,6 +2401,12 @@ function normalizzaStepOrizzontale(dato = {}) {
     dato.TitoloStep ??
     dato.titoloStep ??
     labelStepOrizzontale(codiceStep)
+  const sottofaseAttiva = normalizzaSottofaseAttivaStep(
+    dato.sottofase_attiva ??
+      dato.sottofaseAttiva ??
+      dato.SottofaseAttiva ??
+      null
+  )
 
   return {
     id:
@@ -2275,7 +2456,61 @@ function normalizzaStepOrizzontale(dato = {}) {
       dato.oggetto_protocollo_collegato ??
       dato.OggettoProtocolloCollegato ??
       dato.oggettoProtocolloCollegato ??
-      ''
+      '',
+    sottofaseAttiva,
+    hasSottofaseDocumentale: Boolean(
+      dato.has_sottofase_documentale ??
+        dato.hasSottofaseDocumentale ??
+        dato.HasSottofaseDocumentale ??
+        sottofaseAttiva
+    )
+  }
+}
+
+function normalizzaSottofaseAttivaStep(dato = null) {
+  if (!dato) return null
+
+  return {
+    idSottofase:
+      dato.id_sottofase ??
+      dato.IDSottofase ??
+      dato.idSottofase ??
+      dato.id,
+    idFase:
+      dato.id_fase ??
+      dato.IDFase ??
+      dato.idFase ??
+      null,
+    idStepOrizzontale:
+      dato.id_step_orizzontale ??
+      dato.IDStepOrizzontale ??
+      dato.idStepOrizzontale ??
+      null,
+    titolo:
+      dato.titolo ??
+      dato.Titolo ??
+      dato.titoloSottofase ??
+      dato.TitoloSottofase ??
+      'Fascicolo documentale',
+    statoSottofase:
+      dato.stato_sottofase ??
+      dato.StatoSottofase ??
+      dato.statoSottofase ??
+      '',
+    tipoAggancio:
+      dato.tipo_aggancio ??
+      dato.TipoAggancio ??
+      dato.tipoAggancio ??
+      '',
+    sottofasePrincipale:
+      dato.sottofase_principale ??
+      dato.SottofasePrincipale ??
+      dato.sottofasePrincipale ??
+      null,
+    attivo:
+      dato.attivo ??
+      dato.Attivo ??
+      true
   }
 }
 
@@ -2665,7 +2900,96 @@ function isIstanzaProtocolloCompletata(step) {
     Boolean(step?.idProtocolloCollegato)
 }
 
+function isStepCompletato(step) {
+  const stato = String(step?.statoStep || '').toUpperCase()
+  return stato.includes('COMPLET')
+}
+
+function isStepInLavorazione(step) {
+  const stato = String(step?.statoStep || '').toUpperCase()
+  return stato.includes('CORSO') || stato === 'ACTIVE'
+}
+
+function isStepAttivabile(step, previousStep = null) {
+  if (isStepCompletato(step)) return true
+  if (!previousStep) return true
+  return isStepCompletato(previousStep)
+}
+
+function getVisualState(step, previousStep = null) {
+  if (!isStepAttivabile(step, previousStep)) return 'locked'
+  if (isStepCompletato(step)) return 'completed'
+  if (isStepInLavorazione(step)) return 'active'
+  return 'idle'
+}
+
+function getStepOutputs(step) {
+  const outputs = []
+
+  if (isIstanzaProtocolloCompletata(step)) {
+    outputs.push({
+      key: 'protocollo',
+      icon: 'mdi-file-document-check-outline',
+      color: 'success',
+      label: 'Apri PDF protocollo collegato',
+      action: 'apri-protocollo'
+    })
+  }
+
+  if (step?.hasSottofaseDocumentale) {
+    outputs.push({
+      key: 'sottofase-documentale',
+      icon: 'mdi-folder-file-outline',
+      color: 'primary',
+      label: step.sottofaseAttiva?.titolo || 'Fascicolo documentale collegato',
+      action: 'dettagli'
+    })
+  }
+
+  return outputs
+}
+
+function getAvatarState(step, previousStep = null) {
+  return getVisualState(step, previousStep)
+}
+
+function idSottofaseDaStep(step) {
+  return step?.sottofaseAttiva?.idSottofase || step?.idSottofase || null
+}
+
+function labelVisualState(visualState) {
+  const labels = {
+    idle: 'Non avviato',
+    active: 'In lavorazione',
+    completed: 'Completato',
+    locked: 'Non attivabile'
+  }
+  return labels[visualState] || visualState
+}
+
+function apriDettagliStep(step) {
+  stepDettagliSelezionato.value = step
+  dialogDettagliStep.value = true
+}
+
+function gestisciClickOutputStep(step, output) {
+  if (output?.action === 'apri-protocollo') {
+    apriPdfProtocolloIstanza(step)
+    return
+  }
+
+  apriDettagliStep(step)
+}
+
 async function gestisciClickStepOrizzontale(step) {
+  if (step?.attivabile === false) {
+    mostraSnackbarFase(
+      'Questo step sara attivabile dopo il completamento del precedente.',
+      'warning'
+    )
+    return
+  }
+
   if (isStepDocumentale(step)) {
     stepOperativoSelezionatoId.value = step.id
     noteRedigiForm.value = isStepRedigi(step) ? step.noteOperative || '' : ''
@@ -3678,6 +4002,16 @@ function iconaAllegato(allegato) {
 }
 
 function classeStepOrizzontale(step) {
+  if (typeof step === 'object' && step?.visualState) {
+    const classi = {
+      idle: 'step-orizzontale-non-avviato',
+      locked: 'step-orizzontale-non-avviato step-orizzontale-locked',
+      completed: 'step-orizzontale-completato',
+      active: 'step-orizzontale-in-corso'
+    }
+    return classi[step.visualState] || 'step-orizzontale-non-avviato'
+  }
+
   const stato = typeof step === 'string' ? step : step?.statoStep
   const normalizzato = String(stato || '').toUpperCase()
   if (normalizzato === 'NON_AVVIATO') return 'step-orizzontale-non-avviato'
@@ -4038,6 +4372,10 @@ onMounted(() => {
   padding: 12px;
 }
 
+.detail-field-wide {
+  grid-column: 1 / -1;
+}
+
 .detail-value {
   font-size: 0.95rem;
   font-weight: 700;
@@ -4205,6 +4543,21 @@ onMounted(() => {
     0 0 0 4px rgba(var(--v-theme-primary), 0.14);
 }
 
+.step-orizzontale-item--locked {
+  cursor: not-allowed;
+  filter: grayscale(1);
+  opacity: 0.58;
+}
+
+.step-orizzontale-item--locked .step-orizzontale-title,
+.step-orizzontale-item--locked .step-details-action {
+  color: rgba(var(--v-theme-on-surface), 0.58);
+}
+
+.step-orizzontale-item--locked:hover .step-orizzontale-node {
+  box-shadow: 0 0 0 2px rgba(var(--v-theme-on-surface), 0.12);
+}
+
 .step-node-actions {
   align-items: center;
   display: flex;
@@ -4249,6 +4602,10 @@ onMounted(() => {
   background: #9e9e9e;
 }
 
+.step-orizzontale-locked {
+  background: #b0b0b0;
+}
+
 .step-orizzontale-completato {
   background: #2e7d32;
 }
@@ -4277,6 +4634,45 @@ onMounted(() => {
   margin-bottom: 4px;
   margin-top: 24px;
   overflow-wrap: anywhere;
+}
+
+.workflow-avatar-img--muted {
+  filter: grayscale(1);
+  opacity: 0.52;
+}
+
+.step-node-outputs {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  min-height: 32px;
+}
+
+.step-output-action {
+  align-items: center;
+  background: rgba(var(--v-theme-surface), 0.92);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.14);
+  border-radius: 999px;
+  cursor: pointer;
+  display: inline-flex;
+  height: 32px;
+  justify-content: center;
+  padding: 0;
+  width: 32px;
+}
+
+.step-output-action:hover {
+  background: rgba(var(--v-theme-primary), 0.08);
+  border-color: rgba(var(--v-theme-primary), 0.28);
+}
+
+.step-details-action {
+  font-weight: 800;
+  letter-spacing: 0;
+  margin-top: 6px;
+  min-height: 28px;
+  text-transform: none;
 }
 
 .step-istanza-linked {
