@@ -466,6 +466,80 @@
                 >
                   Selezionare una fase per iniziare.
                 </v-alert>
+
+                <v-card
+                  v-if="stepAzioniSelezionato"
+                  class="step-context-actions-card"
+                  rounded="lg"
+                  variant="outlined"
+                >
+                  <v-card-text class="step-context-actions-content">
+                    <div class="step-context-heading">
+                      <v-avatar
+                        color="primary"
+                        variant="tonal"
+                        size="42"
+                      >
+                        <img
+                          :src="workflowAvatarForStep(stepAzioniSelezionato)"
+                          alt=""
+                          class="workflow-panel-avatar-img"
+                        >
+                      </v-avatar>
+
+                      <div>
+                        <div class="text-caption text-medium-emphasis">
+                          Step selezionato
+                        </div>
+                        <div class="step-context-title">
+                          {{ stepAzioniSelezionato.titoloStep }}
+                        </div>
+                      </div>
+                    </div>
+
+                    <v-alert
+                      v-if="stepAzioniSelezionato.attivabile === false"
+                      type="info"
+                      variant="tonal"
+                      density="compact"
+                      class="step-context-locked-message"
+                    >
+                      Completa prima lo step precedente.
+                    </v-alert>
+
+                    <div
+                      v-if="stepAzioniSelezionato.attivabile === false"
+                      class="step-context-actions"
+                    >
+                      <v-btn
+                        color="primary"
+                        variant="text"
+                        prepend-icon="mdi-information-outline"
+                        @click="apriDettagliStep(stepAzioniSelezionato)"
+                      >
+                        Dettagli
+                      </v-btn>
+                    </div>
+
+                    <div
+                      v-else
+                      class="step-context-actions"
+                    >
+                      <v-btn
+                        v-for="azione in azioniStepSelezionato"
+                        :key="azione.key"
+                        :color="azione.color"
+                        :variant="azione.variant"
+                        :prepend-icon="azione.icon"
+                        :loading="azione.loading"
+                        :disabled="azione.disabled"
+                        @click="azione.handler"
+                      >
+                        {{ azione.label }}
+                      </v-btn>
+                    </div>
+                  </v-card-text>
+                </v-card>
               </div>
 
               <div class="lavorazione-content-card">
@@ -497,30 +571,6 @@
                     <v-divider />
 
                     <v-card-text>
-                      <div class="redigi-actions">
-                        <v-btn
-                          v-if="redigiAvviabile"
-                          color="primary"
-                          variant="flat"
-                          prepend-icon="mdi-play-circle-outline"
-                          :loading="operazioneStepInCorso"
-                          @click="avviaRedigiSelezionato"
-                        >
-                          Avvia lavorazione
-                        </v-btn>
-
-                        <v-btn
-                          v-if="redigiCompletabile"
-                          color="success"
-                          variant="flat"
-                          prepend-icon="mdi-check-circle-outline"
-                          :loading="operazioneStepInCorso"
-                          @click="completaRedigiSelezionato"
-                        >
-                          Completa lavorazione
-                        </v-btn>
-                      </div>
-
                       <v-alert
                         v-if="erroreDocumentoPrincipaleRedigi"
                         type="warning"
@@ -601,16 +651,6 @@
                               rows="3"
                               auto-grow
                             />
-
-                            <v-btn
-                              color="primary"
-                              variant="flat"
-                              prepend-icon="mdi-file-plus-outline"
-                              :loading="operazioneWorkflowDocumentaleInCorso"
-                              @click="creaBozzaWorkflowDocumentale"
-                            >
-                              Crea bozza documento
-                            </v-btn>
                           </div>
 
                           <div v-else>
@@ -651,18 +691,6 @@
                               auto-grow
                               class="mt-4"
                             />
-
-                            <v-btn
-                              v-if="canCompletaRedazioneWorkflow"
-                              color="success"
-                              variant="flat"
-                              prepend-icon="mdi-check-circle-outline"
-                              :loading="operazioneWorkflowDocumentaleInCorso"
-                              class="mt-2"
-                              @click="eseguiAzioneDocumentale('completa_redazione')"
-                            >
-                              Completa redazione
-                            </v-btn>
 
                             <v-alert
                               v-else
@@ -719,16 +747,6 @@
                           <div class="font-weight-bold">
                             Documento principale: assente
                           </div>
-                          <v-btn
-                            color="primary"
-                            variant="flat"
-                            prepend-icon="mdi-file-plus-outline"
-                            :loading="creazioneDocumentoPrincipaleInCorso"
-                            class="mt-3"
-                            @click="creaDocumentoPrincipaleRedigi"
-                          >
-                            Crea documento principale
-                          </v-btn>
                         </div>
 
                         <div
@@ -751,17 +769,6 @@
                               {{ valoreDettaglio(documentoPrincipaleRedigi.statoDocumento) }}
                             </v-chip>
                           </div>
-
-                          <v-btn
-                            color="primary"
-                            variant="tonal"
-                            prepend-icon="mdi-open-in-new"
-                            :loading="aperturaDocumentoPrincipaleInCorso"
-                            class="mt-4"
-                            @click="apriDocumentoPrincipaleRedigi"
-                          >
-                            Apri documento
-                          </v-btn>
 
                           <v-expansion-panels
                             class="technical-details-panel mt-4"
@@ -1067,63 +1074,6 @@
                         density="compact"
                       />
 
-                      <div class="workflow-documentale-actions">
-                        <v-btn
-                          v-if="canApprovaRevisioneWorkflow"
-                          color="success"
-                          variant="flat"
-                          prepend-icon="mdi-check-circle-outline"
-                          :loading="operazioneWorkflowDocumentaleInCorso"
-                          @click="eseguiAzioneDocumentale('approva_revisione')"
-                        >
-                          Approva revisione
-                        </v-btn>
-
-                        <v-btn
-                          v-if="canApprovaRevisioneWorkflow"
-                          color="error"
-                          variant="tonal"
-                          prepend-icon="mdi-close-circle-outline"
-                          :loading="operazioneWorkflowDocumentaleInCorso"
-                          @click="eseguiAzioneDocumentale('respingi_revisione')"
-                        >
-                          Respingi revisione
-                        </v-btn>
-
-                        <v-btn
-                          v-if="canFirmaWorkflow"
-                          color="success"
-                          variant="flat"
-                          prepend-icon="mdi-draw"
-                          :loading="operazioneWorkflowDocumentaleInCorso"
-                          @click="eseguiAzioneDocumentale('conferma_firma')"
-                        >
-                          Conferma firma
-                        </v-btn>
-
-                        <v-btn
-                          v-if="canFirmaWorkflow"
-                          color="error"
-                          variant="tonal"
-                          prepend-icon="mdi-close-circle-outline"
-                          :loading="operazioneWorkflowDocumentaleInCorso"
-                          @click="eseguiAzioneDocumentale('respingi_firma')"
-                        >
-                          Respingi firma
-                        </v-btn>
-
-                        <v-btn
-                          v-if="canProtocollaWorkflow"
-                          color="success"
-                          variant="flat"
-                          prepend-icon="mdi-file-check-outline"
-                          :loading="operazioneWorkflowDocumentaleInCorso"
-                          @click="eseguiAzioneDocumentale('conferma_protocollazione')"
-                        >
-                          Conferma protocollazione
-                        </v-btn>
-                      </div>
-
                       <v-alert
                         v-if="
                           isStepRevisiona(stepDocumentaleSelezionato) &&
@@ -1193,35 +1143,13 @@
                   <v-divider />
 
                   <v-card-text>
-                    <div class="allegati-actions">
-                      <v-btn
-                        color="primary"
-                        variant="flat"
-                        prepend-icon="mdi-file-link-outline"
-                        :loading="loadingAllegatiSottofase"
-                        @click="apriDialogProtocolloAllegato"
-                      >
-                        Collega protocollo
-                      </v-btn>
-
-                      <v-btn
-                        color="primary"
-                        variant="tonal"
-                        prepend-icon="mdi-file-upload-outline"
-                        :loading="uploadAllegatoInCorso"
-                        @click="apriSelettoreFileAllegato"
-                      >
-                        Carica file
-                      </v-btn>
-
-                      <input
-                        ref="allegatoFileInput"
-                        type="file"
-                        class="d-none"
-                        :accept="allegatiFileAccept"
-                        @change="gestisciSelezioneFileAllegato"
-                      >
-                    </div>
+                    <input
+                      ref="allegatoFileInput"
+                      type="file"
+                      class="d-none"
+                      :accept="allegatiFileAccept"
+                      @change="gestisciSelezioneFileAllegato"
+                    >
 
                     <v-alert
                       v-if="erroreAllegatiSottofase"
@@ -2109,6 +2037,7 @@ const documentoPrincipaleRedigi = ref(null)
 const loadingDocumentoPrincipaleRedigi = ref(false)
 const creazioneDocumentoPrincipaleInCorso = ref(false)
 const aperturaDocumentoPrincipaleInCorso = ref(false)
+const aperturaDocumentoWorkflowInCorso = ref(false)
 const salvataggioMetadatiDocumentoInCorso = ref(false)
 const erroreDocumentoPrincipaleRedigi = ref('')
 const workflowDocumentale = ref(null)
@@ -2334,6 +2263,237 @@ const stepOperativoSelezionato = computed(() => {
   return stepOrizzontali.value.find((step) => {
     return Number(step.id) === Number(stepOperativoSelezionatoId.value)
   })
+})
+
+const stepAzioniSelezionato = computed(() => {
+  return workflowVisualPoints.value.find((step) => {
+    return Number(step.id) === Number(stepOperativoSelezionatoId.value)
+  }) || null
+})
+
+const azioniStepSelezionato = computed(() => {
+  const step = stepAzioniSelezionato.value
+  if (!step || step.attivabile === false) return []
+
+  const azioni = []
+  const aggiungiDettagli = () => {
+    azioni.push({
+      key: 'dettagli',
+      label: 'Dettagli',
+      icon: 'mdi-information-outline',
+      color: 'primary',
+      variant: 'text',
+      loading: false,
+      disabled: false,
+      handler: () => apriDettagliStep(step)
+    })
+  }
+
+  if (isStepRedigi(step)) {
+    if (redigiAvviabile.value) {
+      azioni.push({
+        key: 'avvia-redigi',
+        label: 'Avvia lavorazione',
+        icon: 'mdi-play-circle-outline',
+        color: 'primary',
+        variant: 'flat',
+        loading: operazioneStepInCorso.value,
+        disabled: false,
+        handler: avviaRedigiSelezionato
+      })
+    }
+
+    if (canCreaBozzaWorkflow.value) {
+      azioni.push({
+        key: 'crea-bozza',
+        label: 'Crea bozza',
+        icon: 'mdi-file-plus-outline',
+        color: 'primary',
+        variant: 'flat',
+        loading: operazioneWorkflowDocumentaleInCorso.value,
+        disabled: false,
+        handler: creaBozzaWorkflowDocumentale
+      })
+    }
+
+    if (!documentoPrincipaleRedigi.value) {
+      azioni.push({
+        key: 'crea-documento-principale',
+        label: 'Crea documento',
+        icon: 'mdi-file-plus-outline',
+        color: 'primary',
+        variant: 'flat',
+        loading: creazioneDocumentoPrincipaleInCorso.value,
+        disabled: loadingDocumentoPrincipaleRedigi.value,
+        handler: creaDocumentoPrincipaleRedigi
+      })
+    } else {
+      azioni.push({
+        key: 'apri-documento-principale',
+        label: 'Apri documento',
+        icon: 'mdi-open-in-new',
+        color: 'primary',
+        variant: 'tonal',
+        loading: aperturaDocumentoPrincipaleInCorso.value,
+        disabled: false,
+        handler: apriDocumentoPrincipaleRedigi
+      })
+    }
+
+    if (canCompletaRedazioneWorkflow.value) {
+      azioni.push({
+        key: 'completa-redazione',
+        label: 'Completa redazione',
+        icon: 'mdi-check-circle-outline',
+        color: 'success',
+        variant: 'flat',
+        loading: operazioneWorkflowDocumentaleInCorso.value,
+        disabled: false,
+        handler: () => eseguiAzioneDocumentale('completa_redazione')
+      })
+    }
+
+    if (redigiCompletabile.value) {
+      azioni.push({
+        key: 'completa-redigi',
+        label: 'Completa lavorazione',
+        icon: 'mdi-check-circle-outline',
+        color: 'success',
+        variant: 'flat',
+        loading: operazioneStepInCorso.value,
+        disabled: false,
+        handler: completaRedigiSelezionato
+      })
+    }
+
+    aggiungiDettagli()
+    return azioni
+  }
+
+  if (isStepRevisiona(step)) {
+    aggiungiAzioneApriDocumentoWorkflow(azioni)
+
+    if (canApprovaRevisioneWorkflow.value) {
+      azioni.push({
+        key: 'approva-revisione',
+        label: 'Approva revisione',
+        icon: 'mdi-check-circle-outline',
+        color: 'success',
+        variant: 'flat',
+        loading: operazioneWorkflowDocumentaleInCorso.value,
+        disabled: false,
+        handler: () => eseguiAzioneDocumentale('approva_revisione')
+      })
+      azioni.push({
+        key: 'respingi-revisione',
+        label: 'Respingi revisione',
+        icon: 'mdi-close-circle-outline',
+        color: 'error',
+        variant: 'tonal',
+        loading: operazioneWorkflowDocumentaleInCorso.value,
+        disabled: false,
+        handler: () => eseguiAzioneDocumentale('respingi_revisione')
+      })
+    }
+
+    aggiungiDettagli()
+    return azioni
+  }
+
+  if (isStepFirma(step)) {
+    aggiungiAzioneApriDocumentoWorkflow(azioni)
+
+    if (canFirmaWorkflow.value) {
+      azioni.push({
+        key: 'conferma-firma',
+        label: 'Conferma firma',
+        icon: 'mdi-draw',
+        color: 'success',
+        variant: 'flat',
+        loading: operazioneWorkflowDocumentaleInCorso.value,
+        disabled: false,
+        handler: () => eseguiAzioneDocumentale('conferma_firma')
+      })
+      azioni.push({
+        key: 'respingi-firma',
+        label: 'Respingi firma',
+        icon: 'mdi-close-circle-outline',
+        color: 'error',
+        variant: 'tonal',
+        loading: operazioneWorkflowDocumentaleInCorso.value,
+        disabled: false,
+        handler: () => eseguiAzioneDocumentale('respingi_firma')
+      })
+    }
+
+    aggiungiDettagli()
+    return azioni
+  }
+
+  if (isStepProtocolla(step)) {
+    aggiungiAzioneApriDocumentoWorkflow(azioni)
+
+    if (canProtocollaWorkflow.value) {
+      azioni.push({
+        key: 'conferma-protocollazione',
+        label: 'Conferma protocollazione',
+        icon: 'mdi-file-check-outline',
+        color: 'success',
+        variant: 'flat',
+        loading: operazioneWorkflowDocumentaleInCorso.value,
+        disabled: false,
+        handler: () => eseguiAzioneDocumentale('conferma_protocollazione')
+      })
+    }
+
+    aggiungiDettagli()
+    return azioni
+  }
+
+  if (isStepAllegati(step)) {
+    azioni.push({
+      key: 'collega-protocollo-allegato',
+      label: 'Collega protocollo',
+      icon: 'mdi-file-link-outline',
+      color: 'primary',
+      variant: 'flat',
+      loading: loadingAllegatiSottofase.value,
+      disabled: false,
+      handler: apriDialogProtocolloAllegato
+    })
+    azioni.push({
+      key: 'carica-file-allegato',
+      label: 'Carica file',
+      icon: 'mdi-file-upload-outline',
+      color: 'primary',
+      variant: 'tonal',
+      loading: uploadAllegatoInCorso.value,
+      disabled: false,
+      handler: apriSelettoreFileAllegato
+    })
+
+    aggiungiDettagli()
+    return azioni
+  }
+
+  if (isStepIstanza(step)) {
+    azioni.push({
+      key: 'collega-protocollo-istanza',
+      label: 'Collega protocollo',
+      icon: 'mdi-file-link-outline',
+      color: 'primary',
+      variant: 'flat',
+      loading: collegamentoProtocolloInCorso.value,
+      disabled: false,
+      handler: () => apriDialogProtocolloIstanzaStep(step)
+    })
+
+    aggiungiDettagli()
+    return azioni
+  }
+
+  aggiungiDettagli()
+  return azioni
 })
 
 const stepRedigiSelezionato = computed(() => {
@@ -3131,6 +3291,29 @@ function gestisciClickOutputStep(step, output) {
   apriDettagliStep(step)
 }
 
+function aggiungiAzioneApriDocumentoWorkflow(azioni) {
+  if (!documentoWorkflowPrincipale.value?.idDocumentoSottofase) return
+
+  azioni.push({
+    key: 'apri-documento-workflow',
+    label: 'Apri documento',
+    icon: 'mdi-open-in-new',
+    color: 'primary',
+    variant: 'tonal',
+    loading: aperturaDocumentoWorkflowInCorso.value,
+    disabled: false,
+    handler: apriDocumentoWorkflowPrincipale
+  })
+}
+
+function apriDialogProtocolloIstanzaStep(step) {
+  stepIstanzaCorrente.value = step
+  erroreProtocolloIstanza.value = ''
+  ricercaProtocolloIstanza.value = ''
+  dialogProtocolloIstanza.value = true
+  caricaProtocolliIstanza()
+}
+
 async function gestisciClickStepOrizzontale(step) {
   if (step?.attivabile === false) {
     mostraSnackbarFase(
@@ -3140,8 +3323,9 @@ async function gestisciClickStepOrizzontale(step) {
     return
   }
 
+  stepOperativoSelezionatoId.value = step.id
+
   if (isStepDocumentale(step)) {
-    stepOperativoSelezionatoId.value = step.id
     noteRedigiForm.value = isStepRedigi(step) ? step.noteOperative || '' : ''
     allegatiSottofase.value = []
     allegatiEliminatiSottofase.value = []
@@ -3159,7 +3343,6 @@ async function gestisciClickStepOrizzontale(step) {
   }
 
   if (isStepAllegati(step)) {
-    stepOperativoSelezionatoId.value = step.id
     noteRedigiForm.value = ''
     documentoPrincipaleRedigi.value = null
     resetFormMetadatiDocumento()
@@ -3168,7 +3351,6 @@ async function gestisciClickStepOrizzontale(step) {
   }
 
   if (!isStepIstanza(step)) {
-    stepOperativoSelezionatoId.value = null
     noteRedigiForm.value = ''
     documentoPrincipaleRedigi.value = null
     resetFormMetadatiDocumento()
@@ -3711,6 +3893,52 @@ async function apriDocumentoPrincipaleRedigi() {
     }
   } finally {
     aperturaDocumentoPrincipaleInCorso.value = false
+  }
+}
+
+async function apriDocumentoWorkflowPrincipale() {
+  const idDocumento = documentoWorkflowPrincipale.value?.idDocumentoSottofase
+  if (!idDocumento) {
+    erroreWorkflowDocumentale.value =
+      'Documento non apribile: identificativo mancante.'
+    return
+  }
+
+  const openedWindow = window.open('', '_blank')
+  if (!openedWindow) {
+    erroreWorkflowDocumentale.value =
+      'Il browser ha bloccato l apertura del documento in una nuova scheda.'
+    return
+  }
+
+  openedWindow.opener = null
+  aperturaDocumentoWorkflowInCorso.value = true
+  erroreWorkflowDocumentale.value = ''
+
+  try {
+    const blob = await apriDocumentoSottofase(idDocumento)
+    const blobUrl = URL.createObjectURL(blob)
+    openedWindow.location.href = blobUrl
+
+    setTimeout(() => {
+      URL.revokeObjectURL(blobUrl)
+    }, 60000)
+  } catch (error) {
+    if (error.status === 404) {
+      erroreWorkflowDocumentale.value =
+        'Documento creato, ma file fisico non ancora disponibile.'
+    } else {
+      erroreWorkflowDocumentale.value =
+        'Impossibile aprire il documento.'
+    }
+
+    try {
+      openedWindow.close()
+    } catch {
+      // Scheda aperta solo in risposta al click utente.
+    }
+  } finally {
+    aperturaDocumentoWorkflowInCorso.value = false
   }
 }
 
@@ -4648,6 +4876,51 @@ onMounted(() => {
   gap: 10px;
   justify-content: flex-start;
   margin-bottom: 10px;
+}
+
+.step-context-actions-card {
+  align-self: center;
+  background: rgba(var(--v-theme-surface), 0.96);
+  flex: 0 0 auto;
+  margin: 14px auto 0;
+  max-width: 920px;
+  width: min(100%, 920px);
+}
+
+.step-context-actions-content {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: space-between;
+  padding: 14px 18px;
+}
+
+.step-context-heading {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  min-width: 220px;
+}
+
+.step-context-title {
+  font-size: 1.08rem;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.step-context-actions {
+  align-items: center;
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.step-context-locked-message {
+  flex: 1 1 260px;
+  margin: 0;
 }
 
 .stepper-orizzontale {
