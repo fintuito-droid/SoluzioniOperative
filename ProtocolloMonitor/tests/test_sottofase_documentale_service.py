@@ -66,6 +66,17 @@ class FakeAssociazioneRepository:
         }
         self.active_sottofase = active_sottofase
         self.associa_calls = []
+        self.disponibili_calls = []
+        self.disponibili = [
+            {
+                "id_sottofase": 25,
+                "titolo": "Fascicolo documentale",
+                "stato_sottofase": "BOZZA",
+                "attivo": True,
+                "ha_documenti": True,
+                "documenti_count": 2,
+            }
+        ]
 
     def get_step_orizzontale_context(self, id_step_orizzontale):
         return self.step
@@ -85,6 +96,10 @@ class FakeAssociazioneRepository:
             "tipo_aggancio": "STEP",
             "sottofase_principale": True,
         }
+
+    def list_sottofasi_disponibili_per_step(self, **kwargs):
+        self.disponibili_calls.append(kwargs)
+        return self.disponibili
 
 
 class FakeAssegnazioniService:
@@ -447,3 +462,58 @@ def test_associa_sottofase_a_step_orizzontale_blocks_annullata_or_archiviata():
             pass
         else:
             raise AssertionError("Expected SottofaseNotAssociableError")
+
+
+def test_list_sottofasi_disponibili_per_step_validates_step_and_delegates():
+    repository = FakeAssociazioneRepository()
+    service = SottofaseDocumentaleService(
+        sottofase_documentale_repository=repository
+    )
+
+    result = service.list_sottofasi_disponibili_per_step(
+        id_fase=3,
+        id_step_orizzontale=10,
+    )
+
+    assert result == {
+        "id_fase": 3,
+        "id_step_orizzontale": 10,
+        "items": repository.disponibili,
+    }
+    assert repository.disponibili_calls == [
+        {"id_fase": 3, "id_step_orizzontale": 10}
+    ]
+
+
+def test_list_sottofasi_disponibili_per_step_blocks_missing_step():
+    service = SottofaseDocumentaleService(
+        sottofase_documentale_repository=FakeAssociazioneRepository(step=None)
+    )
+
+    try:
+        service.list_sottofasi_disponibili_per_step(
+            id_fase=3,
+            id_step_orizzontale=10,
+        )
+    except SottofaseStepNotFoundError:
+        pass
+    else:
+        raise AssertionError("Expected SottofaseStepNotFoundError")
+
+
+def test_list_sottofasi_disponibili_per_step_blocks_step_fase_mismatch():
+    service = SottofaseDocumentaleService(
+        sottofase_documentale_repository=FakeAssociazioneRepository(
+            step={"id_step_orizzontale": 10, "id_fase": 99, "attivo": True}
+        )
+    )
+
+    try:
+        service.list_sottofasi_disponibili_per_step(
+            id_fase=3,
+            id_step_orizzontale=10,
+        )
+    except SottofaseStepFaseMismatchError:
+        pass
+    else:
+        raise AssertionError("Expected SottofaseStepFaseMismatchError")

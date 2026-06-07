@@ -484,6 +484,72 @@ class SottofaseDocumentaleRepository(BaseRepository):
             cursor.close()
             conn.close()
 
+    def list_sottofasi_disponibili_per_step(
+        self,
+        *,
+        id_fase: int,
+        id_step_orizzontale: int,
+    ) -> list[dict[str, Any]]:
+        """Elenca sottofasi candidate all'aggancio manuale allo step."""
+
+        query = """
+            SELECT
+                sf.IDSottofase,
+                sf.IDFase,
+                sf.Titolo,
+                sf.StatoSottofase,
+                sf.Attivo,
+                COUNT(d.IDDocumentoSottofase) AS DocumentiCount
+            FROM T_ProcedimentoSottofasi AS sf
+            LEFT JOIN T_SottofaseDocumenti AS d
+                ON d.IDSottofase = sf.IDSottofase
+                AND d.Attivo = TRUE
+            WHERE sf.IDFase = ?
+                AND sf.Attivo = TRUE
+                AND sf.IDStepOrizzontale IS NULL
+                AND (
+                    sf.StatoSottofase IS NULL
+                    OR UCASE(sf.StatoSottofase) NOT IN ('ANNULLATA', 'ARCHIVIATA')
+                )
+            GROUP BY
+                sf.IDSottofase,
+                sf.IDFase,
+                sf.Titolo,
+                sf.StatoSottofase,
+                sf.Attivo
+            ORDER BY sf.IDSottofase ASC
+        """
+
+        conn = self._open_access_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute(query, (id_fase,))
+            items = []
+            for row in cursor.fetchall():
+                documenti_count = int(self._get(row, "DocumentiCount") or 0)
+                items.append(
+                    {
+                        "id_sottofase": self._normalize_value(
+                            self._get(row, "IDSottofase")
+                        ),
+                        "id_fase": self._normalize_value(self._get(row, "IDFase")),
+                        "titolo": self._normalize_value(self._get(row, "Titolo")),
+                        "stato_sottofase": self._normalize_value(
+                            self._get(row, "StatoSottofase")
+                        ),
+                        "attivo": bool(self._get(row, "Attivo"))
+                        if self._get(row, "Attivo") is not None
+                        else False,
+                        "ha_documenti": documenti_count > 0,
+                        "documenti_count": documenti_count,
+                    }
+                )
+            return items
+        finally:
+            cursor.close()
+            conn.close()
+
     def associa_sottofase_a_step(
         self,
         *,

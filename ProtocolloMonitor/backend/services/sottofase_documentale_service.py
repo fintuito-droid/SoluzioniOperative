@@ -279,6 +279,46 @@ class SottofaseDocumentaleService:
             "id_fase": id_fase,
         }
 
+    def list_sottofasi_disponibili_per_step(
+        self,
+        *,
+        id_fase: int,
+        id_step_orizzontale: int,
+    ) -> dict[str, Any]:
+        """Restituisce sottofasi candidate all'associazione manuale."""
+
+        repository = self.sottofase_documentale_repository
+        if repository is None:
+            raise SottofaseStepAssociazioneWriteError(
+                "Repository sottofase documentale non configurato."
+            )
+
+        step = repository.get_step_orizzontale_context(id_step_orizzontale)
+        if step is None:
+            raise SottofaseStepNotFoundError("Step orizzontale non trovato.")
+
+        expected_id_fase = self._safe_int(id_fase)
+        if self._safe_int(step.get("id_fase")) != expected_id_fase:
+            raise SottofaseStepFaseMismatchError(
+                "Lo step appartiene a una fase diversa."
+            )
+
+        try:
+            items = repository.list_sottofasi_disponibili_per_step(
+                id_fase=id_fase,
+                id_step_orizzontale=id_step_orizzontale,
+            )
+        except Exception as exc:
+            raise SottofaseStepAssociazioneWriteError(
+                f"Lettura sottofasi disponibili non riuscita: {exc}"
+            ) from exc
+
+        return {
+            "id_fase": id_fase,
+            "id_step_orizzontale": id_step_orizzontale,
+            "items": items,
+        }
+
     def _applica_assegnazioni_auto(self, id_sottofase: int) -> dict[str, Any] | None:
         """Applica regole automatiche senza bloccare il caricamento."""
 

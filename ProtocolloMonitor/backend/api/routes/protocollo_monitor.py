@@ -780,6 +780,28 @@ def get_procedimento_fase_step_orizzontali(
         raise HTTPException(status_code=404, detail="Fase non trovata")
 
 
+@router.get(
+    "/protocollo-monitor/procedimenti/fasi/{id_fase}/step-orizzontali/"
+    "{id_step_orizzontale}/sottofasi-disponibili"
+)
+def get_sottofasi_disponibili_per_step_orizzontale(
+    id_fase: int,
+    id_step_orizzontale: int,
+    sottofase_service: Any = Depends(get_sottofase_documentale_service),
+):
+    try:
+        return sottofase_service.list_sottofasi_disponibili_per_step(
+            id_fase=id_fase,
+            id_step_orizzontale=id_step_orizzontale,
+        )
+    except SottofaseStepNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except SottofaseStepFaseMismatchError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except SottofaseStepAssociazioneWriteError as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
 @router.post(
     "/protocollo-monitor/procedimenti/fasi/{id_fase}/step-orizzontali/"
     "{id_step_orizzontale}/associa-sottofase/{id_sottofase}"

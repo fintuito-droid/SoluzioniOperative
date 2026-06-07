@@ -22,6 +22,7 @@ from backend.api.routes.protocollo_monitor import (
     elimina_allegato_sottofase,
     esegui_azione_workflow_documentale_sottofase,
     get_sottofase_allegati_eliminati,
+    get_sottofasi_disponibili_per_step_orizzontale,
     get_sottofase_documentale,
     get_sottofase_allegati,
     get_sottofase_documento_principale,
@@ -33,6 +34,8 @@ from backend.api.routes.protocollo_monitor import (
 )
 from backend.services.sottofase_documentale_service import (
     SottofaseStepAlreadyLinkedError,
+    SottofaseStepAssociazioneWriteError,
+    SottofaseStepFaseMismatchError,
     SottofaseStepNotFoundError,
 )
 
@@ -45,12 +48,15 @@ class FakeSottofaseDocumentaleService:
         quadro=None,
         documento=None,
         associa_raises=None,
+        disponibili_raises=None,
     ):
         self.sottofase = sottofase
         self.quadro = quadro
         self.documento = documento
         self.associa_raises = associa_raises
+        self.disponibili_raises = disponibili_raises
         self.associa_calls = []
+        self.disponibili_calls = []
 
     def get_quadro_documentale(self, id_sottofase):
         if self.quadro is None:
@@ -85,6 +91,26 @@ class FakeSottofaseDocumentaleService:
             "id_sottofase": kwargs["id_sottofase"],
             "tipo_aggancio": "STEP",
             "sottofase_principale": True,
+        }
+
+    def list_sottofasi_disponibili_per_step(self, **kwargs):
+        self.disponibili_calls.append(kwargs)
+        if self.disponibili_raises:
+            raise self.disponibili_raises
+
+        return {
+            "id_fase": kwargs["id_fase"],
+            "id_step_orizzontale": kwargs["id_step_orizzontale"],
+            "items": [
+                {
+                    "id_sottofase": 25,
+                    "titolo": "Fascicolo documentale",
+                    "stato_sottofase": "BOZZA",
+                    "attivo": True,
+                    "ha_documenti": True,
+                    "documenti_count": 2,
+                }
+            ],
         }
 
 
@@ -394,6 +420,79 @@ def test_get_sottofase_documentale_returns_404_when_missing():
 
     assert exc_info.value.status_code == 404
     assert exc_info.value.detail == "Sottofase non trovata"
+
+
+def test_get_sottofasi_disponibili_per_step_orizzontale_returns_items():
+    service = FakeSottofaseDocumentaleService()
+
+    response = get_sottofasi_disponibili_per_step_orizzontale(
+        3,
+        10,
+        sottofase_service=service,
+    )
+
+    assert response == {
+        "id_fase": 3,
+        "id_step_orizzontale": 10,
+        "items": [
+            {
+                "id_sottofase": 25,
+                "titolo": "Fascicolo documentale",
+                "stato_sottofase": "BOZZA",
+                "attivo": True,
+                "ha_documenti": True,
+                "documenti_count": 2,
+            }
+        ],
+    }
+    assert service.disponibili_calls == [
+        {"id_fase": 3, "id_step_orizzontale": 10}
+    ]
+
+
+def test_get_sottofasi_disponibili_per_step_orizzontale_returns_404_when_step_missing():
+    with pytest.raises(HTTPException) as exc_info:
+        get_sottofasi_disponibili_per_step_orizzontale(
+            3,
+            10,
+            sottofase_service=FakeSottofaseDocumentaleService(
+                disponibili_raises=SottofaseStepNotFoundError(
+                    "Step orizzontale non trovato."
+                )
+            ),
+        )
+
+    assert exc_info.value.status_code == 404
+
+
+def test_get_sottofasi_disponibili_per_step_orizzontale_returns_400_on_fase_mismatch():
+    with pytest.raises(HTTPException) as exc_info:
+        get_sottofasi_disponibili_per_step_orizzontale(
+            3,
+            10,
+            sottofase_service=FakeSottofaseDocumentaleService(
+                disponibili_raises=SottofaseStepFaseMismatchError(
+                    "Lo step appartiene a una fase diversa."
+                )
+            ),
+        )
+
+    assert exc_info.value.status_code == 400
+
+
+def test_get_sottofasi_disponibili_per_step_orizzontale_returns_500_on_read_error():
+    with pytest.raises(HTTPException) as exc_info:
+        get_sottofasi_disponibili_per_step_orizzontale(
+            3,
+            10,
+            sottofase_service=FakeSottofaseDocumentaleService(
+                disponibili_raises=SottofaseStepAssociazioneWriteError(
+                    "Lettura sottofasi disponibili non riuscita."
+                )
+            ),
+        )
+
+    assert exc_info.value.status_code == 500
 
 
 def test_associa_sottofase_a_step_orizzontale_returns_success():

@@ -162,6 +162,19 @@ def make_sottofase_aggancio_row(**overrides):
     return SimpleNamespace(**values)
 
 
+def make_sottofase_disponibile_row(**overrides):
+    values = {
+        "IDSottofase": 25,
+        "IDFase": 3,
+        "Titolo": "Fascicolo documentale",
+        "StatoSottofase": "BOZZA",
+        "Attivo": True,
+        "DocumentiCount": 2,
+    }
+    values.update(overrides)
+    return SimpleNamespace(**values)
+
+
 def test_get_sottofase_documentale_returns_read_only_record():
     cursor = FakeCursor([[make_sottofase_row()]])
     repository = SottofaseDocumentaleRepositoryForTest(FakeConnection(cursor))
@@ -258,6 +271,94 @@ def test_get_sottofase_attiva_by_step_returns_first_active_record():
     assert record["id_step_orizzontale"] == 10
     assert "TOP 1" in cursor.executed_queries[0]
     assert cursor.executed_params == [(10,)]
+
+
+def test_list_sottofasi_disponibili_per_step_returns_items_with_document_count():
+    cursor = FakeCursor([[make_sottofase_disponibile_row()]])
+    repository = SottofaseDocumentaleRepositoryForTest(FakeConnection(cursor))
+
+    result = repository.list_sottofasi_disponibili_per_step(
+        id_fase=3,
+        id_step_orizzontale=10,
+    )
+
+    assert result == [
+        {
+            "id_sottofase": 25,
+            "id_fase": 3,
+            "titolo": "Fascicolo documentale",
+            "stato_sottofase": "BOZZA",
+            "attivo": True,
+            "ha_documenti": True,
+            "documenti_count": 2,
+        }
+    ]
+    assert "COUNT(d.IDDocumentoSottofase) AS DocumentiCount" in cursor.executed_queries[0]
+    assert cursor.executed_params == [(3,)]
+
+
+def test_list_sottofasi_disponibili_per_step_excludes_other_phases():
+    cursor = FakeCursor([[]])
+    repository = SottofaseDocumentaleRepositoryForTest(FakeConnection(cursor))
+
+    repository.list_sottofasi_disponibili_per_step(
+        id_fase=3,
+        id_step_orizzontale=10,
+    )
+
+    assert "WHERE sf.IDFase = ?" in cursor.executed_queries[0]
+
+
+def test_list_sottofasi_disponibili_per_step_excludes_inactive_records():
+    cursor = FakeCursor([[]])
+    repository = SottofaseDocumentaleRepositoryForTest(FakeConnection(cursor))
+
+    repository.list_sottofasi_disponibili_per_step(
+        id_fase=3,
+        id_step_orizzontale=10,
+    )
+
+    assert "sf.Attivo = TRUE" in cursor.executed_queries[0]
+
+
+def test_list_sottofasi_disponibili_per_step_excludes_annullata_archiviata():
+    cursor = FakeCursor([[]])
+    repository = SottofaseDocumentaleRepositoryForTest(FakeConnection(cursor))
+
+    repository.list_sottofasi_disponibili_per_step(
+        id_fase=3,
+        id_step_orizzontale=10,
+    )
+
+    query = cursor.executed_queries[0]
+    assert "UCASE(sf.StatoSottofase)" in query
+    assert "ANNULLATA" in query
+    assert "ARCHIVIATA" in query
+
+
+def test_list_sottofasi_disponibili_per_step_excludes_already_linked_records():
+    cursor = FakeCursor([[]])
+    repository = SottofaseDocumentaleRepositoryForTest(FakeConnection(cursor))
+
+    repository.list_sottofasi_disponibili_per_step(
+        id_fase=3,
+        id_step_orizzontale=10,
+    )
+
+    assert "sf.IDStepOrizzontale IS NULL" in cursor.executed_queries[0]
+
+
+def test_list_sottofasi_disponibili_per_step_reports_empty_document_count():
+    cursor = FakeCursor([[make_sottofase_disponibile_row(DocumentiCount=0)]])
+    repository = SottofaseDocumentaleRepositoryForTest(FakeConnection(cursor))
+
+    result = repository.list_sottofasi_disponibili_per_step(
+        id_fase=3,
+        id_step_orizzontale=10,
+    )
+
+    assert result[0]["ha_documenti"] is False
+    assert result[0]["documenti_count"] == 0
 
 
 def test_associa_sottofase_a_step_updates_only_bridge_fields():
