@@ -1,0 +1,17 @@
+# Dipendenze frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Cache Python
+backend/__pycache__/
+backend/**/__pycache__/
+backend/*.pyc
+backend/.env
+
+# Database Access (file dati — non versionare)
+backend/**/*.accdb
+backend/**/*.mdb
+
+# Log
+*.log
