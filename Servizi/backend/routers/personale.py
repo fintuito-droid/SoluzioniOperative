@@ -45,6 +45,8 @@ def lista_personale(current_user: dict = Depends(get_current_user)):
     Admin → tutto.
     Responsabile → solo il proprio comando.
     Dipendente → solo sé stesso.
+    Denormalizzazione in 4 query fisse (NO query per riga: con centinaia
+    di dipendenti il pattern N+1 su Access impiega minuti).
     """
     if current_user["ruolo"] == "admin":
         rows = db.fetch_all("SELECT * FROM personale WHERE attivo=True ORDER BY cognome, nome")
@@ -61,7 +63,25 @@ def lista_personale(current_user: dict = Depends(get_current_user)):
             (current_user["personale_id"],)
         )
 
-    return [_build_personale(r) for r in rows]
+    # Mappe di lookup caricate una volta sola
+    quals = {q["id"]: q["codice"] for q in db.fetch_all("SELECT id, codice FROM qualifiche")}
+    coms  = {c["id"]: c["codice"] for c in db.fetch_all("SELECT id, codice FROM comandi")}
+
+    spec_map: dict[int, list] = {}
+    spec_rows = db.fetch_all(
+        "SELECT ps.personale_id, s.id, s.codice, s.descrizione "
+        "FROM (personale_specialita ps LEFT JOIN specialita s ON s.id = ps.specialita_id)"
+    )
+    for s in spec_rows:
+        spec_map.setdefault(s["personale_id"], []).append(
+            {"id": s["id"], "codice": s["codice"], "descrizione": s["descrizione"]}
+        )
+
+    return [{**r,
+             "qualifica_cod": quals.get(r.get("qualifica_id")),
+             "comando_cod":   coms.get(r.get("comando_id")),
+             "specialita":    spec_map.get(r["id"], [])}
+            for r in rows]
 
 
 @router.get("/{pid}", response_model=Personale)
@@ -84,7 +104,7 @@ def get_personale(pid: int, current_user: dict = Depends(get_current_user)):
 def crea_personale(data: PersonaleCreate):
     new_id = db.execute(
         """INSERT INTO personale
-           (matricola, qualifica_id, cognome, nome, telefono, comando_id, email, attivo, note)
+           (matricola, qualifica_id, cognome, nome, telefono, comando_id, email, attivo, [note])
            VALUES (?,?,?,?,?,?,?,?,?)""",
         (data.matricola, data.qualifica_id, data.cognome, data.nome,
          data.telefono, data.comando_id, data.email, data.attivo, data.note)
@@ -114,7 +134,7 @@ def aggiorna_anagrafica(
         db.execute(
             """UPDATE personale SET
                matricola=?, qualifica_id=?, cognome=?, nome=?,
-               telefono=?, comando_id=?, email=?, attivo=?, note=?
+               telefono=?, comando_id=?, email=?, attivo=?, [note]=?
                WHERE id=?""",
             (data.matricola, data.qualifica_id, data.cognome, data.nome,
              data.telefono, data.comando_id, data.email, data.attivo, data.note, pid)

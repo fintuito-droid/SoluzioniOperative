@@ -76,6 +76,13 @@ export const lookupApi = {
 
   creaPostazione:     (body)     => post('/lookup/postazioni',       body),
   aggiornaPostazione: (id, body) => put(`/lookup/postazioni/${id}`,  body),
+
+  creaCampagna:       (body)     => post('/lookup/campagne',         body),
+  aggiornaCampagna:   (id, body) => put(`/lookup/campagne/${id}`,    body),
+
+  creaSpecialita:     (body)     => post('/lookup/specialita',       body),
+  aggiornaSpecialita: (id, body) => put(`/lookup/specialita/${id}`,  body),
+  eliminaSpecialita:  (id)       => del(`/lookup/specialita/${id}`),
 }
 
 

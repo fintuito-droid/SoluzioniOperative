@@ -1,7 +1,7 @@
 // stores/presenze.js — Pinia store presenze AIB
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { presenzeApi, lookupApi } from '@/api/api'
+import { presenzeApi, lookupApi, personaleApi } from '@/api/api'
 
 export const usePresenzeStore = defineStore('presenze', () => {
   // ── Stato ────────────────────────────────────────────────────────────────
@@ -12,6 +12,7 @@ export const usePresenzeStore = defineStore('presenze', () => {
   const campagne     = ref([])
   const qualifiche   = ref([])
   const comandi      = ref([])
+  const personale    = ref([])
   const loading      = ref(false)
   const error        = ref(null)
 
@@ -20,19 +21,24 @@ export const usePresenzeStore = defineStore('presenze', () => {
   )
 
   // ── Lookup ───────────────────────────────────────────────────────────────
+  // Ogni risultato viene assegnato APPENA arriva: una chiamata lenta
+  // non blocca il popolamento delle altre tendine.
   async function caricaLookup() {
-    const [po, fu, ca, qu, co] = await Promise.all([
-      lookupApi.postazioni(),
-      lookupApi.funzioni(),
-      lookupApi.campagne(),
-      lookupApi.qualifiche(),
-      lookupApi.comandi(),
+    await Promise.all([
+      lookupApi.postazioni().then(r => { if (r.data) postazioni.value = r.data }),
+      lookupApi.funzioni().then(r =>   { if (r.data) funzioni.value   = r.data }),
+      lookupApi.campagne().then(r =>   { if (r.data) campagne.value   = r.data }),
+      lookupApi.qualifiche().then(r => { if (r.data) qualifiche.value = r.data }),
+      lookupApi.comandi().then(r =>    { if (r.data) comandi.value    = r.data }),
+      personaleApi.lista().then(r =>   { if (r.data) personale.value  = r.data }),
     ])
-    if (po.data) postazioni.value = po.data
-    if (fu.data) funzioni.value   = fu.data
-    if (ca.data) campagne.value   = ca.data
-    if (qu.data) qualifiche.value = qu.data
-    if (co.data) comandi.value    = co.data
+  }
+
+  // ── Personale (cache di sessione) ────────────────────────────────────────
+  async function caricaPersonale(force = false) {
+    if (personale.value.length && !force) return  // già in cache
+    const { data } = await personaleApi.lista()
+    if (data) personale.value = data
   }
 
   // ── Presenze ─────────────────────────────────────────────────────────────
@@ -104,9 +110,9 @@ export const usePresenzeStore = defineStore('presenze', () => {
   }
 
   return {
-    presenze, monteOre, postazioni, funzioni, campagne, qualifiche, comandi,
+    presenze, monteOre, postazioni, funzioni, campagne, qualifiche, comandi, personale,
     loading, error, campagnaAttiva,
-    caricaLookup, caricaPresenze, creaPresenza, consuntivaPresenza, eliminaPresenza,
-    caricaMonteOre, creaPostazione, aggiornaPostazione, creaPresenzeGiorno
+    caricaLookup, caricaPersonale, caricaPresenze, creaPresenza, consuntivaPresenza,
+    eliminaPresenza, caricaMonteOre, creaPostazione, aggiornaPostazione, creaPresenzeGiorno
   }
 })

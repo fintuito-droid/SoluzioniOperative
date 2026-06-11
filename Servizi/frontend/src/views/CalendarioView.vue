@@ -380,10 +380,9 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, reactive } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, reactive } from 'vue'
 import { usePresenzeStore } from '@/stores/presenze'
 import { useAuthStore }     from '@/stores/auth'
-import { personaleApi }     from '@/api/api'
 import ConsuntivoForm       from '@/components/ConsuntivoForm.vue'
 
 const store = usePresenzeStore()
@@ -397,7 +396,6 @@ const annoVis = ref(oggi.getFullYear())
 const filtroPostazione = ref(null)
 
 // ── Dati ─────────────────────────────────────────────────────────────────────
-const personaleList  = ref([])
 const salvando       = ref(false)
 const eliminando     = ref(null)
 const snack          = ref({ show: false, text: '', color: 'success' })
@@ -434,7 +432,7 @@ const monteOreMap = computed(() =>
 )
 
 const personaleOrdinato = computed(() =>
-  [...personaleList.value]
+  [...store.personale]
     .map(p => ({
       ...p,
       ore_tot: monteOreMap.value[p.id] ?? 0,
@@ -805,13 +803,29 @@ function showSnack(text, color = 'success') {
   snack.value = { show: true, text, color }
 }
 
+// ── Navigazione tastiera (← → cambia mese) ────────────────────────────────────
+function onKeydown(e) {
+  // Ignora se un dialog è aperto o il focus è su un input
+  if (dialogComposizione.value || dialogDettaglio.value || dialogConsuntivo.value) return
+  const tag = document.activeElement?.tagName
+  if (tag === 'INPUT' || tag === 'TEXTAREA') return
+  if (!filtroPostazione.value) return
+  if (e.key === 'ArrowLeft')  mesePrecedente()
+  if (e.key === 'ArrowRight') meseSuccessivo()
+}
+
 // ── Mount ─────────────────────────────────────────────────────────────────────
 onMounted(async () => {
-  // Ricarica lookup per avere postazioni con i campi slot_* aggiornati
-  await store.caricaLookup()
-  const { data } = await personaleApi.lista()
-  if (data) personaleList.value = data
+  window.addEventListener('keydown', onKeydown)
+  // Lookup e personale sono già caricati dal Layout al login (cache store);
+  // ricarica solo se lo store è vuoto (es. accesso diretto via URL)
+  if (!store.postazioni.length) await store.caricaLookup()
+  else store.caricaPersonale()
   // Presenze e monte ore vengono caricati al momento della selezione postazione
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', onKeydown)
 })
 </script>
 

@@ -45,9 +45,35 @@
       </v-card-text>
     </v-card>
 
+    <!-- Barra azioni massive -->
+    <v-slide-y-transition>
+      <v-card v-if="selezionate.length" class="mb-3" color="primary" variant="tonal">
+        <v-card-text class="d-flex align-center py-2">
+          <span class="text-body-2 font-weight-medium">
+            {{ selezionate.length }} turni selezionati
+          </span>
+          <v-spacer/>
+          <v-btn
+            color="success"
+            variant="flat"
+            size="small"
+            prepend-icon="mdi-check-all"
+            :loading="confermandoMassa"
+            @click="confermaMassiva"
+          >
+            Conferma selezionati
+          </v-btn>
+          <v-btn variant="text" size="small" class="ml-2" @click="selezionate = []">
+            Annulla
+          </v-btn>
+        </v-card-text>
+      </v-card>
+    </v-slide-y-transition>
+
     <!-- Tabella -->
     <v-card>
       <v-data-table
+        v-model="selezionate"
         :headers="headers"
         :items="store.presenze"
         :loading="store.loading"
@@ -55,6 +81,9 @@
         :sort-by="[{ key: 'data_servizio', order: 'desc' }]"
         no-data-text="Nessuna presenza trovata"
         items-per-page-text="Righe per pagina"
+        :show-select="auth.canConsuntivare"
+        item-value="id"
+        :item-selectable="p => p.stato === 'programmato'"
       >
         <!-- Stato badge -->
         <template #item.stato="{ item }">
@@ -95,7 +124,7 @@
     <v-dialog v-model="dialogNuova" max-width="600" persistent>
       <PresenzaForm
         :campagna-id="store.campagnaAttiva?.id"
-        :personale-list="personaleList"
+        :personale-list="store.personale"
         :postazioni="store.postazioni"
         :funzioni="store.funzioni"
         @save="salvaNuova"
@@ -113,6 +142,27 @@
       />
     </v-dialog>
 
+    <!-- Dialog conferma eliminazione -->
+    <v-dialog v-model="dialogElimina" max-width="420">
+      <v-card>
+        <v-card-title class="text-subtitle-1 font-weight-medium pa-4 pb-2">
+          Conferma eliminazione
+        </v-card-title>
+        <v-card-text>
+          Eliminare il turno di
+          <strong>{{ presenzaDaEliminare?.cognome }} {{ presenzaDaEliminare?.nome_dip }}</strong>
+          del {{ presenzaDaEliminare?.data_servizio }}?
+        </v-card-text>
+        <v-card-actions>
+          <v-btn variant="text" @click="dialogElimina = false">Annulla</v-btn>
+          <v-spacer/>
+          <v-btn color="error" variant="tonal" :loading="eliminandoTurno" @click="eseguiElimina">
+            Elimina
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Snackbar feedback -->
     <v-snackbar v-model="snack.show" :color="snack.color" timeout="3000">
       {{ snack.text }}
@@ -124,7 +174,6 @@
 import { ref, computed, onMounted } from 'vue'
 import { usePresenzeStore } from '@/stores/presenze'
 import { useAuthStore } from '@/stores/auth'
-import { personaleApi } from '@/api/api'
 import PresenzaForm   from '@/components/PresenzaForm.vue'
 import ConsuntivoForm from '@/components/ConsuntivoForm.vue'
 
@@ -134,8 +183,12 @@ const auth  = useAuthStore()
 const filtri = ref({ postazione_id: null, stato: null, data_da: null, data_a: null })
 const dialogNuova       = ref(false)
 const dialogConsuntivo  = ref(false)
+const dialogElimina     = ref(false)
 const presenzaSelezionata = ref(null)
-const personaleList     = ref([])
+const presenzaDaEliminare = ref(null)
+const selezionate       = ref([])
+const confermandoMassa  = ref(false)
+const eliminandoTurno   = ref(false)
 const snack = ref({ show: false, text: '', color: 'success' })
 
 const statiItems = ['programmato','confermato','modificato','assente']
@@ -187,10 +240,32 @@ async function salvaConsuntivo(data) {
   showSnack(error ? error : 'Consuntivo salvato', error ? 'error' : 'success')
 }
 
-async function confermaElimina(item) {
-  if (!confirm(`Eliminare il turno di ${item.cognome} del ${item.data_servizio}?`)) return
-  const { error } = await store.eliminaPresenza(item.id)
+function confermaElimina(item) {
+  presenzaDaEliminare.value = item
+  dialogElimina.value = true
+}
+
+async function eseguiElimina() {
+  eliminandoTurno.value = true
+  const { error } = await store.eliminaPresenza(presenzaDaEliminare.value.id)
+  eliminandoTurno.value = false
+  dialogElimina.value = false
   showSnack(error ? error : 'Turno eliminato', error ? 'error' : 'success')
+}
+
+async function confermaMassiva() {
+  confermandoMassa.value = true
+  let ok = 0, ko = 0
+  for (const id of selezionate.value) {
+    const { error } = await store.consuntivaPresenza(id, { stato: 'confermato' })
+    error ? ko++ : ok++
+  }
+  confermandoMassa.value = false
+  selezionate.value = []
+  showSnack(
+    ko === 0 ? `${ok} turni confermati` : `${ok} confermati, ${ko} falliti`,
+    ko === 0 ? 'success' : 'warning'
+  )
 }
 
 function showSnack(text, color = 'success') {
@@ -198,8 +273,7 @@ function showSnack(text, color = 'success') {
 }
 
 onMounted(async () => {
-  const { data } = await personaleApi.lista()
-  if (data) personaleList.value = data
+  store.caricaPersonale()  // no-op se già in cache
   await carica()
 })
 </script>

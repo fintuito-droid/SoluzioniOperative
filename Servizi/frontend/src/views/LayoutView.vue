@@ -4,8 +4,8 @@
     <v-navigation-drawer v-model="drawer" :rail="rail" permanent>
       <v-list-item
         prepend-icon="mdi-fire"
-        title="AIB 2026"
-        :subtitle="auth.user?.username"
+        title="SoluzioniOperative"
+        :subtitle="`Servizi — AIB ${presenze.campagnaAttiva?.anno || ''}`"
         nav
       >
         <template #append>
@@ -13,6 +13,14 @@
                  variant="text" @click="rail = !rail"/>
         </template>
       </v-list-item>
+
+      <v-list-item
+        v-if="!rail"
+        prepend-icon="mdi-account-circle"
+        :title="auth.user?.username"
+        :subtitle="auth.user?.ruolo"
+        density="compact"
+      />
 
       <v-divider/>
 
@@ -48,17 +56,32 @@
     <!-- App bar mobile -->
     <v-app-bar :elevation="1" color="primary" v-if="mobile">
       <v-app-bar-nav-icon @click="drawer = !drawer"/>
-      <v-app-bar-title>AIB 2026</v-app-bar-title>
+      <v-app-bar-title>SoluzioniOperative — Servizi</v-app-bar-title>
     </v-app-bar>
 
     <!-- Contenuto -->
     <v-main>
       <v-container fluid class="pa-4">
-        <router-view/>
+        <router-view v-slot="{ Component }">
+          <transition name="vista-fade" mode="out-in">
+            <component :is="Component"/>
+          </transition>
+        </router-view>
       </v-container>
     </v-main>
   </v-app>
 </template>
+
+<style scoped>
+.vista-fade-enter-active,
+.vista-fade-leave-active {
+  transition: opacity 150ms ease;
+}
+.vista-fade-enter-from,
+.vista-fade-leave-to {
+  opacity: 0;
+}
+</style>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'

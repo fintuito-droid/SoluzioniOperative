@@ -42,6 +42,13 @@ const vuetify = createVuetify({
     VCard:  { rounded: 'lg', elevation: 1 },
     VTextField: { variant: 'outlined', density: 'comfortable' },
     VSelect:    { variant: 'outlined', density: 'comfortable' },
+    VDataTable: {
+      loadingText: 'Caricamento dati…',
+      noDataText:  'Nessun dato disponibile',
+      itemsPerPageText: 'Righe per pagina',
+      hover: true,
+    },
+    VDialog: { transition: 'dialog-bottom-transition' },
   }
 })
 

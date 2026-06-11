@@ -252,15 +252,17 @@
 <script setup>
 import { ref, computed, onMounted, reactive } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { usePresenzeStore } from '@/stores/presenze'
 import { personaleApi, lookupApi } from '@/api/api'
 
-const auth = useAuthStore()
+const auth  = useAuthStore()
+const store = usePresenzeStore()
 
 // ── Stato ─────────────────────────────────────────────────────────────────────
-const personaleList    = ref([])
+const personaleList    = computed(() => store.personale)
 const tutteSpecialita  = ref([])
-const qualifiche       = ref([])
-const comandi          = ref([])
+const qualifiche       = computed(() => store.qualifiche)
+const comandi          = computed(() => store.comandi)
 const caricando        = ref(false)
 const salvando         = ref(false)
 const ricerca          = ref('')
@@ -311,22 +313,17 @@ const personaleFiltrato = computed(() => {
 })
 
 // ── Caricamento dati ──────────────────────────────────────────────────────────
-async function carica() {
+async function carica(forceRefresh = false) {
   caricando.value = true
-  const [rp, rs, rq, rc] = await Promise.all([
-    personaleApi.lista(),
+  const [, rs] = await Promise.all([
+    store.caricaPersonale(forceRefresh),   // cache: istantaneo se già caricato
     lookupApi.specialita(),
-    lookupApi.qualifiche(),
-    lookupApi.comandi(),
   ])
-  if (rp.data) personaleList.value   = rp.data
   if (rs.data) tutteSpecialita.value = rs.data
-  if (rq.data) qualifiche.value      = rq.data
-  if (rc.data) comandi.value         = rc.data
   caricando.value = false
 }
 
-onMounted(carica)
+onMounted(() => carica())
 
 // ── Dialog ────────────────────────────────────────────────────────────────────
 function apriNuovo() {
@@ -397,14 +394,14 @@ async function salva() {
   } else {
     showSnack(isNuovo.value ? 'Dipendente creato' : 'Dati aggiornati', 'success')
     dialog.value = false
-    await carica()
+    await carica(true)
   }
 }
 
 async function disattiva(item) {
   const { error } = await personaleApi.disattiva(item.id)
   if (error) showSnack(error, 'error')
-  else { showSnack('Dipendente disattivato', 'success'); await carica() }
+  else { showSnack('Dipendente disattivato', 'success'); await carica(true) }
 }
 
 function showSnack(text, color = 'success') {

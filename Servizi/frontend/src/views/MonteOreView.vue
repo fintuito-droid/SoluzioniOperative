@@ -117,7 +117,18 @@
         no-data-text="Nessun dato disponibile"
       >
         <template #item.ore_totali="{ item }">
-          <span class="font-weight-bold text-primary">{{ item.ore_totali }}h</span>
+          <div class="d-flex align-center gap-2" style="min-width: 120px">
+            <v-progress-linear
+              :model-value="maxOre ? (item.ore_totali / maxOre) * 100 : 0"
+              :color="coloreOre(item.ore_totali)"
+              height="6"
+              rounded
+              style="max-width: 60px"
+            />
+            <span class="font-weight-bold" :class="`text-${coloreOre(item.ore_totali)}`">
+              {{ item.ore_totali }}h
+            </span>
+          </div>
         </template>
 
         <template #item.ore_per_funzione="{ item }">
@@ -219,6 +230,19 @@ const turniTotaliSomma = computed(() =>
 const mediaOre = computed(() =>
   monteOreFiltrato.value.length ? Math.round(oreTotaliSomma.value / monteOreFiltrato.value.length) : 0
 )
+
+const maxOre = computed(() =>
+  Math.max(...monteOreFiltrato.value.map(r => r.ore_totali || 0), 0)
+)
+
+// Colore in base allo scostamento dalla media: equa distribuzione = verde
+function coloreOre(ore) {
+  if (!mediaOre.value) return 'primary'
+  const rapporto = ore / mediaOre.value
+  if (rapporto > 1.5) return 'error'      // molto sopra la media
+  if (rapporto > 1.2) return 'warning'    // sopra la media
+  return 'success'                         // nella norma
+}
 
 const headers = [
   { title: 'Qualifica', key: 'qualifica', sortable: true },
