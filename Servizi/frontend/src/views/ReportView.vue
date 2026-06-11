@@ -6,7 +6,7 @@
         <p class="text-caption text-medium-emphasis mb-0">Generazione e modelli personalizzati</p>
       </div>
       <v-btn
-        v-if="auth.canPlanificare"
+        v-if="auth.isAdmin"
         color="primary"
         prepend-icon="mdi-plus"
         @click="nuovoModello"
@@ -64,10 +64,10 @@
               Genera PDF
             </v-btn>
             <v-spacer/>
-            <v-btn v-if="auth.canPlanificare" icon="mdi-pencil-ruler" size="x-small"
+            <v-btn v-if="auth.isAdmin" icon="mdi-pencil-ruler" size="x-small"
                    variant="text" color="primary" title="Apri nel designer"
                    :to="`/report/designer/${t.id}`"/>
-            <v-btn v-if="auth.canPlanificare" icon="mdi-delete-outline" size="x-small"
+            <v-btn v-if="auth.isAdmin" icon="mdi-delete-outline" size="x-small"
                    variant="text" color="error" title="Elimina"
                    @click="chiediElimina(t)"/>
           </v-card-actions>

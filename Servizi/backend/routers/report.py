@@ -29,9 +29,11 @@ from db.database import db
 from auth import get_current_user, require_role
 from routers.presenze import lista_presenze, monte_ore
 
-router = APIRouter(prefix="/report", tags=["Report"])
+# Tutta la sezione Report è riservata agli amministratori
+router = APIRouter(prefix="/report", tags=["Report"],
+                   dependencies=[Depends(require_role("admin"))])
 
-RUOLI_DESIGNER = ("admin", "responsabile")
+RUOLI_DESIGNER = ("admin",)
 
 
 # ═════════════════════════════ Catalogo sorgenti ═════════════════════════════

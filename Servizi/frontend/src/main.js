@@ -66,8 +66,8 @@ const routes = [
       { path: 'calendario',component: () => import('./views/CalendarioView.vue') },
       { path: 'monte-ore', component: () => import('./views/MonteOreView.vue') },
       { path: 'anagrafica',component: () => import('./views/AnagraficaView.vue'), meta: { roles: ['admin','responsabile'] } },
-      { path: 'report',    component: () => import('./views/ReportView.vue') },
-      { path: 'report/designer/:id', component: () => import('./views/ReportDesignerView.vue'), meta: { roles: ['admin','responsabile'] } },
+      { path: 'report',    component: () => import('./views/ReportView.vue'), meta: { roles: ['admin'] } },
+      { path: 'report/designer/:id', component: () => import('./views/ReportDesignerView.vue'), meta: { roles: ['admin'] } },
       { path: 'impostazioni', component: () => import('./views/ImpostazioniView.vue'), meta: { roles: ['admin'] } },
     ]
   }

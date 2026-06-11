@@ -124,12 +124,9 @@ def aggiorna_anagrafica(
         raise HTTPException(404, "Dipendente non trovato")
 
     if current_user["ruolo"] == "dipendente":
-        if current_user["personale_id"] != pid:
-            raise HTTPException(403)
-        db.execute(
-            "UPDATE personale SET telefono=?, email=? WHERE id=?",
-            (data.telefono, data.email, pid)
-        )
+        # I dipendenti hanno accesso in sola visualizzazione:
+        # eventuali variazioni anagrafiche vanno richieste al responsabile
+        raise HTTPException(403, "Accesso in sola visualizzazione: contattare il responsabile per modifiche")
     else:
         db.execute(
             """UPDATE personale SET
