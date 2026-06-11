@@ -62,6 +62,11 @@ Swagger: `http://localhost:8000/docs`
 * Cambio password utente (`POST /auth/cambia-password`, voce nel menu laterale)
 * Ruoli: admin, responsabile, dipendente; guard router per ruolo
 
+### Matrice permessi ruoli
+* **admin**: tutto, inclusi Report (sezione riservata solo admin), Impostazioni, Utenti
+* **responsabile**: pianifica/consuntiva presenze del proprio comando, Anagrafica
+* **dipendente**: SOLA VISUALIZZAZIONE totale (nessuna scrittura dati; unica eccezione: cambio della propria password)
+
 ### Calendario (CalendarioView)
 * Vista mensile per postazione (tendina Postazione obbligatoria, un calendario per postazione)
 * Cella giorno: cornice colorata che riempie tutta la cella (blu=programmato, verde=confermato, arancio=modificato, rosso=assente); righe `HH:MM -- HH:MM | nome | nome`; header Funzionario|TAS (SOUR) o Addetto (SOR)
@@ -202,6 +207,7 @@ Setup completo da zero; fix JOIN annidati; migrazione dati 2025; Monte Ore con f
 * Regole personale calendario: solo comando DIR-SIC; funzionario = qualifica IA/IAE/DCS/DS/DV; addetti = non funzionari (SOR); slot TAS = specialità TAS 2
 * Date in formato italiano dd/mm/yyyy ovunque (`utils/format.js`)
 * **Fase 3**: Report Designer drag & drop + render PDF (reportlab) + export Excel (openpyxl)
+* Restrizioni ruoli: Report solo admin; dipendente in sola visualizzazione totale
 
 ---
 
