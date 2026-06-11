@@ -2,9 +2,9 @@
 
 ## Progetto
 
-**Modulo AIB 2026** — applicazione web per la gestione delle presenze nei servizi a pagamento della Campagna Antincendio Boschivo (AIB) del Corpo Nazionale dei Vigili del Fuoco - Direzione Regionale Sicilia.
+**Modulo Servizi (AIB 2026)** — applicazione web per la gestione delle presenze nei servizi a pagamento della Campagna Antincendio Boschivo (AIB) del Corpo Nazionale dei Vigili del Fuoco - Direzione Regionale Sicilia.
 
-Il progetto fa parte dell'ecosistema **SoluzioniOperative**.
+Il modulo fa parte della piattaforma **SoluzioniOperative** (login unico tra moduli previsto in futuro; per ora l'auth è interna al modulo ma progettata per essere estratta).
 
 Repository:
 
@@ -14,348 +14,134 @@ C:\Users\fintu\Documents\GitHub\SoluzioniOperative\Servizi
 
 ---
 
-# Obiettivo del progetto
-
-Realizzare una piattaforma web moderna per la pianificazione, gestione e consuntivazione dei servizi AIB.
-
-Obiettivi principali:
-
-* Pianificazione turni
-* Gestione presenze
-* Gestione personale
-* Calcolo monte ore
-* Reportistica
-* Gestione campagne annuali
-* Futura integrazione con SoluzioniOperative
-
----
-
 # Architettura
 
 ## Frontend
 
-Tecnologie:
+* Vue **3.5.35** (versione PINNATA esatta in package.json — non aggiornare)
+* Vuetify **4.1.1** (no import da `vuetify/labs/`)
+* Pinia, Vue Router, Vite 6
 
-* Vue 3
-* Vuetify **4.1.1** (latest stable — NON 3.x)
-* Pinia
-* Vue Router
-* Vite 6
+Avvio rapido di tutto: doppio click su `Servizi\avvia.bat` (apre backend + frontend).
 
-Percorso:
-
-```text
-Servizi/frontend
-```
-
-Avvio:
+Avvio manuale frontend:
 
 ```bash
 cd Servizi/frontend
 npm run dev
 ```
 
-URL:
-
-```text
-http://localhost:5173
-```
-
----
+URL: `http://localhost:5173` — Login sviluppo: `admin` / `admin123`
 
 ## Backend
 
-Tecnologie:
-
-* Python 3.10
-* FastAPI
-* Uvicorn
-
-Percorso:
-
-```text
-Servizi/backend
-```
-
-Avvio:
+* Python 3.10, FastAPI, Uvicorn
 
 ```bash
 cd Servizi/backend
-python -m uvicorn main:app --port 8000
+uvicorn main:app --reload --port 8000
 ```
 
-Swagger:
-
-```text
-http://localhost:8000/docs
-```
-
----
+Swagger: `http://localhost:8000/docs`
 
 ## Database
 
-Tecnologia:
-
-* Microsoft Access (.accdb)
-* pyodbc + driver ODBC "Microsoft Access Driver (*.mdb, *.accdb)"
-
-Percorso:
-
-```text
-C:\SoluzioniOperative\aib2026.accdb
-```
-
-Configurabile tramite variabile d'ambiente `ACCESS_DB_PATH`.
-
-Predisposto per futura migrazione PostgreSQL (tutti i tipi SQL commentati nel file `schema_access.sql`).
+* Microsoft Access (.accdb) via pyodbc
+* Percorso: `C:\SoluzioniOperative\aib2026.accdb` (override con env `ACCESS_DB_PATH`)
+* Migrazione PostgreSQL prevista DOPO il completamento funzionale; ogni query nuova deve già essere PG-compatibile
 
 ---
 
-# Struttura funzionale
+# Stato funzionale
 
-## Implementato
+## COMPLETATO
 
-### Login
+### Login e sessioni
+* Token bearer **persistiti su DB** (tabella `sessioni`, scadenza 12h) — i login sopravvivono ai riavvii del backend; cache in-memory per le performance
+* `GET /auth/me` per ripristino sessione al refresh (F5): utente salvato in localStorage e validato all'avvio app
+* Cambio password utente (`POST /auth/cambia-password`, voce nel menu laterale)
+* Ruoli: admin, responsabile, dipendente; guard router per ruolo
 
-Stato: COMPLETATO
+### Calendario (CalendarioView)
+* Vista mensile per postazione (tendina Postazione obbligatoria, un calendario per postazione)
+* Cella giorno: cornice colorata che riempie tutta la cella (blu=programmato, verde=confermato, arancio=modificato, rosso=assente); righe `HH:MM -- HH:MM | nome | nome`; header Funzionario|TAS (SOUR) o Addetto (SOR)
+* Numero giorno: corsivo grassetto blu; rosso se domenica o festivo nazionale
+* Click su giorno vuoto → dialog composizione (regole da DB: SOR=1 addetto 08-20; SOUR=funzionario+TAS2, turno unico o doppio M/P)
+* Click su giorno valorizzato → dialog dettaglio con elimina singolo turno e "Modifica composizione" (pre-carica i dati esistenti; al salvataggio elimina e ricrea)
+* Personale nei dropdown ordinato per monte ore crescente NELLA postazione selezionata
+* Navigazione mese con frecce tastiera ← →
 
-Funzionalità:
+### Presenze (PresenzeView)
+* Tabella con filtri, consuntivazione, eliminazione (dialog di conferma, non confirm() nativo)
+* Selezione multipla righe programmate + conferma massiva
 
-* autenticazione token bearer in-memory
-* ruoli: admin, responsabile, dipendente
-* guard router per ruolo
+### Monte Ore (MonteOreView)
+* Aggregazione per dipendente, filtri campagna/mesi/funzione/comando, KPI, export CSV
+* Barra colorata proporzionale sulla colonna ore (verde=norma, arancio >1.2x media, rosso >1.5x media)
 
-Credenziali sviluppo:
+### Anagrafica (AnagraficaView)
+* CRUD personale completo con ricerca e filtro comando
+* Gestione specialità multiple per dipendente (checkbox: TAS 1/2, NBCR 1/2, SAPR, DOS, USAR L/M/H)
 
-```text
-username: admin
-password: admin123
-```
+### Impostazioni (ImpostazioniView) — 4 tab
+* **Campagne**: crea/modifica, una sola attiva alla volta
+* **Postazioni**: CRUD + regole composizione (slot_funzionario, slot_tas2, slot_addetto, turni_multipli)
+* **Specialità**: CRUD, eliminazione bloccata se assegnata (409)
+* **Utenti**: CRUD, ruolo, collegamento a dipendente, reset password (invalida sessioni), disattivazione (chiude sessioni)
 
----
+### Hardening
+* Validazioni server: data turno dentro periodo campagna (422); sovrapposizione fasce U/M/P stessa persona/giorno (409); batch validato tutto prima di scrivere
+* Exception handler globale: i 500 rispondono sempre JSON `{detail}` con header CORS
+* Audit log scritture in `backend/logs/operazioni.log` (utente, metodo, path, esito)
 
-### Presenze
-
-Stato: COMPLETATO
-
-Funzionalità:
-
-* elenco turni con tabella
-* filtri: postazione, stato, data dal/al
-* inserimento nuovo turno (solo admin/responsabile)
-* consuntivazione turno (solo admin/responsabile)
-* eliminazione (solo admin)
-* badge colorato per stato: programmato (blu), confermato (verde), modificato (arancio), assente (rosso)
-
----
-
-### Monte Ore
-
-Stato: COMPLETATO
-
-Funzionalità:
-
-* aggregazione ore per dipendente
-* filtri: campagna, dal (mese), al (mese), funzione, comando
-* selezione campagna imposta automaticamente il range mesi
-* KPI reattivi ai filtri: dipendenti coinvolti, ore totali, turni totali, media ore/dip.
-* dettaglio presenze per dipendente (dialog)
-* export CSV
-* ordine colonne: Qualifica | Cognome | Nome | Turni | Ore tot. | Per funzione
+## DA FARE — Fase 3 (unica rimasta del piano)
+* Export Excel: presenze mensili per postazione, monte ore, riepilogo campagna
+* Export PDF calendario mensile stampabile
+* Endpoint `/api/v1/report/...`
+* ⚠ Richiede autorizzazione nuove librerie (proposte: openpyxl, reportlab)
 
 ---
 
-### Calendario
+# Tabelle DB
 
-Stato: DA SVILUPPARE (placeholder)
+`campagne_aib`, `postazioni` (+ slot_funzionario, slot_tas2, slot_addetto, turni_multipli), `qualifiche`, `comandi`, `personale`, `specialita`, `personale_specialita`, `utenti`, `sessioni`, `funzioni_servizio`, `presenze` (+ fascia_oraria U/M/P)
 
-Funzionalità previste:
+Migrazioni eseguite (script in backend/): `migrate_composizione.py`, `migrate_specialita.py`, `migrate_sessioni.py`, `migrate_orari.py` (35 orari normalizzati). Tutte idempotenti.
 
-* vista mensile
-* click sul giorno per aggiungere/modificare turno
-* colori per stato
-* filtri postazione e funzione
+Dati: campagna AIB 2025 (id=3, storica, 69 dipendenti, ~278 presenze), campagna AIB 2026 (id=1, attiva, periodo 2026-06-15 → 2026-10-15).
 
----
-
-### Anagrafica
-
-Stato: DA SVILUPPARE (placeholder)
-
-Funzionalità previste:
-
-* CRUD personale
-* filtri comando e qualifica
-* attivazione/disattivazione dipendente
+**Relazioni/FK assenti in Access** — verranno aggiunte alla migrazione PostgreSQL.
 
 ---
 
-### Impostazioni
+# Vincoli tecnici Access ⚠️ CRITICI
 
-Stato: DA SVILUPPARE (placeholder)
+1. **JOIN multipli annidati con parentesi** obbligatori:
+   ```sql
+   FROM ((((presenze pr
+   LEFT JOIN personale pe ON pe.id = pr.personale_id)
+   LEFT JOIN qualifiche q ON q.id = pe.qualifica_id) ... )
+   ```
+2. **Parole riservate** come nomi colonna → `[parentesi quadre]`. Caso reale: `note` (personale, postazioni) causava 500 negli UPDATE. **Per nuove colonne usare nomi non riservati** (es. `annotazioni`).
+3. No `RETURNING` → `SELECT @@IDENTITY`; no `DEFAULT` in CREATE TABLE; tipi `COUNTER`/`BIT`/`VARCHAR`
+4. Timestamp DML valorizzati da Python (`datetime.now()`)
+5. Dopo DDL: commit + riapertura connessione prima del DML
+6. **MAI query-per-riga (N+1)**: ogni roundtrip ODBC costa ~1s. Caricare lookup in mappe e abbinare in Python (caso reale: lista_personale passata da 3 min a <1s)
 
-Funzionalità previste:
-
-* gestione campagne
-* gestione utenti
-* gestione postazioni
-
----
-
-# Tabelle principali
-
-* `campagne_aib`
-* `postazioni`
-* `qualifiche`
-* `comandi`
-* `personale`
-* `utenti`
-* `funzioni_servizio`
-* `presenze`
-
----
-
-# Dati attualmente caricati
-
-## Campagna AIB 2025
-
-* id = 3
-* 69 dipendenti
-* 266 presenze (fonte: `PresenzeSour - Copia.accdb`)
-* Lookup caricati: 4 funzioni, 3 postazioni, 5 comandi, 16 qualifiche
-
-Stato:
-
-```text
-attiva = False
-```
-
----
-
-## Campagna AIB 2026
-
-* id = 1
-
-Stato:
-
-```text
-attiva = True
-```
-
-Pronta per la pianificazione. Nessuna presenza ancora inserita.
-
----
-
-# Decisioni progettuali
-
-## Database
-
-Decisione: Access adesso, PostgreSQL successivamente.
-
-Motivazione: velocità di sviluppo e compatibilità con l'ambiente operativo VVF.
-
-La classe `AccessDatabase` in `db/database.py` implementa l'interfaccia `BaseDatabase`.
-Migrare a PostgreSQL = scrivere `PostgreSQLDatabase` e sostituire il singleton `db`. Nessun'altra modifica necessaria.
-
----
-
-## Autenticazione
-
-Decisione: token bearer in-memory (dizionario Python).
-
-Motivazione: semplicità nella fase iniziale.
-
-Punto di sostituzione documentato in `auth.py`. Prevista futura sostituzione con JWT, CAS o SSO senza modificare il resto dell'applicazione.
-
-Conseguenza: i token vengono persi al riavvio del backend — gli utenti devono ri-loginare.
-
----
-
-## Filtri Monte Ore
-
-Decisione: filtri funzione e comando lato client.
-
-Motivazione: dataset attuale ridotto (< 300 presenze).
-
-Da rivalutare con dataset superiori — in quel caso spostare i filtri come parametri API.
-
----
-
-## Orari
-
-Decisione: formato `HH:MM`, memorizzati come `VARCHAR(5)`.
-
-Motivazione: Access non ha tipo TIME nativo.
-
-Il backend normalizza automaticamente in input (`8:00` → `08:00`) tramite validator Pydantic in `models.py`.
-
----
-
-# Vincoli tecnici
-
-## Access — JOIN multipli annidati ⚠️ CRITICO
-
-I LEFT JOIN multipli in Access via ODBC **devono** usare la sintassi annidata con parentesi.
-La sintassi SQL standard (flat) genera errore ODBC 500.
-
-**Sintassi corretta (obbligatoria):**
-
-```sql
-FROM ((((presenze pr
-LEFT JOIN personale     pe ON pe.id = pr.personale_id)
-LEFT JOIN qualifiche    q  ON q.id  = pe.qualifica_id)
-LEFT JOIN postazioni    po ON po.id = pr.postazione_id)
-LEFT JOIN funzioni_servizio f ON f.id = pr.funzione_id)
-```
-
-**Sintassi errata (causa errore):**
-
-```sql
-FROM presenze pr
-LEFT JOIN personale pe ON pe.id = pr.personale_id
-LEFT JOIN qualifiche q ON q.id = pe.qualifica_id
-...
-```
-
----
-
-## Access ODBC — limitazioni DDL e DML
-
-* Tipi DDL: usare `COUNTER`, `BIT`, `VARCHAR` (non `AUTOINCREMENT`, `YESNO`, `TEXT`)
-* Nomi colonna riservati (es. `nome`, `note`) vanno racchiusi in `[parentesi quadre]`
-* No `DEFAULT` nelle istruzioni `CREATE TABLE` via ODBC
-* No `RETURNING` — usare `SELECT @@IDENTITY` dopo INSERT per ottenere il nuovo id
-* No `NOW()` nelle query DML via pyodbc — valorizzare i timestamp lato Python
-* Dopo DDL occorre fare `commit` e riaprire la connessione prima di eseguire DML sulle nuove tabelle
-
----
-
-## FastAPI — chiamate interne tra route
-
-Quando una route chiama direttamente un'altra funzione di route (es. `monte_ore` chiama `lista_presenze`), tutti i parametri con default `Query(None)` devono essere passati esplicitamente come `None`.
-Altrimenti il default `Query(None)` è un oggetto `FieldInfo` truthy che viene passato al DB causando errore `Invalid parameter type`.
-
----
-
-## Vuetify
-
-Versione installata: **4.1.1**. Non usare import da `vuetify/labs/` (es. `VCalendar` è già stabile nei `components`).
-
----
+## FastAPI
+* Route che chiama un'altra funzione di route: passare TUTTI i parametri `Query(None)` esplicitamente come `None`
+* Endpoint con path fissi (es. `/batch`) PRIMA delle route parametriche (`/{id}`)
 
 ## CORS
+Origini ammesse: localhost 5173-5177 e 3000 (lista `ALLOWED_ORIGINS` in main.py)
 
-Il backend accetta richieste da:
-
-* `http://localhost:5173`
-* `http://localhost:5174`
-* `http://localhost:3000`
+## Frontend
+* Personale e lookup in cache nello store Pinia, caricati una volta al login in parallelo; `store.caricaPersonale(force)` per refresh
+* Pattern feedback: snackbar; dialog Vuetify per conferme distruttive
 
 ---
 
 # Regole permanenti
-
-Queste regole devono essere sempre rispettate.
 
 1. Non modificare il database senza autorizzazione.
 2. Non introdurre Docker.
@@ -372,112 +158,56 @@ Queste regole devono essere sempre rispettate.
 
 # Problemi aperti
 
-1. `CalendarioView.vue` non implementata.
-2. `AnagraficaView.vue` non implementata.
-3. `ImpostazioniView.vue` non implementata.
-4. Orari non uniformi nel DB (alcuni record hanno `8:00` invece di `08:00`).
-5. Valori `ore_totali` con floating point impreciso (es. `6.000000000000002`) — il modello arrotonda in output ma il DB non è stato corretto.
-6. Sessioni non persistenti — token persi al riavvio backend.
-7. Titolo "AIB 2026" hardcoded nel nav drawer (`LayoutView.vue`).
-8. File di debug `test_query.py` da eliminare.
+1. **Fase 3 da implementare** (report/export — vedi sopra)
+2. Due utenti `admin` duplicati nella tabella utenti (id 1 e 2) — disattivarne uno dalla tab Utenti
+3. Postazione spuria "COMANDO PALERMO" nel DB — verifica manuale dell'utente
+4. Valori `ore_totali` con floating point impreciso nel DB (il modello arrotonda in output)
+5. `create_db.py` da eliminare dopo la migrazione PostgreSQL (per ora è la documentazione eseguibile dello schema)
+6. Password SHA-256 semplice — passare a bcrypt in produzione / con login unico piattaforma
 
 ---
 
 # Stato Git
 
-Branch corrente:
+Branch: `main` — push su https://github.com/fintuito-droid/SoluzioniOperative
 
-```text
-main
-```
-
-Aggiornare questa sezione al termine di ogni sessione.
-
-Ultimo commit significativo:
-
-```text
-DA AGGIORNARE
-```
+Commit principali:
+* `61675dc` AIB-2026 Modulo Servizi — primo commit
+* `ee58992` Impostazioni, conferma massiva, fix performance e parole riservate (Fasi 2+4)
+* `48ada9e` Sessioni persistenti, gestione utenti e hardening (Fasi 1+5)
 
 ---
 
 # Storico sessioni
 
 ## 2026-06-10
+Setup completo da zero; fix JOIN annidati; migrazione dati 2025; Monte Ore con filtri e KPI.
 
-Attività completate:
-
-* Setup progetto completo da zero (DB, frontend scaffold, backend)
-* Aggiornamento Vuetify 3.x → 4.1.1
-* Fix alias `@` in vite.config.js
-* Creati componenti `PresenzaForm.vue` e `ConsuntivoForm.vue`
-* Creati placeholder `CalendarioView`, `AnagraficaView`, `ImpostazioniView`
-* Fix JOIN annidati Access (bug critico)
-* Fix validazione Pydantic orari e date
-* Fix chiamata interna `monte_ore` → `lista_presenze` (parametri Query)
-* Migrazione dati AIB 2025 (69 dipendenti, 266 presenze)
-* Pulizia duplicati in `funzioni_servizio`, `postazioni`, `comandi`
-* Implementazione filtri Monte Ore: funzione, comando, range mese, auto-set da campagna
-* KPI Monte Ore reattivi ai filtri
-* Ordine colonne Monte Ore: Qualifica | Cognome | Nome
-
----
-
-# Session Summary
-
-Data aggiornamento:
-
-```text
-DA AGGIORNARE
-```
-
-Attività completate:
-
-```text
-DA AGGIORNARE
-```
-
-Attività in corso:
-
-```text
-DA AGGIORNARE
-```
-
-Prossimo task:
-
-```text
-Sviluppo CalendarioView — vista mensile per pianificazione presenze
-```
+## 2026-06-11 / 06-12
+* CalendarioView completa (composizione guidata SOR/SOUR, fasce U/M/P, stati colorati, festivi, modifica composizione)
+* Regole composizione postazioni su DB (slot_*) + campo `fascia_oraria` presenze
+* Specialità personale (tabelle + CRUD + form anagrafica)
+* AnagraficaView e ImpostazioniView complete; conferma massiva presenze
+* Fix critici: parola riservata `note` (500 al salvataggio), N+1 lista_personale (3 min → <1s), cache personale nello store
+* Sessioni persistenti su DB, /auth/me, CRUD utenti, cambio password
+* Validazioni server (campagna, sovrapposizioni), exception handler globale, audit log
+* Branding piattaforma SoluzioniOperative; avvia.bat; Vue pinnato 3.5.35
 
 ---
 
 # Prossimi passi
 
-Priorità alta:
-
-1. `CalendarioView` — vista mensile, click su giorno, inserimento/modifica turno, colori stato, filtri
-2. `AnagraficaView` — CRUD personale, filtri comando/qualifica
-
-Priorità media:
-
-3. `ImpostazioniView` — gestione campagne, utenti, postazioni
-4. Persistenza sessioni (JWT o sessionStorage)
-
-Priorità bassa:
-
-5. Pulizia file debug (`test_query.py`, `create_db.py`)
-6. Normalizzazione orari nel DB (`8:00` → `08:00`)
+1. **Fase 3 — Report ed export** (Excel: presenze/monte ore/riepilogo; PDF calendario). Autorizzare librerie prima.
+2. Pulizia: disattivare admin duplicato, verificare COMANDO PALERMO
+3. Migrazione PostgreSQL (dopo Fase 3): nuovo `PostgreSQLDatabase` in database.py, traduzione `[x]`→`"x"` e `?`→`%s`, schema con FK e indici, travaso dati, bcrypt
 
 ---
 
 # Prompt di ripartenza
 
-Leggi interamente questo documento prima di fare qualsiasi cosa.
-
-Assumilo come stato ufficiale del progetto.
+Leggi interamente questo documento prima di fare qualsiasi cosa. Assumilo come stato ufficiale del progetto.
 
 Prima di proporre modifiche:
-
 1. Riassumi ciò che hai compreso.
 2. Individua il task successivo.
 3. Presenta un piano di lavoro.
@@ -485,8 +215,4 @@ Prima di proporre modifiche:
 
 Non modificare file senza autorizzazione esplicita.
 
-**Contesto tecnico critico da tenere sempre presente:**
-
-* I LEFT JOIN multipli in Access **devono** essere annidati con parentesi (vedi sezione Vincoli).
-* Quando una route FastAPI chiama un'altra funzione di route, passare **tutti** i parametri esplicitamente come `None`.
-* Vuetify è alla versione **4.1.1** — non usare import da `vuetify/labs/`.
+**Contesto tecnico critico:** JOIN Access annidati con parentesi; parole riservate in `[quadre]`; niente query N+1 (mappe in Python); parametri `Query(None)` espliciti nelle chiamate interne tra route; Vue pinnato 3.5.35; Vuetify 4.1.1 senza `labs/`.
