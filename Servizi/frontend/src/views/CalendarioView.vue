@@ -149,7 +149,7 @@
               <v-col cols="12" sm="6">
                 <v-select
                   v-model="dlg.addetto"
-                  :items="personaleOrdinato"
+                  :items="personaleAddetti"
                   item-title="label"
                   item-value="id"
                   label="Addetto *"
@@ -201,7 +201,7 @@
               <v-col cols="12" sm="6">
                 <v-select
                   v-model="dlg.funzM"
-                  :items="personaleOrdinato"
+                  :items="personaleFunzionari"
                   item-title="label"
                   item-value="id"
                   label="Funzionario *"
@@ -212,7 +212,7 @@
               <v-col cols="12" sm="6">
                 <v-select
                   v-model="dlg.tas2M"
-                  :items="personaleOrdinato"
+                  :items="personaleTas2"
                   item-title="label"
                   item-value="id"
                   label="TAS 2 *"
@@ -232,7 +232,7 @@
                 <v-col cols="12" sm="6">
                   <v-select
                     v-model="dlg.funzP"
-                    :items="personaleOrdinato"
+                    :items="personaleFunzionari"
                     item-title="label"
                     item-value="id"
                     label="Funzionario *"
@@ -243,7 +243,7 @@
                 <v-col cols="12" sm="6">
                   <v-select
                     v-model="dlg.tas2P"
-                    :items="personaleOrdinato"
+                    :items="personaleTas2"
                     item-title="label"
                     item-value="id"
                     label="TAS 2 *"
@@ -431,14 +431,45 @@ const monteOreMap = computed(() =>
   Object.fromEntries(store.monteOre.map(m => [m.personale_id, m.ore_totali]))
 )
 
-const personaleOrdinato = computed(() =>
-  [...store.personale]
+// ── Regole personale ──────────────────────────────────────────────────────────
+// Funzionario = qualifica IA, IAE, DCS, DS, DV. Nel calendario è inseribile
+// solo il personale del comando DIR-SIC.
+const QUALIFICHE_FUNZIONARIO = new Set(['IA', 'IAE', 'DCS', 'DS', 'DV'])
+
+function isFunzionario(p) {
+  return QUALIFICHE_FUNZIONARIO.has((p.qualifica_cod || '').toUpperCase().trim())
+}
+
+function conMonteOre(lista) {
+  return lista
     .map(p => ({
       ...p,
       ore_tot: monteOreMap.value[p.id] ?? 0,
       label: `${p.cognome} ${p.nome}  (${monteOreMap.value[p.id] ?? 0}h)`,
     }))
     .sort((a, b) => a.ore_tot - b.ore_tot)
+}
+
+// Base: solo comando DIR-SIC (vale per SOR e SOUR)
+const personaleDirSic = computed(() =>
+  store.personale.filter(p => (p.comando_cod || '').toUpperCase().trim() === 'DIR-SIC')
+)
+
+// SOUR slot Funzionario: solo funzionari
+const personaleFunzionari = computed(() =>
+  conMonteOre(personaleDirSic.value.filter(isFunzionario))
+)
+
+// SOR slot Addetto: tutti i non funzionari
+const personaleAddetti = computed(() =>
+  conMonteOre(personaleDirSic.value.filter(p => !isFunzionario(p)))
+)
+
+// SOUR slot TAS: solo personale con specialità TAS 2
+const personaleTas2 = computed(() =>
+  conMonteOre(personaleDirSic.value.filter(p =>
+    (p.specialita || []).some(s => (s.codice || '').toUpperCase().trim() === 'TAS 2')
+  ))
 )
 
 // ── Postazione attiva (da filtro, non da dialog) ──────────────────────────────

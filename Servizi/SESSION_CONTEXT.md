@@ -94,19 +94,26 @@ Swagger: `http://localhost:8000/docs`
 * Exception handler globale: i 500 rispondono sempre JSON `{detail}` con header CORS
 * Audit log scritture in `backend/logs/operazioni.log` (utente, metodo, path, esito)
 
-## DA FARE — Fase 3 (unica rimasta del piano)
-* Export Excel: presenze mensili per postazione, monte ore, riepilogo campagna
-* Export PDF calendario mensile stampabile
-* Endpoint `/api/v1/report/...`
-* ⚠ Richiede autorizzazione nuove librerie (proposte: openpyxl, reportlab)
+### Report (ReportView + ReportDesignerView) — Fase 3
+* **Report Designer drag & drop** (`/report/designer/:id`, admin+responsabili, zero dipendenze frontend):
+  canvas A4 in scala, bande intestazione/piè con elementi liberi (testo, campo dinamico,
+  linea, riquadro, data, n. pagina), pannello proprietà (mm, font, B/I, colore, allineamento),
+  gestione colonne tabella (ordine, etichette, larghezze), stile tabella, anteprima PDF reale
+* Modello report = JSON in tabella `report_templates` (3 predefiniti: presenze, monte ore, riepilogo)
+* `GET /report/pdf/{id}` render reportlab paginato; `POST /report/anteprima`; CRUD modelli
+* `GET /report/excel/{sorgente}` — 3 export Excel layout fisso (openpyxl)
+* Campi dinamici bande: {sottotitolo} {campagna} {postazione} {periodo} {utente}
+* **Librerie autorizzate e installate**: reportlab 4.5.1, openpyxl 3.1.5
+
+## TUTTE LE FASI DEL PIANO COMPLETATE (1–5)
 
 ---
 
 # Tabelle DB
 
-`campagne_aib`, `postazioni` (+ slot_funzionario, slot_tas2, slot_addetto, turni_multipli), `qualifiche`, `comandi`, `personale`, `specialita`, `personale_specialita`, `utenti`, `sessioni`, `funzioni_servizio`, `presenze` (+ fascia_oraria U/M/P)
+`campagne_aib`, `postazioni` (+ slot_funzionario, slot_tas2, slot_addetto, turni_multipli), `qualifiche`, `comandi`, `personale`, `specialita`, `personale_specialita`, `utenti`, `sessioni`, `funzioni_servizio`, `presenze` (+ fascia_oraria U/M/P), `report_templates` (definizione JSON in Memo)
 
-Migrazioni eseguite (script in backend/): `migrate_composizione.py`, `migrate_specialita.py`, `migrate_sessioni.py`, `migrate_orari.py` (35 orari normalizzati). Tutte idempotenti.
+Migrazioni eseguite (script in backend/): `migrate_composizione.py`, `migrate_specialita.py`, `migrate_sessioni.py`, `migrate_orari.py` (35 orari normalizzati), `migrate_report.py`. Tutte idempotenti.
 
 Dati: campagna AIB 2025 (id=3, storica, 69 dipendenti, ~278 presenze), campagna AIB 2026 (id=1, attiva, periodo 2026-06-15 → 2026-10-15).
 
@@ -158,12 +165,12 @@ Origini ammesse: localhost 5173-5177 e 3000 (lista `ALLOWED_ORIGINS` in main.py)
 
 # Problemi aperti
 
-1. **Fase 3 da implementare** (report/export — vedi sopra)
-2. Due utenti `admin` duplicati nella tabella utenti (id 1 e 2) — disattivarne uno dalla tab Utenti
-3. Postazione spuria "COMANDO PALERMO" nel DB — verifica manuale dell'utente
-4. Valori `ore_totali` con floating point impreciso nel DB (il modello arrotonda in output)
-5. `create_db.py` da eliminare dopo la migrazione PostgreSQL (per ora è la documentazione eseguibile dello schema)
-6. Password SHA-256 semplice — passare a bcrypt in produzione / con login unico piattaforma
+1. Due utenti `admin` duplicati nella tabella utenti (id 1 e 2) — disattivarne uno dalla tab Utenti
+2. Postazione spuria "COMANDO PALERMO" nel DB — verifica manuale dell'utente
+3. Valori `ore_totali` con floating point impreciso nel DB (il modello arrotonda in output)
+4. `create_db.py` da eliminare dopo la migrazione PostgreSQL (per ora è la documentazione eseguibile dello schema)
+5. Password SHA-256 semplice — passare a bcrypt in produzione / con login unico piattaforma
+6. Dipendenze backend non ancora elencate in un requirements.txt (fastapi, uvicorn, pyodbc, reportlab, openpyxl)
 
 ---
 
@@ -192,14 +199,17 @@ Setup completo da zero; fix JOIN annidati; migrazione dati 2025; Monte Ore con f
 * Sessioni persistenti su DB, /auth/me, CRUD utenti, cambio password
 * Validazioni server (campagna, sovrapposizioni), exception handler globale, audit log
 * Branding piattaforma SoluzioniOperative; avvia.bat; Vue pinnato 3.5.35
+* Regole personale calendario: solo comando DIR-SIC; funzionario = qualifica IA/IAE/DCS/DS/DV; addetti = non funzionari (SOR); slot TAS = specialità TAS 2
+* Date in formato italiano dd/mm/yyyy ovunque (`utils/format.js`)
+* **Fase 3**: Report Designer drag & drop + render PDF (reportlab) + export Excel (openpyxl)
 
 ---
 
 # Prossimi passi
 
-1. **Fase 3 — Report ed export** (Excel: presenze/monte ore/riepilogo; PDF calendario). Autorizzare librerie prima.
-2. Pulizia: disattivare admin duplicato, verificare COMANDO PALERMO
-3. Migrazione PostgreSQL (dopo Fase 3): nuovo `PostgreSQLDatabase` in database.py, traduzione `[x]`→`"x"` e `?`→`%s`, schema con FK e indici, travaso dati, bcrypt
+1. Pulizia: disattivare admin duplicato, verificare COMANDO PALERMO, creare requirements.txt backend
+2. Migrazione PostgreSQL: nuovo `PostgreSQLDatabase` in database.py, traduzione `[x]`→`"x"` e `?`→`%s`, schema con FK e indici, travaso dati, bcrypt
+3. Evoluzioni designer: immagini/loghi nei report, export PDF del calendario mensile visuale
 
 ---
 

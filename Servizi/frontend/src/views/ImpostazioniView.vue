@@ -399,6 +399,7 @@
 import { ref, computed, reactive, onMounted } from 'vue'
 import { usePresenzeStore } from '@/stores/presenze'
 import { lookupApi, utentiApi } from '@/api/api'
+import { formatDataOraIT } from '@/utils/format'
 
 const store = usePresenzeStore()
 
@@ -629,9 +630,7 @@ function coloreRuolo(r) {
 }
 
 function fmtDataOra(v) {
-  if (!v) return '—'
-  const s = String(v).replace('T', ' ')
-  return s.slice(0, 16)
+  return formatDataOraIT(v)
 }
 
 // ── Utilità ───────────────────────────────────────────────────────────────────

@@ -184,6 +184,7 @@ const navItems = computed(() => {
     { to: '/presenze',   icon: 'mdi-calendar-check', title: 'Presenze' },
     { to: '/calendario', icon: 'mdi-calendar-month',  title: 'Calendario' },
     { to: '/monte-ore',  icon: 'mdi-chart-bar',        title: 'Monte ore' },
+    { to: '/report',     icon: 'mdi-file-chart',       title: 'Report' },
   ]
   if (auth.canPlanificare) {
     items.push({ to: '/anagrafica', icon: 'mdi-account-group', title: 'Anagrafica' })

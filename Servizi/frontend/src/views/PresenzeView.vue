@@ -85,6 +85,11 @@
         item-value="id"
         :item-selectable="p => p.stato === 'programmato'"
       >
+        <!-- Data formato italiano -->
+        <template #item.data_servizio="{ item }">
+          {{ formatDataIT(item.data_servizio) }}
+        </template>
+
         <!-- Stato badge -->
         <template #item.stato="{ item }">
           <v-chip :color="statoColor(item.stato)" size="small" variant="tonal">
@@ -151,7 +156,7 @@
         <v-card-text>
           Eliminare il turno di
           <strong>{{ presenzaDaEliminare?.cognome }} {{ presenzaDaEliminare?.nome_dip }}</strong>
-          del {{ presenzaDaEliminare?.data_servizio }}?
+          del {{ formatDataIT(presenzaDaEliminare?.data_servizio) }}?
         </v-card-text>
         <v-card-actions>
           <v-btn variant="text" @click="dialogElimina = false">Annulla</v-btn>
@@ -176,6 +181,7 @@ import { usePresenzeStore } from '@/stores/presenze'
 import { useAuthStore } from '@/stores/auth'
 import PresenzaForm   from '@/components/PresenzaForm.vue'
 import ConsuntivoForm from '@/components/ConsuntivoForm.vue'
+import { formatDataIT } from '@/utils/format'
 
 const store = usePresenzeStore()
 const auth  = useAuthStore()

@@ -13,7 +13,7 @@ from fastapi.responses import JSONResponse
 from db.database import db
 from auth import login, logout, get_current_user, cambia_password, _decode_token
 from models.models import UtenteLogin, TokenResponse, RuoloUtente
-from routers import personale, presenze, utenti
+from routers import personale, presenze, utenti, report
 
 # ── Logging operazioni di scrittura ──────────────────────────────────────────
 os.makedirs(os.path.join(os.path.dirname(__file__), "logs"), exist_ok=True)
@@ -84,6 +84,7 @@ app.add_middleware(
 app.include_router(personale.router, prefix="/api/v1")
 app.include_router(presenze.router,  prefix="/api/v1")
 app.include_router(utenti.router,    prefix="/api/v1")
+app.include_router(report.router,    prefix="/api/v1")
 
 
 # ── Auth endpoints ───────────────────────────────────────────────────────────

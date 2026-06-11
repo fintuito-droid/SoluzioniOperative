@@ -165,6 +165,9 @@
             density="compact"
             no-data-text="Nessuna presenza"
           >
+            <template #item.data_servizio="{ item }">
+              {{ formatDataIT(item.data_servizio) }}
+            </template>
             <template #item.stato="{ item }">
               <v-chip :color="statoColor(item.stato)" size="x-small" variant="tonal">
                 {{ item.stato }}
@@ -185,6 +188,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { usePresenzeStore } from '@/stores/presenze'
 import { presenzeApi } from '@/api/api'
+import { formatDataIT } from '@/utils/format'
 
 const store = usePresenzeStore()
 const filtri = ref({ campagna_id: null, mese_da: null, mese_a: null, funzione: null, comando: null })

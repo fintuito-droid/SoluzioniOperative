@@ -67,6 +67,68 @@ export const authApi = {
     post('/auth/cambia-password', { vecchia_password: vecchia, nuova_password: nuova }),
 }
 
+// ── Download binario (PDF/Excel) ──────────────────────────────────────────
+async function download(path, filename) {
+  try {
+    const headers = {}
+    if (_token) headers['Authorization'] = `Bearer ${_token}`
+    const res = await fetch(`${BASE_URL}${path}`, { headers })
+    if (!res.ok) {
+      let detail = `Errore ${res.status}`
+      try { detail = (await res.json())?.detail || detail } catch { /* corpo non JSON */ }
+      return { error: detail }
+    }
+    const blob = await res.blob()
+    const url  = URL.createObjectURL(blob)
+    const a    = document.createElement('a')
+    a.href = url; a.download = filename; a.click()
+    URL.revokeObjectURL(url)
+    return { error: null }
+  } catch (e) {
+    return { error: 'Errore di rete: ' + e.message }
+  }
+}
+
+function qs(filtri = {}) {
+  const params = new URLSearchParams()
+  Object.entries(filtri).forEach(([k, v]) => { if (v != null && v !== '') params.set(k, v) })
+  const s = params.toString()
+  return s ? '?' + s : ''
+}
+
+// ── Report ────────────────────────────────────────────────────────────────
+export const reportApi = {
+  sorgenti:  ()           => get('/report/sorgenti'),
+  templates: ()           => get('/report/templates'),
+  template:  (id)         => get(`/report/templates/${id}`),
+  crea:      (body)       => post('/report/templates', body),
+  aggiorna:  (id, body)   => put(`/report/templates/${id}`, body),
+  elimina:   (id)         => del(`/report/templates/${id}`),
+
+  scaricaPdf:   (id, filtri, nome) => download(`/report/pdf/${id}${qs(filtri)}`, `${nome}.pdf`),
+  scaricaExcel: (sorgente, filtri) => download(`/report/excel/${sorgente}${qs(filtri)}`, `${sorgente}.xlsx`),
+
+  /** Anteprima dal designer: ritorna l'URL blob del PDF (da aprire/revocare a cura del chiamante) */
+  async anteprima(body) {
+    try {
+      const headers = { 'Content-Type': 'application/json' }
+      if (_token) headers['Authorization'] = `Bearer ${_token}`
+      const res = await fetch(`${BASE_URL}/report/anteprima`, {
+        method: 'POST', headers, body: JSON.stringify(body),
+      })
+      if (!res.ok) {
+        let detail = `Errore ${res.status}`
+        try { detail = (await res.json())?.detail || detail } catch { /* corpo non JSON */ }
+        return { url: null, error: detail }
+      }
+      const blob = await res.blob()
+      return { url: URL.createObjectURL(blob), error: null }
+    } catch (e) {
+      return { url: null, error: 'Errore di rete: ' + e.message }
+    }
+  },
+}
+
 // ── Utenti (solo admin) ───────────────────────────────────────────────────
 export const utentiApi = {
   lista:         ()           => get('/utenti'),
