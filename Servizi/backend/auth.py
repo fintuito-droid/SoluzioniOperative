@@ -1,26 +1,35 @@
 """
-auth.py — Autenticazione semplice, pronta per CAS/JWT
-======================================================
-FASE 1: Token statico per sviluppo/test.
-FASE 2: Sostituire _decode_token() con CAS ticket validation o JWT decode.
-        Il resto dell'applicazione non cambia.
+auth.py — Autenticazione con sessioni persistenti su DB
+========================================================
+I token sono salvati nella tabella `sessioni` con scadenza:
+sopravvivono ai riavvii del backend. Una cache in-memory evita
+una query Access per ogni richiesta.
 
-Il contratto pubblico di questo modulo è:
-  - get_current_user(token) → Utente
-  - require_role(*ruoli) → dependency FastAPI
+MIGRAZIONE FUTURA (login unico piattaforma): sostituire _decode_token()
+con JWT decode o CAS ticket validation. Il resto non cambia.
+
+Contratto pubblico:
+  - login(username, password) → dict token/utente
+  - logout(token)
+  - get_current_user(authorization) → dependency FastAPI
+  - require_role(*ruoli) → dependency factory
+  - cambia_password(utente_id, vecchia, nuova) → bool
 """
 
 import hashlib
 import secrets
+from datetime import datetime, timedelta
 from typing import Optional
 from fastapi import Header, HTTPException, status, Depends
 from db.database import db
-from models.models import Utente, RuoloUtente
+from models.models import RuoloUtente
 
+# Durata sessione
+SESSIONE_ORE = 12
 
-# ── Token store in-memory (solo per sviluppo/Access) ────────────────────────
-# In produzione con JWT questo dizionario non esiste più.
-_active_tokens: dict[str, dict] = {}
+# Cache token → (user_dict, scadenza). Evita query DB a ogni richiesta;
+# la verità resta sul DB (sopravvive ai riavvii).
+_token_cache: dict[str, tuple[dict, datetime]] = {}
 
 
 def _hash_password(password: str) -> str:
@@ -32,11 +41,17 @@ def _generate_token() -> str:
     return secrets.token_hex(32)
 
 
+def _user_dict(row: dict) -> dict:
+    return {
+        "id":           row["id"],
+        "username":     row["username"],
+        "ruolo":        row["ruolo"],
+        "personale_id": row.get("personale_id"),
+        "comando_id":   row.get("comando_id"),
+    }
+
+
 def login(username: str, password: str) -> Optional[dict]:
-    """
-    Verifica credenziali e ritorna token + info utente.
-    MIGRAZIONE: sostituire il corpo con CAS ticket validation o OAuth2.
-    """
     pw_hash = _hash_password(password)
     row = db.fetch_one(
         "SELECT * FROM utenti WHERE username=? AND password_hash=? AND attivo=True",
@@ -45,20 +60,20 @@ def login(username: str, password: str) -> Optional[dict]:
     if not row:
         return None
 
-    token = _generate_token()
-    _active_tokens[token] = {
-        "id":           row["id"],
-        "username":     row["username"],
-        "ruolo":        row["ruolo"],
-        "personale_id": row.get("personale_id"),
-        "comando_id":   row.get("comando_id"),
-    }
+    token    = _generate_token()
+    adesso   = datetime.now()
+    scadenza = adesso + timedelta(hours=SESSIONE_ORE)
 
-    # Aggiorna ultimo_accesso
     db.execute(
-        "UPDATE utenti SET ultimo_accesso=NOW() WHERE id=?",
-        (row["id"],)
+        "INSERT INTO sessioni ([token],[utente_id],[scadenza],[creato_il]) VALUES (?,?,?,?)",
+        (token, row["id"], scadenza, adesso)
     )
+    # Pulizia opportunistica delle sessioni scadute
+    db.execute("DELETE FROM sessioni WHERE scadenza < ?", (adesso,))
+
+    db.execute("UPDATE utenti SET ultimo_accesso=? WHERE id=?", (adesso, row["id"]))
+
+    _token_cache[token] = (_user_dict(row), scadenza)
 
     return {
         "access_token": token,
@@ -70,17 +85,58 @@ def login(username: str, password: str) -> Optional[dict]:
 
 
 def logout(token: str) -> None:
-    _active_tokens.pop(token, None)
+    _token_cache.pop(token, None)
+    db.execute("DELETE FROM sessioni WHERE token=?", (token,))
+
+
+def cambia_password(utente_id: int, vecchia: str, nuova: str) -> bool:
+    """Cambia la password verificando quella attuale. True se riuscito."""
+    row = db.fetch_one(
+        "SELECT id FROM utenti WHERE id=? AND password_hash=?",
+        (utente_id, _hash_password(vecchia))
+    )
+    if not row:
+        return False
+    db.execute(
+        "UPDATE utenti SET password_hash=? WHERE id=?",
+        (_hash_password(nuova), utente_id)
+    )
+    return True
 
 
 def _decode_token(token: str) -> Optional[dict]:
     """
-    PUNTO DI SOSTITUZIONE PER CAS/JWT.
-    Oggi: lookup in dizionario in-memory.
-    Domani: return jwt.decode(token, SECRET, algorithms=["HS256"])
-            oppure: return cas_client.validate_ticket(token)
+    PUNTO DI SOSTITUZIONE PER JWT/CAS (login unico piattaforma).
+    Oggi: cache in-memory con fallback su tabella sessioni.
     """
-    return _active_tokens.get(token)
+    adesso = datetime.now()
+
+    cached = _token_cache.get(token)
+    if cached:
+        user, scadenza = cached
+        if scadenza > adesso:
+            return user
+        _token_cache.pop(token, None)
+        return None
+
+    # Cache miss (es. dopo riavvio backend): verifica su DB
+    sess = db.fetch_one("SELECT * FROM sessioni WHERE token=?", (token,))
+    if not sess:
+        return None
+    scadenza = sess["scadenza"]
+    if isinstance(scadenza, str):
+        scadenza = datetime.fromisoformat(scadenza)
+    if scadenza <= adesso:
+        db.execute("DELETE FROM sessioni WHERE token=?", (token,))
+        return None
+
+    row = db.fetch_one("SELECT * FROM utenti WHERE id=? AND attivo=True", (sess["utente_id"],))
+    if not row:
+        return None
+
+    user = _user_dict(row)
+    _token_cache[token] = (user, scadenza)
+    return user
 
 
 # ── FastAPI Dependencies ─────────────────────────────────────────────────────

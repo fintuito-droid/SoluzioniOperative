@@ -12,6 +12,7 @@
         <v-tab value="campagne"   prepend-icon="mdi-calendar-range">Campagne</v-tab>
         <v-tab value="postazioni" prepend-icon="mdi-map-marker">Postazioni</v-tab>
         <v-tab value="specialita" prepend-icon="mdi-certificate">Specialità</v-tab>
+        <v-tab value="utenti"     prepend-icon="mdi-account-key">Utenti</v-tab>
       </v-tabs>
       <v-divider/>
 
@@ -129,8 +130,124 @@
           </v-card-text>
         </v-window-item>
 
+        <!-- ══ TAB UTENTI ════════════════════════════════════════════════════ -->
+        <v-window-item value="utenti">
+          <v-card-text>
+            <div class="d-flex justify-end mb-3">
+              <v-btn color="primary" prepend-icon="mdi-plus" size="small" @click="apriUtente()">
+                Nuovo utente
+              </v-btn>
+            </div>
+            <v-data-table
+              :headers="hUtenti"
+              :items="utentiList"
+              density="compact"
+              items-per-page="-1"
+              hide-default-footer
+            >
+              <template #item.username="{ item }">
+                <span class="font-weight-medium">{{ item.username }}</span>
+              </template>
+              <template #item.ruolo="{ item }">
+                <v-chip :color="coloreRuolo(item.ruolo)" size="x-small" variant="tonal">
+                  {{ item.ruolo }}
+                </v-chip>
+              </template>
+              <template #item.ultimo_accesso="{ item }">
+                <span class="text-caption">{{ fmtDataOra(item.ultimo_accesso) }}</span>
+              </template>
+              <template #item.attivo="{ item }">
+                <v-icon :color="item.attivo ? 'success' : 'error'" size="small">
+                  {{ item.attivo ? 'mdi-check-circle' : 'mdi-close-circle' }}
+                </v-icon>
+              </template>
+              <template #item.azioni="{ item }">
+                <v-btn icon="mdi-pencil" size="x-small" variant="text" color="primary"
+                       title="Modifica" @click="apriUtente(item)"/>
+                <v-btn icon="mdi-key-variant" size="x-small" variant="text" color="warning"
+                       title="Reset password" @click="apriResetPassword(item)"/>
+              </template>
+            </v-data-table>
+          </v-card-text>
+        </v-window-item>
+
       </v-window>
     </v-card>
+
+    <!-- ── Dialog utente ── -->
+    <v-dialog v-model="dlgUtente" max-width="480" persistent>
+      <v-card>
+        <v-card-title class="text-subtitle-1 font-weight-medium pa-4 pb-2">
+          {{ formUtente.id ? 'Modifica utente' : 'Nuovo utente' }}
+        </v-card-title>
+        <v-divider/>
+        <v-card-text class="pt-4">
+          <v-row dense>
+            <v-col cols="12" sm="6">
+              <v-text-field v-model="formUtente.username" label="Username *"
+                            :disabled="!!formUtente.id" density="compact"/>
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-text-field v-if="!formUtente.id" v-model="formUtente.password"
+                            label="Password *" type="password" density="compact"/>
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-select v-model="formUtente.ruolo" :items="ruoliDisponibili"
+                        label="Ruolo *" density="compact"/>
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-select v-model="formUtente.comando_id" :items="store.comandi"
+                        item-title="codice" item-value="id"
+                        label="Comando" clearable density="compact"/>
+            </v-col>
+            <v-col cols="12">
+              <v-autocomplete v-model="formUtente.personale_id" :items="store.personale"
+                              :item-title="p => `${p.cognome} ${p.nome}`" item-value="id"
+                              label="Dipendente collegato" clearable density="compact"/>
+            </v-col>
+            <v-col cols="12">
+              <v-switch v-model="formUtente.attivo" label="Attivo" color="success"
+                        density="compact" hide-details/>
+            </v-col>
+          </v-row>
+        </v-card-text>
+        <v-divider/>
+        <v-card-actions>
+          <v-btn variant="text" @click="dlgUtente = false">Annulla</v-btn>
+          <v-spacer/>
+          <v-btn color="primary" :loading="salvando" :disabled="!utenteValido" @click="salvaUtente">
+            Salva
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- ── Dialog reset password ── -->
+    <v-dialog v-model="dlgResetPwd" max-width="420" persistent>
+      <v-card>
+        <v-card-title class="text-subtitle-1 font-weight-medium pa-4 pb-2">
+          Reset password — {{ utenteReset?.username }}
+        </v-card-title>
+        <v-divider/>
+        <v-card-text class="pt-4">
+          <v-text-field v-model="nuovaPwd" label="Nuova password *" type="password"
+                        :rules="[v => !v || v.length >= 6 || 'Minimo 6 caratteri']"
+                        density="compact"/>
+          <p class="text-caption text-medium-emphasis">
+            Le sessioni attive dell'utente verranno chiuse.
+          </p>
+        </v-card-text>
+        <v-divider/>
+        <v-card-actions>
+          <v-btn variant="text" @click="dlgResetPwd = false">Annulla</v-btn>
+          <v-spacer/>
+          <v-btn color="warning" variant="tonal" :loading="salvando"
+                 :disabled="nuovaPwd.length < 6" @click="salvaResetPassword">
+            Reset
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
 
     <!-- ── Dialog campagna ── -->
     <v-dialog v-model="dlgCampagna" max-width="480" persistent>
@@ -281,7 +398,7 @@
 <script setup>
 import { ref, computed, reactive, onMounted } from 'vue'
 import { usePresenzeStore } from '@/stores/presenze'
-import { lookupApi } from '@/api/api'
+import { lookupApi, utentiApi } from '@/api/api'
 
 const store = usePresenzeStore()
 
@@ -428,6 +545,95 @@ async function eseguiEliminaSpecialita() {
   await caricaSpecialita()
 }
 
+// ── Utenti ────────────────────────────────────────────────────────────────────
+const utentiList  = ref([])
+const dlgUtente   = ref(false)
+const dlgResetPwd = ref(false)
+const utenteReset = ref(null)
+const nuovaPwd    = ref('')
+const ruoliDisponibili = ['admin', 'responsabile', 'dipendente']
+
+const hUtenti = [
+  { title: 'Username',       key: 'username',       sortable: true },
+  { title: 'Ruolo',          key: 'ruolo',          sortable: true },
+  { title: 'Dipendente',     key: 'nominativo',     sortable: true },
+  { title: 'Ultimo accesso', key: 'ultimo_accesso', sortable: true },
+  { title: 'Attivo',         key: 'attivo',         sortable: true },
+  { title: '',               key: 'azioni',         sortable: false, align: 'end' },
+]
+
+const formUtente = reactive({
+  id: null, username: '', password: '', ruolo: 'dipendente',
+  personale_id: null, comando_id: null, attivo: true,
+})
+
+const utenteValido = computed(() => {
+  if (!formUtente.username || !formUtente.ruolo) return false
+  if (!formUtente.id && formUtente.password.length < 6) return false
+  return true
+})
+
+async function caricaUtenti() {
+  const { data } = await utentiApi.lista()
+  if (data) utentiList.value = data
+}
+
+function apriUtente(item = null) {
+  Object.assign(formUtente, item
+    ? { id: item.id, username: item.username, password: '',
+        ruolo: item.ruolo, personale_id: item.personale_id || null,
+        comando_id: item.comando_id || null, attivo: !!item.attivo }
+    : { id: null, username: '', password: '', ruolo: 'dipendente',
+        personale_id: null, comando_id: null, attivo: true })
+  dlgUtente.value = true
+}
+
+async function salvaUtente() {
+  salvando.value = true
+  const body = {
+    ruolo:        formUtente.ruolo,
+    personale_id: formUtente.personale_id,
+    comando_id:   formUtente.comando_id,
+    attivo:       formUtente.attivo,
+  }
+  let error
+  if (formUtente.id) {
+    ({ error } = await utentiApi.aggiorna(formUtente.id, body))
+  } else {
+    ({ error } = await utentiApi.crea({ ...body, username: formUtente.username, password: formUtente.password }))
+  }
+  salvando.value = false
+  if (error) return showSnack(error, 'error')
+  dlgUtente.value = false
+  showSnack('Utente salvato')
+  await caricaUtenti()
+}
+
+function apriResetPassword(item) {
+  utenteReset.value = item
+  nuovaPwd.value = ''
+  dlgResetPwd.value = true
+}
+
+async function salvaResetPassword() {
+  salvando.value = true
+  const { error } = await utentiApi.resetPassword(utenteReset.value.id, nuovaPwd.value)
+  salvando.value = false
+  dlgResetPwd.value = false
+  if (error) return showSnack(error, 'error')
+  showSnack('Password resettata')
+}
+
+function coloreRuolo(r) {
+  return { admin: 'error', responsabile: 'warning', dipendente: 'info' }[r] || 'grey'
+}
+
+function fmtDataOra(v) {
+  if (!v) return '—'
+  const s = String(v).replace('T', ' ')
+  return s.slice(0, 16)
+}
+
 // ── Utilità ───────────────────────────────────────────────────────────────────
 function normData(v) {
   if (!v) return ''
@@ -444,8 +650,9 @@ function showSnack(text, color = 'success') {
 }
 
 onMounted(() => {
-  // In parallelo: la tab Specialità non deve aspettare il lookup completo
+  // Tutto in parallelo: nessuna tab aspetta le altre
   caricaSpecialita()
+  caricaUtenti()
   if (!store.postazioni.length) store.caricaLookup()
 })
 </script>

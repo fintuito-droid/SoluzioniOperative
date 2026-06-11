@@ -40,6 +40,12 @@
       <template #append>
         <v-list density="compact" nav>
           <v-list-item
+            prepend-icon="mdi-key-variant"
+            title="Cambia password"
+            @click="dialogPassword = true"
+            rounded="lg"
+          />
+          <v-list-item
             prepend-icon="mdi-logout"
             title="Esci"
             @click="handleLogout"
@@ -52,6 +58,58 @@
         </div>
       </template>
     </v-navigation-drawer>
+
+    <!-- ── Dialog cambio password ── -->
+    <v-dialog v-model="dialogPassword" max-width="440" persistent>
+      <v-card>
+        <v-card-title class="text-subtitle-1 font-weight-medium pa-4 pb-2">
+          Cambia password
+        </v-card-title>
+        <v-divider/>
+        <v-card-text class="pt-4">
+          <v-text-field
+            v-model="pwd.vecchia"
+            label="Password attuale *"
+            type="password"
+            density="compact"
+            class="mb-2"
+          />
+          <v-text-field
+            v-model="pwd.nuova"
+            label="Nuova password *"
+            type="password"
+            density="compact"
+            :rules="[v => !v || v.length >= 6 || 'Minimo 6 caratteri']"
+            class="mb-2"
+          />
+          <v-text-field
+            v-model="pwd.conferma"
+            label="Conferma nuova password *"
+            type="password"
+            density="compact"
+            :error-messages="pwd.conferma && pwd.conferma !== pwd.nuova ? 'Le password non coincidono' : ''"
+          />
+        </v-card-text>
+        <v-divider/>
+        <v-card-actions>
+          <v-btn variant="text" @click="chiudiDialogPassword">Annulla</v-btn>
+          <v-spacer/>
+          <v-btn
+            color="primary"
+            :loading="cambiandoPassword"
+            :disabled="!pwd.vecchia || pwd.nuova.length < 6 || pwd.nuova !== pwd.conferma"
+            @click="salvaPassword"
+          >
+            Salva
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Snackbar -->
+    <v-snackbar v-model="snack.show" :color="snack.color" timeout="4000">
+      {{ snack.text }}
+    </v-snackbar>
 
     <!-- App bar mobile -->
     <v-app-bar :elevation="1" color="primary" v-if="mobile">
@@ -84,11 +142,12 @@
 </style>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDisplay } from 'vuetify'
 import { useAuthStore } from '@/stores/auth'
 import { usePresenzeStore } from '@/stores/presenze'
+import { authApi } from '@/api/api'
 
 const auth     = useAuthStore()
 const presenze = usePresenzeStore()
@@ -96,6 +155,29 @@ const router   = useRouter()
 const { mobile } = useDisplay()
 const drawer   = ref(true)
 const rail     = ref(false)
+
+// ── Cambio password ────────────────────────────────────────────────────────
+const dialogPassword    = ref(false)
+const cambiandoPassword = ref(false)
+const pwd   = reactive({ vecchia: '', nuova: '', conferma: '' })
+const snack = ref({ show: false, text: '', color: 'success' })
+
+function chiudiDialogPassword() {
+  dialogPassword.value = false
+  pwd.vecchia = pwd.nuova = pwd.conferma = ''
+}
+
+async function salvaPassword() {
+  cambiandoPassword.value = true
+  const { error } = await authApi.cambiaPassword(pwd.vecchia, pwd.nuova)
+  cambiandoPassword.value = false
+  if (error) {
+    snack.value = { show: true, text: error, color: 'error' }
+  } else {
+    chiudiDialogPassword()
+    snack.value = { show: true, text: 'Password aggiornata', color: 'success' }
+  }
+}
 
 const navItems = computed(() => {
   const items = [

@@ -5,12 +5,27 @@ Avvio: uvicorn main:app --reload --port 8000
 Docs:  http://localhost:8000/docs
 """
 
-from fastapi import FastAPI, Depends
+import logging
+import os
+from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from db.database import db
-from auth import login, logout, get_current_user
+from auth import login, logout, get_current_user, cambia_password, _decode_token
 from models.models import UtenteLogin, TokenResponse, RuoloUtente
-from routers import personale, presenze
+from routers import personale, presenze, utenti
+
+# ── Logging operazioni di scrittura ──────────────────────────────────────────
+os.makedirs(os.path.join(os.path.dirname(__file__), "logs"), exist_ok=True)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s  %(levelname)s  %(message)s",
+    handlers=[
+        logging.FileHandler(os.path.join(os.path.dirname(__file__), "logs", "operazioni.log"), encoding="utf-8"),
+        logging.StreamHandler(),
+    ],
+)
+logger = logging.getLogger("aib")
 
 app = FastAPI(
     title="SoluzioniOperative — Modulo AIB 2026",
@@ -18,11 +33,48 @@ app = FastAPI(
     version="1.0.0"
 )
 
+ALLOWED_ORIGINS = ["http://localhost:5173", "http://localhost:5174", "http://localhost:5175",
+                   "http://localhost:5176", "http://localhost:5177", "http://localhost:3000"]
+
+
+def _cors_headers(request: Request) -> dict:
+    """Header CORS per le risposte generate fuori dal middleware (exception handler)."""
+    origin = request.headers.get("origin", "")
+    if origin in ALLOWED_ORIGINS:
+        return {"Access-Control-Allow-Origin": origin, "Access-Control-Allow-Credentials": "true"}
+    return {}
+
+
+# ── Exception handler globale: mai 500 senza JSON leggibile ──────────────────
+@app.exception_handler(Exception)
+async def gestione_errori(request: Request, exc: Exception):
+    logger.exception("Errore non gestito su %s %s: %s", request.method, request.url.path, exc)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"Errore interno del server ({type(exc).__name__}). Contattare l'amministratore."},
+        headers=_cors_headers(request),
+    )
+
+
+# ── Audit: log delle operazioni di scrittura (chi, cosa, quando) ─────────────
+@app.middleware("http")
+async def audit_scritture(request: Request, call_next):
+    response = await call_next(request)
+    if request.method in ("POST", "PUT", "PATCH", "DELETE") and "/auth/login" not in request.url.path:
+        username = "-"
+        auth_header = request.headers.get("authorization", "")
+        if auth_header.startswith("Bearer "):
+            user = _decode_token(auth_header.removeprefix("Bearer ").strip())
+            if user:
+                username = user["username"]
+        logger.info("AUDIT  user=%s  %s %s  → %s",
+                    username, request.method, request.url.path, response.status_code)
+    return response
+
 # ── CORS per Vue dev server ──────────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:5174", "http://localhost:5175",
-                   "http://localhost:5176", "http://localhost:5177", "http://localhost:3000"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -31,6 +83,7 @@ app.add_middleware(
 # ── Router ───────────────────────────────────────────────────────────────────
 app.include_router(personale.router, prefix="/api/v1")
 app.include_router(presenze.router,  prefix="/api/v1")
+app.include_router(utenti.router,    prefix="/api/v1")
 
 
 # ── Auth endpoints ───────────────────────────────────────────────────────────
@@ -40,14 +93,37 @@ def auth_login(credentials: UtenteLogin):
     if not result:
         from fastapi import HTTPException
         raise HTTPException(401, "Credenziali non valide")
+    logger.info("AUDIT  login utente=%s", credentials.username)
     return result
 
 
 @app.post("/api/v1/auth/logout")
-def auth_logout(authorization: str = None, current_user: dict = Depends(get_current_user)):
-    if authorization:
-        token = authorization.removeprefix("Bearer ").strip()
-        logout(token)
+def auth_logout(request: Request, current_user: dict = Depends(get_current_user)):
+    auth_header = request.headers.get("authorization", "")
+    if auth_header.startswith("Bearer "):
+        logout(auth_header.removeprefix("Bearer ").strip())
+    return {"ok": True}
+
+
+@app.get("/api/v1/auth/me")
+def auth_me(current_user: dict = Depends(get_current_user)):
+    """Valida il token e restituisce l'utente corrente (ripristino sessione F5)."""
+    return {
+        "username":     current_user["username"],
+        "ruolo":        current_user["ruolo"],
+        "personale_id": current_user.get("personale_id"),
+    }
+
+
+@app.post("/api/v1/auth/cambia-password")
+def auth_cambia_password(body: dict, current_user: dict = Depends(get_current_user)):
+    from fastapi import HTTPException
+    vecchia = body.get("vecchia_password", "")
+    nuova   = body.get("nuova_password", "")
+    if len(nuova) < 6:
+        raise HTTPException(422, "La nuova password deve avere almeno 6 caratteri")
+    if not cambia_password(current_user["id"], vecchia, nuova):
+        raise HTTPException(401, "Password attuale non corretta")
     return {"ok": True}
 
 

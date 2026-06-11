@@ -90,4 +90,8 @@ const app = createApp(App)
 app.use(createPinia())
 app.use(router)
 app.use(vuetify)
-app.mount('#app')
+
+// Valida la sessione salvata prima del mount: se il token è scaduto
+// l'utente viene rimandato al login invece di vedere errori 401
+const auth = useAuthStore()
+auth.verificaSessione().finally(() => app.mount('#app'))

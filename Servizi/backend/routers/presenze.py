@@ -33,6 +33,47 @@ PRESENZE_SELECT = """
 """
 
 
+def _valida_data_campagna(campagna_id: int, data_servizio) -> None:
+    """La data del turno deve cadere nel periodo della campagna."""
+    if not campagna_id:
+        return
+    c = db.fetch_one("SELECT * FROM campagne_aib WHERE id=?", (campagna_id,))
+    if not c:
+        raise HTTPException(422, "Campagna inesistente")
+    di = str(c["data_inizio"])[:10]
+    df = str(c["data_fine"])[:10]
+    ds = str(data_servizio)[:10]
+    if not (di <= ds <= df):
+        raise HTTPException(422,
+            f"La data {ds} è fuori dal periodo della campagna AIB {c['anno']} ({di} → {df})")
+
+
+def _verifica_sovrapposizione(personale_id: int, data_servizio, fascia) -> None:
+    """
+    Una persona non può avere due turni sovrapposti nello stesso giorno:
+    stessa fascia (M+M, P+P, U+U) oppure turno unico U contro qualsiasi
+    altra fascia (U copre l'intera giornata).
+    """
+    if not fascia:
+        return
+    rows = db.fetch_all(
+        "SELECT pr.fascia_oraria, pe.cognome, pe.nome FROM (presenze pr "
+        "LEFT JOIN personale pe ON pe.id = pr.personale_id) "
+        "WHERE pr.personale_id=? AND pr.data_servizio=?",
+        (personale_id, str(data_servizio))
+    )
+    fascia_label = {'U': 'turno unico', 'M': 'mattina', 'P': 'pomeriggio'}
+    for r in rows:
+        f_ex = r.get("fascia_oraria")
+        if not f_ex:
+            continue  # presenze storiche senza fascia: nessun blocco
+        if f_ex == fascia or f_ex == 'U' or fascia == 'U':
+            nome = f"{r.get('cognome','')} {r.get('nome','')}".strip()
+            raise HTTPException(409,
+                f"{nome} è già assegnato in {fascia_label.get(f_ex, f_ex)} "
+                f"per il {str(data_servizio)[:10]}")
+
+
 def _scope_filter(current_user: dict) -> tuple[str, list]:
     """Costruisce il filtro di scope in base al ruolo."""
     if current_user["ruolo"] == "admin":
@@ -149,22 +190,14 @@ def crea_presenze_batch(
     if current_user["ruolo"] == "dipendente":
         raise HTTPException(403, "I dipendenti non possono pianificare turni")
 
+    # Validazioni preventive su TUTTO il batch prima di scrivere
+    # (riduce il rischio di scritture parziali su Access senza transazioni)
+    for data in items:
+        _valida_data_campagna(data.campagna_id, data.data_servizio)
+        _verifica_sovrapposizione(data.personale_id, data.data_servizio, data.fascia_oraria)
+
     creati = []
     for data in items:
-        # Anti-duplicato: stessa persona, stesso giorno, stessa fascia
-        if data.fascia_oraria:
-            dup = db.fetch_one(
-                "SELECT pr.id, pe.cognome, pe.nome FROM (presenze pr "
-                "LEFT JOIN personale pe ON pe.id = pr.personale_id) "
-                "WHERE pr.personale_id=? AND pr.data_servizio=? AND pr.fascia_oraria=?",
-                (data.personale_id, str(data.data_servizio), data.fascia_oraria)
-            )
-            if dup:
-                nome = f"{dup.get('cognome','')} {dup.get('nome','')}"
-                fascia_label = {'U':'turno unico','M':'mattina','P':'pomeriggio'}.get(data.fascia_oraria, data.fascia_oraria)
-                raise HTTPException(409,
-                    f"{nome.strip()} è già assegnato in {fascia_label} per il {data.data_servizio}")
-
         ore = data.ore_totali
         if ore is None:
             try:
@@ -209,6 +242,9 @@ def crea_presenza(
     """Crea un turno programmato. Solo Admin e Responsabile."""
     if current_user["ruolo"] == "dipendente":
         raise HTTPException(403, "I dipendenti non possono pianificare turni")
+
+    _valida_data_campagna(data.campagna_id, data.data_servizio)
+    _verifica_sovrapposizione(data.personale_id, data.data_servizio, data.fascia_oraria)
 
     # Calcola ore_totali se non fornite
     ore = data.ore_totali

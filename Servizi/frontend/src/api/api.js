@@ -62,6 +62,17 @@ const del    = (path)        => request('DELETE', path)
 export const authApi = {
   login:  (username, password) => post('/auth/login',  { username, password }),
   logout: ()                   => post('/auth/logout', {}),
+  me:     ()                   => get('/auth/me'),
+  cambiaPassword: (vecchia, nuova) =>
+    post('/auth/cambia-password', { vecchia_password: vecchia, nuova_password: nuova }),
+}
+
+// ── Utenti (solo admin) ───────────────────────────────────────────────────
+export const utentiApi = {
+  lista:         ()           => get('/utenti'),
+  crea:          (body)       => post('/utenti', body),
+  aggiorna:      (id, body)   => put(`/utenti/${id}`, body),
+  resetPassword: (id, password) => put(`/utenti/${id}/password`, { password }),
 }
 
 

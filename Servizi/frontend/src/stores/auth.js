@@ -3,8 +3,15 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { authApi, setToken, getToken } from '@/api/api'
 
+const USER_KEY = 'aib_user'
+
+function loadStoredUser() {
+  try { return JSON.parse(localStorage.getItem(USER_KEY)) || null }
+  catch { return null }
+}
+
 export const useAuthStore = defineStore('auth', () => {
-  const user       = ref(null)   // { username, ruolo, personale_id }
+  const user       = ref(loadStoredUser())   // { username, ruolo, personale_id }
   const token      = ref(getToken())
   const loading    = ref(false)
   const error      = ref(null)
@@ -16,6 +23,12 @@ export const useAuthStore = defineStore('auth', () => {
   const canPlanificare  = computed(() => isAdmin.value || isResponsabile.value)
   const canConsuntivare = computed(() => isAdmin.value || isResponsabile.value)
 
+  function _setUser(u) {
+    user.value = u
+    if (u) localStorage.setItem(USER_KEY, JSON.stringify(u))
+    else   localStorage.removeItem(USER_KEY)
+  }
+
   async function login(username, password) {
     loading.value = true
     error.value   = null
@@ -25,11 +38,11 @@ export const useAuthStore = defineStore('auth', () => {
     } else {
       token.value = data.access_token
       setToken(data.access_token)
-      user.value = {
-        username:    data.username,
-        ruolo:       data.ruolo,
-        personale_id: data.personale_id
-      }
+      _setUser({
+        username:     data.username,
+        ruolo:        data.ruolo,
+        personale_id: data.personale_id,
+      })
     }
     loading.value = false
     return !err
@@ -38,15 +51,29 @@ export const useAuthStore = defineStore('auth', () => {
   async function logout() {
     await authApi.logout()
     token.value = null
-    user.value  = null
+    _setUser(null)
     setToken(null)
   }
 
-  // Ripristina sessione da localStorage al mount dell'app
-  function restoreSession(userData) {
-    if (token.value && userData) user.value = userData
+  /**
+   * Valida la sessione salvata all'avvio dell'app (F5 / riapertura browser).
+   * Se il token è scaduto o invalido, pulisce lo stato locale:
+   * il guard del router rimanda al login.
+   */
+  async function verificaSessione() {
+    if (!token.value) return false
+    const { data, error: err } = await authApi.me()
+    if (err || !data) {
+      token.value = null
+      _setUser(null)
+      setToken(null)
+      return false
+    }
+    _setUser(data)   // dati freschi dal server (ruolo aggiornato)
+    return true
   }
 
   return { user, token, loading, error, isAuth, isAdmin, isResponsabile,
-           isDipendente, canPlanificare, canConsuntivare, login, logout, restoreSession }
+           isDipendente, canPlanificare, canConsuntivare,
+           login, logout, verificaSessione }
 })
