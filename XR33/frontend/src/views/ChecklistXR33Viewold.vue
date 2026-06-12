@@ -167,7 +167,7 @@
 <script setup>
 import { reactive, ref, onMounted } from "vue";
 
-const API_BASE = "http://127.0.0.1:8000";
+const API_BASE = "http://127.0.0.1:8002";
 
 const stazioni = ref([]);
 const operatoriDisponibili = ref([]);

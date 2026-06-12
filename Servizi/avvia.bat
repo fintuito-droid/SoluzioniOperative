@@ -1,6 +1,6 @@
 @echo off
 echo Avvio Backend AIB 2026...
-start "Backend AIB" cmd /k "cd /d C:\Users\fintu\Documents\GitHub\SoluzioniOperative\Servizi\backend && uvicorn main:app --reload --port 8000"
+start "Backend AIB" cmd /k "cd /d C:\Users\fintu\Documents\GitHub\SoluzioniOperative\Servizi\backend && uvicorn main:app --reload --port 8001"
 
 timeout /t 3 /nobreak >nul
 

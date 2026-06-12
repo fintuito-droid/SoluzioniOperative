@@ -11,7 +11,7 @@
  * in modo che i componenti non debbano gestire try/catch.
  */
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001/api/v1'
 
 // ── Token storage ─────────────────────────────────────────────────────────
 // In produzione con CAS/JWT: sostituire con cookie httpOnly o sessionStorage

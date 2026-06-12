@@ -27,6 +27,11 @@ from models.models import RuoloUtente
 # Durata sessione
 SESSIONE_ORE = 12
 
+# Moduli della piattaforma SoluzioniOperative.
+# Gli admin sono abilitati a tutti; gli altri utenti solo a quelli
+# presenti in utenti_moduli (tabella creata da migrate_moduli.py).
+MODULI_PIATTAFORMA = ["servizi", "protocollo-monitor", "xr33"]
+
 # Cache token → (user_dict, scadenza). Evita query DB a ogni richiesta;
 # la verità resta sul DB (sopravvive ai riavvii).
 _token_cache: dict[str, tuple[dict, datetime]] = {}
@@ -41,6 +46,16 @@ def _generate_token() -> str:
     return secrets.token_hex(32)
 
 
+def moduli_utente(utente_id: int, ruolo: str) -> list[str]:
+    """Codici dei moduli abilitati per l'utente. Admin: tutti."""
+    if ruolo == "admin":
+        return list(MODULI_PIATTAFORMA)
+    rows = db.fetch_all(
+        "SELECT codice_modulo FROM utenti_moduli WHERE utente_id=?", (utente_id,)
+    )
+    return [r["codice_modulo"] for r in rows]
+
+
 def _user_dict(row: dict) -> dict:
     return {
         "id":           row["id"],
@@ -48,7 +63,16 @@ def _user_dict(row: dict) -> dict:
         "ruolo":        row["ruolo"],
         "personale_id": row.get("personale_id"),
         "comando_id":   row.get("comando_id"),
+        "moduli":       moduli_utente(row["id"], row["ruolo"]),
     }
+
+
+def invalida_cache_utente(utente_id: int) -> None:
+    """Rimuove dalla cache i token dell'utente: alla prossima richiesta
+    il dict utente viene ricaricato dal DB (ruolo/moduli aggiornati),
+    senza chiudere le sessioni."""
+    for tok in [t for t, (u, _) in _token_cache.items() if u["id"] == utente_id]:
+        _token_cache.pop(tok, None)
 
 
 def login(username: str, password: str) -> Optional[dict]:
@@ -73,7 +97,8 @@ def login(username: str, password: str) -> Optional[dict]:
 
     db.execute("UPDATE utenti SET ultimo_accesso=? WHERE id=?", (adesso, row["id"]))
 
-    _token_cache[token] = (_user_dict(row), scadenza)
+    user = _user_dict(row)
+    _token_cache[token] = (user, scadenza)
 
     return {
         "access_token": token,
@@ -81,6 +106,7 @@ def login(username: str, password: str) -> Optional[dict]:
         "ruolo":        row["ruolo"],
         "personale_id": row.get("personale_id"),
         "username":     row["username"],
+        "moduli":       user["moduli"],
     }
 
 

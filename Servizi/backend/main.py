@@ -1,8 +1,9 @@
 """
 main.py — FastAPI entry point — Modulo AIB 2026
 ================================================
-Avvio: uvicorn main:app --reload --port 8000
-Docs:  http://localhost:8000/docs
+Avvio: uvicorn main:app --reload --port 8001
+Docs:  http://localhost:8001/docs
+(porta 8001: la 8000 è del backend ProtocolloMonitor nella piattaforma)
 """
 
 import logging
@@ -113,6 +114,7 @@ def auth_me(current_user: dict = Depends(get_current_user)):
         "username":     current_user["username"],
         "ruolo":        current_user["ruolo"],
         "personale_id": current_user.get("personale_id"),
+        "moduli":       current_user.get("moduli", []),
     }
 
 

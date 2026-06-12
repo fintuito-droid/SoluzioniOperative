@@ -154,6 +154,7 @@ class TokenResponse(BaseModel):
     ruolo:        RuoloUtente
     personale_id: Optional[int]
     username:     str
+    moduli:       list[str] = []
 
 
 # ── Presenze ─────────────────────────────────────────────────────────────────

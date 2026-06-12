@@ -4,7 +4,7 @@
 
 **Modulo Servizi (AIB 2026)** — applicazione web per la gestione delle presenze nei servizi a pagamento della Campagna Antincendio Boschivo (AIB) del Corpo Nazionale dei Vigili del Fuoco - Direzione Regionale Sicilia.
 
-Il modulo fa parte della piattaforma **SoluzioniOperative** (login unico tra moduli previsto in futuro; per ora l'auth è interna al modulo ma progettata per essere estratta).
+Il modulo fa parte della piattaforma **SoluzioniOperative**. Dal **2026-06-12** la piattaforma ha un **frontend unico** (`Piattaforma\frontend`, porta 5173) con login unico e abilitazioni per modulo: il backend Servizi è l'**auth provider** della piattaforma e le view del modulo vivono in `Piattaforma\frontend\src\modules\servizi\`. Vedi `SESSION_CONTEXT.md` alla radice del repo per l'architettura piattaforma. Il frontend in `Servizi\frontend` resta come fallback legacy.
 
 Repository:
 
@@ -22,27 +22,21 @@ C:\Users\fintu\Documents\GitHub\SoluzioniOperative\Servizi
 * Vuetify **4.1.1** (no import da `vuetify/labs/`)
 * Pinia, Vue Router, Vite 6
 
-Avvio rapido di tutto: doppio click su `Servizi\avvia.bat` (apre backend + frontend).
-
-Avvio manuale frontend:
-
-```bash
-cd Servizi/frontend
-npm run dev
-```
+Avvio rapido della piattaforma intera: doppio click su `Piattaforma\avvia.bat`.
+Avvio del solo modulo (frontend legacy): `Servizi\avvia.bat`.
 
 URL: `http://localhost:5173` — Login sviluppo: `admin` / `admin123`
 
 ## Backend
 
-* Python 3.10, FastAPI, Uvicorn
+* Python 3.10, FastAPI, Uvicorn — **porta 8001** (la 8000 è di ProtocolloMonitor)
 
 ```bash
 cd Servizi/backend
-uvicorn main:app --reload --port 8000
+uvicorn main:app --reload --port 8001
 ```
 
-Swagger: `http://localhost:8000/docs`
+Swagger: `http://localhost:8001/docs`
 
 ## Database
 
@@ -116,9 +110,9 @@ Swagger: `http://localhost:8000/docs`
 
 # Tabelle DB
 
-`campagne_aib`, `postazioni` (+ slot_funzionario, slot_tas2, slot_addetto, turni_multipli), `qualifiche`, `comandi`, `personale`, `specialita`, `personale_specialita`, `utenti`, `sessioni`, `funzioni_servizio`, `presenze` (+ fascia_oraria U/M/P), `report_templates` (definizione JSON in Memo)
+`campagne_aib`, `postazioni` (+ slot_funzionario, slot_tas2, slot_addetto, turni_multipli), `qualifiche`, `comandi`, `personale`, `specialita`, `personale_specialita`, `utenti`, `sessioni`, `utenti_moduli` (abilitazioni piattaforma, colonna `codice_modulo`), `funzioni_servizio`, `presenze` (+ fascia_oraria U/M/P), `report_templates` (definizione JSON in Memo)
 
-Migrazioni eseguite (script in backend/): `migrate_composizione.py`, `migrate_specialita.py`, `migrate_sessioni.py`, `migrate_orari.py` (35 orari normalizzati), `migrate_report.py`. Tutte idempotenti.
+Migrazioni eseguite (script in backend/): `migrate_composizione.py`, `migrate_specialita.py`, `migrate_sessioni.py`, `migrate_orari.py` (35 orari normalizzati), `migrate_report.py`, `migrate_moduli.py` (utenti_moduli). Tutte idempotenti.
 
 Dati: campagna AIB 2025 (id=3, storica, 69 dipendenti, ~278 presenze), campagna AIB 2026 (id=1, attiva, periodo 2026-06-15 → 2026-10-15).
 
@@ -170,12 +164,15 @@ Origini ammesse: localhost 5173-5177 e 3000 (lista `ALLOWED_ORIGINS` in main.py)
 
 # Problemi aperti
 
-1. Due utenti `admin` duplicati nella tabella utenti (id 1 e 2) — disattivarne uno dalla tab Utenti
-2. Postazione spuria "COMANDO PALERMO" nel DB — verifica manuale dell'utente
-3. Valori `ore_totali` con floating point impreciso nel DB (il modello arrotonda in output)
-4. `create_db.py` da eliminare dopo la migrazione PostgreSQL (per ora è la documentazione eseguibile dello schema)
-5. Password SHA-256 semplice — passare a bcrypt in produzione / con login unico piattaforma
-6. Dipendenze backend non ancora elencate in un requirements.txt (fastapi, uvicorn, pyodbc, reportlab, openpyxl)
+1. Valori `ore_totali` con floating point impreciso nel DB (il modello arrotonda in output)
+2. `create_db.py` da eliminare dopo la migrazione PostgreSQL (per ora è la documentazione eseguibile dello schema)
+3. Password SHA-256 semplice — passare a bcrypt in produzione / con login unico piattaforma
+4. Postazione "COMANDO PALERMO" (id 3): verificata il 2026-06-12 — ha 3 presenze confermate della campagna storica 2025 (Giordano Maurizio) e nessuna regola di composizione. **Decisione utente: lasciarla com'è** (non disattivare, non eliminare).
+
+## Risolti
+
+* Admin duplicato: utente id 2 (mai usato, zero sessioni) disattivato il 2026-06-12; l'admin operativo è id 1
+* `backend/requirements.txt` creato (fastapi 0.136.1, uvicorn 0.46.0, pyodbc 5.3.0, pydantic 2.13.3, reportlab 4.5.1, openpyxl 3.1.5)
 
 ---
 
@@ -208,14 +205,23 @@ Setup completo da zero; fix JOIN annidati; migrazione dati 2025; Monte Ore con f
 * Date in formato italiano dd/mm/yyyy ovunque (`utils/format.js`)
 * **Fase 3**: Report Designer drag & drop + render PDF (reportlab) + export Excel (openpyxl)
 * Restrizioni ruoli: Report solo admin; dipendente in sola visualizzazione totale
+* Pulizia (Task A): requirements.txt backend; admin duplicato id 2 disattivato; COMANDO PALERMO analizzata (3 presenze storiche 2025) e lasciata invariata per decisione utente
+
+## 2026-06-12 — Integrazione piattaforma (Fasi 0–5 completate)
+
+* Backend spostato sulla **porta 8001**; frontend unico `Piattaforma\frontend` (5173)
+* Login unico: il backend Servizi è l'auth provider della piattaforma; `login` e `/auth/me` restituiscono `moduli`
+* Tabella `utenti_moduli` + abilitazioni nel CRUD utenti (admin = tutti impliciti; cache token invalidata al cambio senza chiudere le sessioni)
+* View del modulo sotto `Piattaforma\frontend\src\modules\servizi\` con rotte `/servizi/...`
+* ProtocolloMonitor (8000) e XR33 (8002) integrati: validano il token piattaforma per introspezione su /auth/me; XR33 mappa per username sulla propria tabella utenti PostgreSQL
+* Tab Utenti: checkbox moduli + colonna chips; tessere home con lucchetto; guard router per modulo
 
 ---
 
 # Prossimi passi
 
-1. Pulizia: disattivare admin duplicato, verificare COMANDO PALERMO, creare requirements.txt backend
-2. Migrazione PostgreSQL: nuovo `PostgreSQLDatabase` in database.py, traduzione `[x]`→`"x"` e `?`→`%s`, schema con FK e indici, travaso dati, bcrypt
-3. Evoluzioni designer: immagini/loghi nei report, export PDF del calendario mensile visuale
+1. Migrazione PostgreSQL: nuovo `PostgreSQLDatabase` in database.py, traduzione `[x]`→`"x"` e `?`→`%s`, schema con FK e indici, travaso dati, bcrypt. **Nota: PostgreSQL 17 è già installato e attivo sulla macchina** (lo usa XR33 con db `xr33db`).
+2. Evoluzioni designer: immagini/loghi nei report, export PDF del calendario mensile visuale
 
 ---
 
