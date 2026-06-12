@@ -40,9 +40,14 @@ Swagger: `http://localhost:8001/docs`
 
 ## Database
 
-* Microsoft Access (.accdb) via pyodbc
-* Percorso: `C:\SoluzioniOperative\aib2026.accdb` (override con env `ACCESS_DB_PATH`)
-* Migrazione PostgreSQL prevista DOPO il completamento funzionale; ogni query nuova deve già essere PG-compatibile
+* **PostgreSQL 17, database `aib2026`** (default dal 2026-06-12) — connessione via
+  env `DATABASE_URL` (default `postgresql://postgres:1234@localhost:5432/aib2026`)
+* Fallback legacy: `DB_ENGINE=access` → `C:\SoluzioniOperative\aib2026.accdb`
+  (override percorso con `ACCESS_DB_PATH`); il file Access NON viene più aggiornato
+* Le query del backend restano scritte in dialetto Access-compatibile
+  (`[quadre]`, `?`): è `PostgreSQLDatabase` a tradurle a runtime
+* Script: `pg_schema.py` (schema con FK e indici, idempotente),
+  `pg_migrate_dati.py` (travaso da Access, `--reset` per ricopiare)
 
 ---
 
@@ -164,15 +169,15 @@ Origini ammesse: localhost 5173-5177 e 3000 (lista `ALLOWED_ORIGINS` in main.py)
 
 # Problemi aperti
 
-1. Valori `ore_totali` con floating point impreciso nel DB (il modello arrotonda in output)
-2. `create_db.py` da eliminare dopo la migrazione PostgreSQL (per ora è la documentazione eseguibile dello schema)
-3. Password SHA-256 semplice — passare a bcrypt in produzione / con login unico piattaforma
-4. Postazione "COMANDO PALERMO" (id 3): verificata il 2026-06-12 — ha 3 presenze confermate della campagna storica 2025 (Giordano Maurizio) e nessuna regola di composizione. **Decisione utente: lasciarla com'è** (non disattivare, non eliminare).
+1. Postazione "COMANDO PALERMO" (id 3): verificata il 2026-06-12 — ha 3 presenze confermate della campagna storica 2025 (Giordano Maurizio) e nessuna regola di composizione. **Decisione utente: lasciarla com'è** (non disattivare, non eliminare).
+2. `create_db.py` e i `migrate_*.py` sono ormai documentazione storica dello schema Access: eliminabili quando il fallback Access verrà dismesso.
 
 ## Risolti
 
 * Admin duplicato: utente id 2 (mai usato, zero sessioni) disattivato il 2026-06-12; l'admin operativo è id 1
-* `backend/requirements.txt` creato (fastapi 0.136.1, uvicorn 0.46.0, pyodbc 5.3.0, pydantic 2.13.3, reportlab 4.5.1, openpyxl 3.1.5)
+* `backend/requirements.txt` creato (+ psycopg2-binary, passlib, bcrypt dal Task B)
+* `ore_totali` floating point: valori arrotondati a 2 decimali nel travaso PostgreSQL
+* Password SHA-256 → **bcrypt** con verifica dual-hash e upgrade trasparente al primo login
 
 ---
 
@@ -216,12 +221,18 @@ Setup completo da zero; fix JOIN annidati; migrazione dati 2025; Monte Ore con f
 * ProtocolloMonitor (8000) e XR33 (8002) integrati: validano il token piattaforma per introspezione su /auth/me; XR33 mappa per username sulla propria tabella utenti PostgreSQL
 * Tab Utenti: checkbox moduli + colonna chips; tessere home con lucchetto; guard router per modulo
 
+## 2026-06-12 — Task B: migrazione PostgreSQL completata
+
+* `PostgreSQLDatabase` in db/database.py (traduzione `[x]`→`"x"`, `?`→`%s`, lastval); default `DB_ENGINE=postgres`, fallback access
+* `pg_schema.py`: 13 tabelle con FK e indici (assenti in Access); `pg_migrate_dati.py`: travaso 13/13 OK, ID e sequenze preservati, ore_totali ripulite
+* bcrypt dual-hash in auth.py: hash legacy SHA-256 riconosciuti e convertiti al primo login
+* Verifica su PG: login, presenze (lettura+scrittura+consuntivo+delete), monte ore, utenti/moduli, PDF reportlab
+
 ---
 
 # Prossimi passi
 
-1. Migrazione PostgreSQL: nuovo `PostgreSQLDatabase` in database.py, traduzione `[x]`→`"x"` e `?`→`%s`, schema con FK e indici, travaso dati, bcrypt. **Nota: PostgreSQL 17 è già installato e attivo sulla macchina** (lo usa XR33 con db `xr33db`).
-2. Evoluzioni designer: immagini/loghi nei report, export PDF del calendario mensile visuale
+1. Evoluzioni designer: immagini/loghi nei report, export PDF del calendario mensile visuale
 
 ---
 

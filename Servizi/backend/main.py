@@ -282,4 +282,5 @@ def elimina_specialita(
 # ── Health check ─────────────────────────────────────────────────────────────
 @app.get("/api/v1/health")
 def health():
-    return {"status": "ok", "db": "access", "modulo": "aib2026"}
+    from db.database import DB_ENGINE
+    return {"status": "ok", "db": DB_ENGINE, "modulo": "aib2026"}

@@ -13,7 +13,8 @@ Integrazione completata il **2026-06-12** (Fasi 0–5).
 ```text
 Piattaforma\frontend      Vue 3.5.35 (PINNATO) + Vuetify 4.1.1 + Pinia + Vite 6 — porta 5173
 ProtocolloMonitor\backend FastAPI + Access            — porta 8000
-Servizi\backend           FastAPI + Access (aib2026)  — porta 8001  ← AUTH PROVIDER
+Servizi\backend           FastAPI + PostgreSQL 17 (db aib2026) — porta 8001  ← AUTH PROVIDER
+                          (fallback legacy: DB_ENGINE=access → aib2026.accdb)
 XR33\backend              FastAPI + SQLAlchemy + PostgreSQL 17 (xr33db) — porta 8002
 ```
 
@@ -74,9 +75,16 @@ microservizi, nessuna nuova dipendenza senza autorizzazione, piano prima del cod
 
 ## Prossimi passi
 
-1. **Task B — Migrazione PostgreSQL del modulo Servizi** (PostgreSQL 17 è già
-   installato e attivo sulla macchina per xr33db): `PostgreSQLDatabase` in
-   database.py, `[x]`→`"x"`, `?`→`%s`, FK e indici, travaso dati, bcrypt.
-2. Evoluzioni designer report: immagini/loghi, export PDF calendario visuale.
-3. Valutare estrazione dell'auth in servizio dedicato (oggi è nel backend Servizi).
-4. Pulizia frontend legacy dei moduli quando la piattaforma è consolidata.
+1. Evoluzioni designer report: immagini/loghi, export PDF calendario visuale.
+2. Valutare estrazione dell'auth in servizio dedicato (oggi è nel backend Servizi).
+3. Pulizia frontend legacy dei moduli quando la piattaforma è consolidata.
+4. Valutare migrazione PostgreSQL anche per ProtocolloMonitor (oggi su Access).
+
+## Task B completato (2026-06-12): Servizi su PostgreSQL
+
+* `db/database.py`: PostgreSQLDatabase con traduzione runtime `[x]`→`"x"`, `?`→`%s`,
+  `lastval()`; motore scelto da `DB_ENGINE` (default postgres, fallback access)
+* `pg_schema.py`: schema con FK e indici; `pg_migrate_dati.py`: travaso con ID
+  preservati, sequenze riallineate, ore_totali arrotondate (13/13 tabelle OK)
+* Password: bcrypt con dual-hash — i vecchi SHA-256 vengono convertiti al primo
+  login riuscito; nessun reset necessario

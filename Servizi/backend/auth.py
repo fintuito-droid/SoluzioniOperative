@@ -21,6 +21,7 @@ import secrets
 from datetime import datetime, timedelta
 from typing import Optional
 from fastapi import Header, HTTPException, status, Depends
+from passlib.context import CryptContext
 from db.database import db
 from models.models import RuoloUtente
 
@@ -37,9 +38,29 @@ MODULI_PIATTAFORMA = ["servizi", "protocollo-monitor", "xr33"]
 _token_cache: dict[str, tuple[dict, datetime]] = {}
 
 
+_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
 def _hash_password(password: str) -> str:
-    """SHA-256 semplice per Access. In produzione: bcrypt."""
-    return hashlib.sha256(password.encode()).hexdigest()
+    """Hash bcrypt (i nuovi hash sono sempre bcrypt)."""
+    return _pwd_context.hash(password)
+
+
+def _verify_password(password: str, stored_hash: str) -> bool:
+    """
+    Verifica dual-hash: riconosce sia i bcrypt nuovi sia i vecchi
+    SHA-256 esadecimali (64 caratteri) creati prima della migrazione.
+    """
+    if not stored_hash:
+        return False
+    if stored_hash.startswith("$2"):
+        return _pwd_context.verify(password, stored_hash)
+    # Hash legacy SHA-256
+    return hashlib.sha256(password.encode()).hexdigest() == stored_hash
+
+
+def _is_legacy_hash(stored_hash: str) -> bool:
+    return bool(stored_hash) and not stored_hash.startswith("$2")
 
 
 def _generate_token() -> str:
@@ -76,13 +97,20 @@ def invalida_cache_utente(utente_id: int) -> None:
 
 
 def login(username: str, password: str) -> Optional[dict]:
-    pw_hash = _hash_password(password)
     row = db.fetch_one(
-        "SELECT * FROM utenti WHERE username=? AND password_hash=? AND attivo=True",
-        (username, pw_hash)
+        "SELECT * FROM utenti WHERE username=? AND attivo=True",
+        (username,)
     )
-    if not row:
+    if not row or not _verify_password(password, row.get("password_hash", "")):
         return None
+
+    # Upgrade trasparente: il vecchio hash SHA-256 diventa bcrypt
+    # al primo login riuscito (la password in chiaro è disponibile solo qui)
+    if _is_legacy_hash(row["password_hash"]):
+        db.execute(
+            "UPDATE utenti SET password_hash=? WHERE id=?",
+            (_hash_password(password), row["id"])
+        )
 
     token    = _generate_token()
     adesso   = datetime.now()
@@ -118,10 +146,10 @@ def logout(token: str) -> None:
 def cambia_password(utente_id: int, vecchia: str, nuova: str) -> bool:
     """Cambia la password verificando quella attuale. True se riuscito."""
     row = db.fetch_one(
-        "SELECT id FROM utenti WHERE id=? AND password_hash=?",
-        (utente_id, _hash_password(vecchia))
+        "SELECT id, password_hash FROM utenti WHERE id=?",
+        (utente_id,)
     )
-    if not row:
+    if not row or not _verify_password(vecchia, row.get("password_hash", "")):
         return False
     db.execute(
         "UPDATE utenti SET password_hash=? WHERE id=?",
